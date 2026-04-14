@@ -14,6 +14,10 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # Force any action still pinned to a Node 20 image onto Node 24.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
