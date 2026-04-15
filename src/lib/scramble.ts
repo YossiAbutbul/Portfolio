@@ -1,4 +1,4 @@
-const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#&/*";
+const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 export interface ScrambleHandle {
   stop(): void;

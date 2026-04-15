@@ -115,7 +115,7 @@ function NavLink({
   function handleEnter() {
     if (!ref.current) return;
     if (prefersReducedMotion()) return;
-    scrambleText(ref.current, label, { duration: 260 });
+    scrambleText(ref.current, label, { duration: 500 });
   }
 
   return (
