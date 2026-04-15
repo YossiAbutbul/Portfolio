@@ -4,7 +4,6 @@
   line-height: 0.92;
   letter-spacing: -0.03em;
   color: var(--fg);
-  /* Lock opsz at display range so wght morph doesn't change advance widths */
   font-variation-settings: "wght" 420, "opsz" 120, "SOFT" 0, "WONK" 0;
   font-feature-settings: "kern" 1, "liga" 1;
   will-change: font-variation-settings;

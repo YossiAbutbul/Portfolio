@@ -3,20 +3,16 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
 import { PROJECTS, getAllSlugs, getProjectBySlug } from "@content/projects";
-import InkReveal from "@/components/fx/InkReveal";
+import ImageSlider from "@/components/projects/ImageSlider";
 import TagPill from "@/components/projects/TagPill";
 import Fiducial from "@/components/ui/Fiducial";
 import ReadingProgress from "@/components/ui/ReadingProgress";
 import Toc from "@/components/ui/Toc";
-import { withBasePath } from "@/lib/env";
-
 import ReportGeneratorBody from "@content/projects/report-generator.mdx";
 import PipelineCpuBody from "@content/projects/pipeline-cpu.mdx";
 import AssemblerBody from "@content/projects/two-pass-assembler.mdx";
 import OPlannerBody from "@content/projects/oplanner.mdx";
 import MiniCircuitsBody from "@content/projects/mini-circuits-power-sensor.mdx";
-import GraphViewerBody from "@content/projects/graphviewer.mdx";
-
 import styles from "./detail.module.css";
 
 type MDXComponent = (props: object) => React.ReactElement;
@@ -27,7 +23,6 @@ const MDX_BY_SLUG: Record<string, MDXComponent> = {
   "two-pass-assembler": AssemblerBody as unknown as MDXComponent,
   oplanner: OPlannerBody as unknown as MDXComponent,
   "mini-circuits-power-sensor": MiniCircuitsBody as unknown as MDXComponent,
-  graphviewer: GraphViewerBody as unknown as MDXComponent,
 };
 
 const TAG_LABEL = { software: "SW", hardware: "HW", embedded: "EMB" } as const;
@@ -60,7 +55,6 @@ export default async function ProjectDetail({
   if (!project) notFound();
 
   const Body = MDX_BY_SLUG[slug];
-  const img = project.images[0];
 
   const idx = PROJECTS.findIndex((p) => p.slug === slug);
   const next = PROJECTS[(idx + 1) % PROJECTS.length];
@@ -73,12 +67,6 @@ export default async function ProjectDetail({
       <Fiducial corner="tr" />
       <header className={styles.header}>
         <div className="container">
-          <p className={styles.back}>
-            <Link href="/#work" className="link-inline">
-              ← back to work
-            </Link>
-          </p>
-
           <p className={styles.eyebrow}>
             <span>{project.role}</span>
           </p>
@@ -132,14 +120,13 @@ export default async function ProjectDetail({
       <figure className={styles.hero}>
         <div className="container">
           <div className={styles.heroFrame}>
-            <InkReveal
-              src={withBasePath(img.src)}
-              alt={img.alt}
-              width={img.width}
-              height={img.height}
+            <ImageSlider
+              images={project.images}
+              autoPlay
+              interval={3000}
             />
           </div>
-          <figcaption className={styles.cap}>{img.alt}</figcaption>
+          <figcaption className={styles.cap}>{project.images[0].alt}</figcaption>
         </div>
       </figure>
 
@@ -175,23 +162,20 @@ function PrevNextCard({
   direction: "prev" | "next";
   project: (typeof PROJECTS)[number];
 }) {
-  const img = project.images[0];
-  const label = direction === "prev" ? "← Previous" : "Next →";
+  const isPrev = direction === "prev";
   return (
     <Link
       href={`/projects/${project.slug}/`}
-      className={`${styles.footLink} ${direction === "next" ? styles.footRight : ""}`}
+      className={`${styles.footLink} ${isPrev ? styles.footLinkPrev : styles.footLinkNext}`}
     >
-      <span className={styles.footDir}>{label}</span>
-      <div className={styles.footThumb}>
-        <InkReveal
-          src={withBasePath(img.src)}
-          alt={img.alt}
-          width={img.width}
-          height={img.height}
-        />
-      </div>
+      <span className={styles.footDir}>
+        {isPrev ? "←" : "→"}
+      </span>
+      <span className={styles.footLabel}>
+        {isPrev ? "Previous" : "Next"}
+      </span>
       <span className={styles.footTitle}>{project.title}</span>
+      <span className={styles.footLine} aria-hidden="true" />
     </Link>
   );
 }

@@ -1,0 +1,385 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1919" height="1079" viewBox="0 0 1919 1079">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap');
+      text { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+    </style>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#0f0f0f"/>
+    </linearGradient>
+    <linearGradient id="panelGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#141414"/>
+      <stop offset="100%" stop-color="#111111"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1919" height="1079" fill="url(#bg)"/>
+
+  <!-- Subtle grid lines -->
+  <g opacity="0.03" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="270" x2="1919" y2="270"/>
+    <line x1="0" y1="540" x2="1919" y2="540"/>
+    <line x1="0" y1="810" x2="1919" y2="810"/>
+    <line x1="480" y1="0" x2="480" y2="1079"/>
+    <line x1="960" y1="0" x2="960" y2="1079"/>
+    <line x1="1440" y1="0" x2="1440" y2="1079"/>
+  </g>
+
+  <!-- Left panel — source file -->
+  <rect x="80" y="80" width="540" height="919" rx="4" fill="url(#panelGrad)" stroke="#1e1e1e" stroke-width="1"/>
+
+  <!-- Left panel top bar -->
+  <rect x="80" y="80" width="540" height="36" rx="4" fill="#181818"/>
+  <rect x="80" y="104" width="540" height="12" fill="#181818"/>
+  <circle cx="108" cy="98" r="6" fill="#3a3a3a"/>
+  <circle cx="130" cy="98" r="6" fill="#3a3a3a"/>
+  <circle cx="152" cy="98" r="6" fill="#3a3a3a"/>
+  <text x="280" y="102" text-anchor="middle" font-size="11" fill="#555" letter-spacing="0.1em">example.as</text>
+
+  <!-- Source code lines -->
+  <!-- Line numbers -->
+  <g fill="#333" font-size="13">
+    <text x="106" y="158">1</text>
+    <text x="106" y="180">2</text>
+    <text x="106" y="202">3</text>
+    <text x="106" y="224">4</text>
+    <text x="106" y="246">5</text>
+    <text x="106" y="268">6</text>
+    <text x="106" y="290">7</text>
+    <text x="106" y="312">8</text>
+    <text x="106" y="334">9</text>
+    <text x="99" y="356">10</text>
+    <text x="99" y="378">11</text>
+    <text x="99" y="400">12</text>
+    <text x="99" y="422">13</text>
+    <text x="99" y="444">14</text>
+    <text x="99" y="466">15</text>
+    <text x="99" y="488">16</text>
+    <text x="99" y="510">17</text>
+    <text x="99" y="532">18</text>
+    <text x="99" y="554">19</text>
+    <text x="99" y="576">20</text>
+    <text x="99" y="598">21</text>
+    <text x="99" y="620">22</text>
+    <text x="99" y="642">23</text>
+    <text x="99" y="664">24</text>
+    <text x="99" y="686">25</text>
+  </g>
+
+  <!-- Divider between line numbers and code -->
+  <line x1="128" y1="118" x2="128" y2="980" stroke="#1e1e1e" stroke-width="1"/>
+
+  <!-- Source code text -->
+  <g font-size="13" fill="#5a8a5a">
+    <text x="142" y="158">; Two-Pass Assembler — example.as</text>
+    <text x="142" y="180">; ANSI C90 · base-4 machine code</text>
+  </g>
+  <text x="142" y="202" font-size="13" fill="#1e1e1e">&#160;</text>
+
+  <g font-size="13">
+    <!-- .define -->
+    <text x="142" y="224" fill="#e23614">.define</text>
+    <text x="222" y="224" fill="#c8a96e"> LEN</text>
+    <text x="262" y="224" fill="#ffffff"> 4</text>
+
+    <text x="142" y="246" fill="#e23614">.define</text>
+    <text x="222" y="246" fill="#c8a96e"> SZ</text>
+    <text x="255" y="246" fill="#ffffff"> 8</text>
+
+    <text x="142" y="268" fill="#555">&#160;</text>
+
+    <!-- .entry / .extern -->
+    <text x="142" y="290" fill="#e23614">.entry</text>
+    <text x="210" y="290" fill="#c8a96e"> LOOP</text>
+    <text x="142" y="312" fill="#e23614">.extern</text>
+    <text x="220" y="312" fill="#c8a96e"> W</text>
+
+    <text x="142" y="334" fill="#555">&#160;</text>
+
+    <!-- MAIN label -->
+    <text x="142" y="356" fill="#6ab0f5">MAIN</text>
+    <text x="183" y="356" fill="#aaa">:</text>
+    <text x="142" y="378" fill="#c8a96e">        mov</text>
+    <text x="220" y="378" fill="#ffffff"> r3, </text>
+    <text x="254" y="378" fill="#c8a96e">LIST</text>
+
+    <text x="142" y="400" fill="#c8a96e">        mov</text>
+    <text x="220" y="400" fill="#ffffff"> r1, </text>
+    <text x="254" y="400" fill="#c8a96e">LEN</text>
+
+    <text x="142" y="422" fill="#555">&#160;</text>
+
+    <!-- LOOP label -->
+    <text x="142" y="444" fill="#6ab0f5">LOOP</text>
+    <text x="183" y="444" fill="#aaa">:</text>
+    <text x="142" y="466" fill="#c8a96e">        cmp</text>
+    <text x="220" y="466" fill="#ffffff"> r1, </text>
+    <text x="254" y="466" fill="#ffffff">#0</text>
+
+    <text x="142" y="488" fill="#c8a96e">        blt</text>
+    <text x="220" y="488" fill="#6ab0f5"> END</text>
+
+    <text x="142" y="510" fill="#c8a96e">        add</text>
+    <text x="220" y="510" fill="#ffffff"> r3, </text>
+    <text x="254" y="510" fill="#c8a96e">W</text>
+
+    <text x="142" y="532" fill="#c8a96e">        sub</text>
+    <text x="220" y="532" fill="#ffffff"> r1, </text>
+    <text x="254" y="532" fill="#ffffff">#1</text>
+
+    <text x="142" y="554" fill="#c8a96e">        jmp</text>
+    <text x="220" y="554" fill="#6ab0f5"> LOOP</text>
+
+    <text x="142" y="576" fill="#555">&#160;</text>
+
+    <!-- END label -->
+    <text x="142" y="598" fill="#6ab0f5">END</text>
+    <text x="172" y="598" fill="#aaa">:</text>
+    <text x="142" y="620" fill="#c8a96e">        hlt</text>
+
+    <text x="142" y="642" fill="#555">&#160;</text>
+
+    <!-- .data -->
+    <text x="142" y="664" fill="#6ab0f5">LIST</text>
+    <text x="183" y="664" fill="#aaa">:</text>
+    <text x="142" y="686" fill="#e23614">        .data</text>
+    <text x="220" y="686" fill="#ffffff"> 6,</text>
+    <text x="244" y="686" fill="#ffffff">-9,</text>
+    <text x="274" y="686" fill="#ffffff">15,</text>
+    <text x="304" y="686" fill="#ffffff">-3</text>
+
+    <text x="142" y="708" fill="#555">&#160;</text>
+
+    <!-- .string -->
+    <text x="142" y="730" fill="#e23614">.string</text>
+    <text x="215" y="730" fill="#a8d8a8"> "hello"</text>
+  </g>
+
+  <!-- Cursor blink -->
+  <rect x="142" y="752" width="8" height="15" fill="#e23614" opacity="0.8"/>
+
+  <!-- Middle panel — symbol table -->
+  <rect x="660" y="80" width="560" height="440" rx="4" fill="url(#panelGrad)" stroke="#1e1e1e" stroke-width="1"/>
+  <rect x="660" y="80" width="560" height="36" rx="4" fill="#181818"/>
+  <rect x="660" y="104" width="560" height="12" fill="#181818"/>
+  <text x="940" y="102" text-anchor="middle" font-size="11" fill="#555" letter-spacing="0.1em">SYMBOL TABLE — PASS 1</text>
+
+  <!-- Table header -->
+  <rect x="660" y="116" width="560" height="28" fill="#161616"/>
+  <text x="686" y="134" font-size="11" fill="#e23614" letter-spacing="0.15em">SYMBOL</text>
+  <text x="840" y="134" font-size="11" fill="#e23614" letter-spacing="0.15em">VALUE</text>
+  <text x="960" y="134" font-size="11" fill="#e23614" letter-spacing="0.15em">TYPE</text>
+  <text x="1080" y="134" font-size="11" fill="#e23614" letter-spacing="0.15em">ATTR</text>
+  <line x1="660" y1="144" x2="1220" y2="144" stroke="#1e1e1e" stroke-width="1"/>
+
+  <!-- Table rows -->
+  <g font-size="13">
+    <rect x="660" y="144" width="560" height="24" fill="#131313"/>
+    <text x="686" y="161" fill="#6ab0f5">MAIN</text>
+    <text x="840" y="161" fill="#ffffff">0</text>
+    <text x="960" y="161" fill="#c8a96e">code</text>
+    <text x="1080" y="161" fill="#5a8a5a">entry</text>
+
+    <rect x="660" y="168" width="560" height="24" fill="#141414"/>
+    <text x="686" y="185" fill="#6ab0f5">LOOP</text>
+    <text x="840" y="185" fill="#ffffff">6</text>
+    <text x="960" y="185" fill="#c8a96e">code</text>
+    <text x="1080" y="185" fill="#5a8a5a">entry</text>
+
+    <rect x="660" y="192" width="560" height="24" fill="#131313"/>
+    <text x="686" y="209" fill="#6ab0f5">END</text>
+    <text x="840" y="209" fill="#ffffff">14</text>
+    <text x="960" y="209" fill="#c8a96e">code</text>
+    <text x="1080" y="209" fill="#aaa">local</text>
+
+    <rect x="660" y="216" width="560" height="24" fill="#141414"/>
+    <text x="686" y="233" fill="#6ab0f5">LIST</text>
+    <text x="840" y="233" fill="#ffffff">256</text>
+    <text x="960" y="233" fill="#c8a96e">data</text>
+    <text x="1080" y="233" fill="#aaa">local</text>
+
+    <rect x="660" y="240" width="560" height="24" fill="#131313"/>
+    <text x="686" y="257" fill="#6ab0f5">W</text>
+    <text x="840" y="257" fill="#555">—</text>
+    <text x="960" y="257" fill="#c8a96e">code</text>
+    <text x="1080" y="257" fill="#e23614">extern</text>
+
+    <rect x="660" y="264" width="560" height="24" fill="#141414"/>
+    <text x="686" y="281" fill="#c8a96e">LEN</text>
+    <text x="840" y="281" fill="#ffffff">4</text>
+    <text x="960" y="281" fill="#aaa">mdefine</text>
+    <text x="1080" y="281" fill="#aaa">—</text>
+
+    <rect x="660" y="288" width="560" height="24" fill="#131313"/>
+    <text x="686" y="305" fill="#c8a96e">SZ</text>
+    <text x="840" y="305" fill="#ffffff">8</text>
+    <text x="960" y="305" fill="#aaa">mdefine</text>
+    <text x="1080" y="305" fill="#aaa">—</text>
+  </g>
+
+  <!-- IC / DC counters -->
+  <rect x="660" y="336" width="560" height="1" fill="#1e1e1e"/>
+  <rect x="660" y="337" width="560" height="70" fill="#111"/>
+  <text x="686" y="362" font-size="11" fill="#555" letter-spacing="0.12em">INSTRUCTION COUNTER</text>
+  <text x="686" y="384" font-size="20" fill="#e23614">IC = 16</text>
+  <text x="900" y="362" font-size="11" fill="#555" letter-spacing="0.12em">DATA COUNTER</text>
+  <text x="900" y="384" font-size="20" fill="#6ab0f5">DC = 5</text>
+
+  <rect x="660" y="407" width="560" height="1" fill="#1e1e1e"/>
+
+  <!-- Pass status -->
+  <rect x="660" y="408" width="560" height="32" fill="#0d1a0d"/>
+  <text x="686" y="429" font-size="12" fill="#5a8a5a">✓ Pass 1 complete — 0 errors · building symbol table done</text>
+  <rect x="660" y="440" width="560" height="32" fill="#0d0d1a"/>
+  <text x="686" y="461" font-size="12" fill="#6ab0f5">✓ Pass 2 complete — resolving labels · encoding instructions</text>
+  <rect x="660" y="472" width="560" height="48" fill="#111"/>
+  <text x="686" y="494" font-size="11" fill="#555" letter-spacing="0.12em">OUTPUT FILES</text>
+  <text x="686" y="511" font-size="13" fill="#aaa">example.ob · example.ent · example.ext</text>
+
+  <!-- Bottom right panel — machine code output -->
+  <rect x="660" y="560" width="560" height="439" rx="4" fill="url(#panelGrad)" stroke="#1e1e1e" stroke-width="1"/>
+  <rect x="660" y="560" width="560" height="36" rx="4" fill="#181818"/>
+  <rect x="660" y="584" width="560" height="12" fill="#181818"/>
+  <text x="940" y="582" text-anchor="middle" font-size="11" fill="#555" letter-spacing="0.1em">example.ob — BASE-4 OBJECT FILE</text>
+
+  <!-- Machine code header -->
+  <rect x="660" y="596" width="560" height="24" fill="#161616"/>
+  <text x="686" y="612" font-size="11" fill="#e23614" letter-spacing="0.15em">ADDR</text>
+  <text x="760" y="612" font-size="11" fill="#e23614" letter-spacing="0.15em">BASE-4 ENCODING</text>
+  <text x="1020" y="612" font-size="11" fill="#e23614" letter-spacing="0.15em">SRC</text>
+  <line x1="660" y1="620" x2="1220" y2="620" stroke="#1e1e1e" stroke-width="1"/>
+
+  <g font-size="13">
+    <rect x="660" y="620" width="560" height="22" fill="#131313"/>
+    <text x="686" y="636" fill="#555">0000</text>
+    <text x="760" y="636" fill="#c8a96e">0000 3110 2030</text>
+    <text x="1020" y="636" fill="#5a8a5a">mov r3,LIST</text>
+
+    <rect x="660" y="642" width="560" height="22" fill="#141414"/>
+    <text x="686" y="658" fill="#555">0003</text>
+    <text x="760" y="658" fill="#c8a96e">0000 2110 1030</text>
+    <text x="1020" y="658" fill="#5a8a5a">mov r1,LEN</text>
+
+    <rect x="660" y="664" width="560" height="22" fill="#131313"/>
+    <text x="686" y="680" fill="#555">0006</text>
+    <text x="760" y="680" fill="#c8a96e">0000 1110 0000</text>
+    <text x="1020" y="680" fill="#5a8a5a">cmp r1,#0</text>
+
+    <rect x="660" y="686" width="560" height="22" fill="#141414"/>
+    <text x="686" y="702" fill="#555">0008</text>
+    <text x="760" y="702" fill="#c8a96e">0000 3200 3200</text>
+    <text x="1020" y="702" fill="#5a8a5a">blt END</text>
+
+    <rect x="660" y="708" width="560" height="22" fill="#131313"/>
+    <text x="686" y="724" fill="#555">0010</text>
+    <text x="760" y="724" fill="#c8a96e">0000 2301 0030</text>
+    <text x="1020" y="724" fill="#5a8a5a">add r3,W</text>
+
+    <rect x="660" y="730" width="560" height="22" fill="#141414"/>
+    <text x="686" y="746" fill="#555">0012</text>
+    <text x="760" y="746" fill="#c8a96e">0000 1110 3111</text>
+    <text x="1020" y="746" fill="#5a8a5a">sub r1,#1</text>
+
+    <rect x="660" y="752" width="560" height="22" fill="#131313"/>
+    <text x="686" y="768" fill="#555">0014</text>
+    <text x="760" y="768" fill="#c8a96e">0000 1000 0600</text>
+    <text x="1020" y="768" fill="#5a8a5a">jmp LOOP</text>
+
+    <rect x="660" y="774" width="560" height="22" fill="#141414"/>
+    <text x="686" y="790" fill="#555">0016</text>
+    <text x="760" y="790" fill="#c8a96e">0000 0000 1111</text>
+    <text x="1020" y="790" fill="#5a8a5a">hlt</text>
+
+    <!-- data segment -->
+    <rect x="660" y="796" width="560" height="18" fill="#0d0d0d"/>
+    <text x="686" y="810" font-size="11" fill="#333" letter-spacing="0.1em">─── DATA SEGMENT ──────────────────────────────</text>
+
+    <rect x="660" y="814" width="560" height="22" fill="#131313"/>
+    <text x="686" y="830" fill="#555">0100</text>
+    <text x="760" y="830" fill="#6ab0f5">0000 0000 0012</text>
+    <text x="1020" y="830" fill="#5a8a5a">6</text>
+
+    <rect x="660" y="836" width="560" height="22" fill="#141414"/>
+    <text x="686" y="852" fill="#555">0101</text>
+    <text x="760" y="852" fill="#6ab0f5">3333 3333 3321</text>
+    <text x="1020" y="852" fill="#5a8a5a">-9</text>
+
+    <rect x="660" y="858" width="560" height="22" fill="#131313"/>
+    <text x="686" y="874" fill="#555">0102</text>
+    <text x="760" y="874" fill="#6ab0f5">0000 0000 0033</text>
+    <text x="1020" y="874" fill="#5a8a5a">15</text>
+
+    <rect x="660" y="880" width="560" height="22" fill="#141414"/>
+    <text x="686" y="896" fill="#555">0103</text>
+    <text x="760" y="896" fill="#6ab0f5">3333 3333 3331</text>
+    <text x="1020" y="896" fill="#5a8a5a">-3</text>
+  </g>
+
+  <!-- Right panel — terminal output -->
+  <rect x="1260" y="80" width="579" height="919" rx="4" fill="#0c0c0c" stroke="#1e1e1e" stroke-width="1"/>
+  <rect x="1260" y="80" width="579" height="36" rx="4" fill="#151515"/>
+  <rect x="1260" y="104" width="579" height="12" fill="#151515"/>
+  <circle cx="1288" cy="98" r="6" fill="#3a1a1a"/>
+  <circle cx="1310" cy="98" r="6" fill="#3a3018"/>
+  <circle cx="1332" cy="98" r="6" fill="#1a3a1a"/>
+  <text x="1550" y="102" text-anchor="middle" font-size="11" fill="#555" letter-spacing="0.1em">bash — assembler</text>
+
+  <g font-size="13">
+    <text x="1284" y="146" fill="#5a8a5a">$ </text>
+    <text x="1304" y="146" fill="#aaa">./assembler example</text>
+
+    <text x="1284" y="174" fill="#555">Assembler v2.0 · ANSI C90</text>
+    <text x="1284" y="196" fill="#555">────────────────────────────</text>
+
+    <text x="1284" y="224" fill="#6ab0f5">[PASS 1]</text>
+    <text x="1352" y="224" fill="#aaa"> Building symbol table</text>
+    <text x="1284" y="246" fill="#aaa">  Reading: example.as</text>
+    <text x="1284" y="268" fill="#aaa">  Macros expanded: 2</text>
+    <text x="1284" y="290" fill="#aaa">  Labels found:    5</text>
+    <text x="1284" y="312" fill="#aaa">  IC = 16 · DC = 5</text>
+    <text x="1284" y="334" fill="#5a8a5a">  ✓ Pass 1 done (0 errors)</text>
+
+    <text x="1284" y="362" fill="#555">────────────────────────────</text>
+
+    <text x="1284" y="390" fill="#6ab0f5">[PASS 2]</text>
+    <text x="1352" y="390" fill="#aaa"> Encoding instructions</text>
+    <text x="1284" y="412" fill="#aaa">  Resolving externals: W</text>
+    <text x="1284" y="434" fill="#aaa">  Encoding: 16 instructions</text>
+    <text x="1284" y="456" fill="#aaa">  Data words: 5</text>
+    <text x="1284" y="478" fill="#5a8a5a">  ✓ Pass 2 done (0 errors)</text>
+
+    <text x="1284" y="506" fill="#555">────────────────────────────</text>
+
+    <text x="1284" y="534" fill="#c8a96e">[OUTPUT]</text>
+    <text x="1284" y="556" fill="#5a8a5a">  → example.ob</text>
+    <text x="1284" y="578" fill="#aaa">      16 code words</text>
+    <text x="1284" y="600" fill="#aaa">       5 data words</text>
+    <text x="1284" y="622" fill="#5a8a5a">  → example.ent</text>
+    <text x="1284" y="644" fill="#aaa">      LOOP  6</text>
+    <text x="1284" y="666" fill="#5a8a5a">  → example.ext</text>
+    <text x="1284" y="688" fill="#aaa">      W     10</text>
+    <text x="1284" y="710" fill="#aaa">      W     12</text>
+
+    <text x="1284" y="738" fill="#555">────────────────────────────</text>
+
+    <text x="1284" y="766" fill="#5a8a5a">Assembly successful.</text>
+    <text x="1284" y="788" fill="#555">Total: 21 words · 0 errors · 0 warnings</text>
+
+    <text x="1284" y="816" fill="#555">────────────────────────────</text>
+    <text x="1284" y="838" fill="#5a8a5a">$ </text>
+    <!-- Cursor -->
+    <rect x="1304" y="824" width="8" height="15" fill="#5a8a5a" opacity="0.8"/>
+  </g>
+
+  <!-- Bottom label bar -->
+  <rect x="0" y="1040" width="1919" height="39" fill="#080808"/>
+  <line x1="0" y1="1040" x2="1919" y2="1040" stroke="#1e1e1e" stroke-width="1"/>
+  <text x="80" y="1063" font-size="11" fill="#333" letter-spacing="0.2em">TWO-PASS ASSEMBLER · ANSI C90 · BASE-4 MACHINE CODE</text>
+  <text x="1839" y="1063" text-anchor="end" font-size="11" fill="#333" letter-spacing="0.1em">2023</text>
+</svg>

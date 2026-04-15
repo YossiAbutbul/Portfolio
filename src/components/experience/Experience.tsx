@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef } from "react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import styles from "./Experience.module.css";
 
@@ -59,6 +62,28 @@ const KIND_LABEL: Record<TimelineItem["kind"], string> = {
 };
 
 export default function Experience() {
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+
+  useEffect(() => {
+    const items = itemRefs.current.filter((el): el is HTMLLIElement => !!el);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle(styles.active, entry.isIntersecting);
+        });
+      },
+      {
+        // Active band: from 20% to 50% down the viewport
+        rootMargin: "-20% 0px -50% 0px",
+        threshold: 0,
+      },
+    );
+
+    items.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section
       id="experience"
@@ -73,6 +98,7 @@ export default function Experience() {
           {ITEMS.map((it, i) => (
             <li
               key={i}
+              ref={(el) => { itemRefs.current[i] = el; }}
               className={styles.item}
               data-reveal
               data-reveal-delay={(((i % 3) + 1)).toString()}

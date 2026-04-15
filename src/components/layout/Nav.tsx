@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { scrambleText } from "@/lib/scramble";
 import { prefersReducedMotion } from "@/hooks/useReducedMotion";
 import styles from "./Nav.module.css";
@@ -17,6 +18,8 @@ const LINKS = [
 export default function Nav() {
   const [active, setActive] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const isProject = pathname.startsWith("/projects/");
 
   useEffect(() => {
     const sections = LINKS.map((l) => document.getElementById(l.id)).filter(
@@ -49,10 +52,17 @@ export default function Nav() {
   return (
     <header className={styles.nav}>
       <div className={`container ${styles.inner}`}>
-        <Link href="/" className={styles.monogram} aria-label="Home — Yossi Abutbul">
-          <span aria-hidden="true">Yossi Abutbul</span>
-          <span className={styles.monogramDot} aria-hidden="true" />
-        </Link>
+        {isProject ? (
+          <Link href="/#work" className={`link-inline ${styles.backLink}`} aria-label="Back to work">
+            <span className={styles.backArrow} aria-hidden="true">←</span>
+            back to work
+          </Link>
+        ) : (
+          <Link href="/" className={styles.monogram} aria-label="Home — Yossi Abutbul">
+            <span aria-hidden="true">Yossi Abutbul</span>
+            <span className={styles.monogramDot} aria-hidden="true" />
+          </Link>
+        )}
 
         <button
           className={styles.menuBtn}

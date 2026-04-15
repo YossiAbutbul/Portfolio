@@ -5,7 +5,7 @@ export const PROJECTS: Project[] = [
     slug: "report-generator",
     title: "RF Report Generator",
     summary:
-      "Full-stack RF test-automation platform. Controls Power and Spectrum Analyzers over Bluetooth, captures real-time measurements, and generates structured reports with 3D analysis. Cut lab reporting time by 50%+.",
+      "Full-stack RF test-automation platform. Captures measurements, and generates structured reports with 3D analysis. Cut lab reporting time by 50%+.",
     tags: ["software", "hardware", "embedded"],
     year: 2024,
     role: "Solo — architecture, frontend, API, device integration",
@@ -15,10 +15,28 @@ export const PROJECTS: Project[] = [
     ],
     images: [
       {
-        src: "/projects/report-generator/hero.svg",
-        alt: "RF Report Generator dashboard",
+        src: "/projects/report-generator/01-setup.png",
+        alt: "RF Report Generator — setup and data table",
         width: 1600,
-        height: 1000,
+        height: 935,
+      },
+      {
+        src: "/projects/report-generator/02-report.png",
+        alt: "RF Report Generator — report preview and export",
+        width: 1600,
+        height: 935,
+      },
+      {
+        src: "/projects/report-generator/03-3d-graph.png",
+        alt: "RF Report Generator — 3D radiation surface",
+        width: 1600,
+        height: 935,
+      },
+      {
+        src: "/projects/report-generator/04-2d-graph.png",
+        alt: "RF Report Generator — 2D polar plots",
+        width: 1600,
+        height: 935,
       },
     ],
     featured: true,
@@ -35,10 +53,10 @@ export const PROJECTS: Project[] = [
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/Pipeline_CPU" }],
     images: [
       {
-        src: "/projects/pipeline-cpu/hero.svg",
-        alt: "Pipeline CPU simulator UI",
-        width: 1600,
-        height: 1000,
+        src: "/projects/pipeline-cpu/01-Pipeline-CPU-Diagram.png",
+        alt: "Pipeline CPU simulator — pipeline diagram",
+        width: 1919,
+        height: 1079,
       },
     ],
     featured: true,
@@ -55,10 +73,10 @@ export const PROJECTS: Project[] = [
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/Assembler" }],
     images: [
       {
-        src: "/projects/two-pass-assembler/hero.svg",
-        alt: "Assembler output and source files",
-        width: 1600,
-        height: 1000,
+        src: "/projects/two-pass-assembler/01-assembler.svg",
+        alt: "Two-Pass Assembler — source, symbol table, and base-4 machine code output",
+        width: 1919,
+        height: 1079,
       },
     ],
     featured: true,
@@ -75,10 +93,10 @@ export const PROJECTS: Project[] = [
     links: [{ label: "Private repo — case study", href: "#contact" }],
     images: [
       {
-        src: "/projects/oplanner/hero.svg",
-        alt: "OPlanner dashboard",
-        width: 1600,
-        height: 1000,
+        src: "/projects/oplanner/01-OPlanner.png",
+        alt: "OPlanner — semester and task planner dashboard",
+        width: 1919,
+        height: 1079,
       },
     ],
     featured: true,
@@ -100,33 +118,13 @@ export const PROJECTS: Project[] = [
     ],
     images: [
       {
-        src: "/projects/mini-circuits/hero.svg",
-        alt: "USB power sensor plot",
-        width: 1600,
-        height: 1000,
+        src: "/projects/mini-circuits/01-power-sensor.svg",
+        alt: "Mini-Circuits power sensor — Python API, power vs time plot, terminal output",
+        width: 1919,
+        height: 1079,
       },
     ],
     featured: true,
-  },
-  {
-    slug: "graphviewer",
-    title: "GraphViewer 2.0",
-    summary:
-      "Lightweight antenna-radiation-pattern viewer. Parses .txt lab exports, renders interactive Chart.js visualizations. Built to make RF measurement data shareable.",
-    tags: ["hardware", "software"],
-    year: 2023,
-    role: "Solo",
-    stack: ["HTML", "CSS", "JavaScript", "Chart.js"],
-    links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/GraphViewer2.0" }],
-    images: [
-      {
-        src: "/projects/graphviewer/hero.svg",
-        alt: "Antenna radiation pattern polar plot",
-        width: 1600,
-        height: 1000,
-      },
-    ],
-    featured: false,
   },
 ];
 

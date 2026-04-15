@@ -35,11 +35,13 @@
 }
 
 .metaCol {
-  position: relative;
+  position: sticky;
+  top: 5rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding-top: 10px;
+  align-self: start;
 }
 
 .year {
@@ -97,13 +99,15 @@
   width: fit-content;
 }
 
-.item:hover .kind {
+.item:hover .kind,
+.item.active .kind {
   color: var(--bg);
   background: var(--accent);
   border-color: var(--accent);
 }
 
-.item:hover .year {
+.item:hover .year,
+.item.active .year {
   color: var(--accent);
 }
 
@@ -156,6 +160,7 @@
     gap: var(--space-3);
   }
   .metaCol {
+    position: static;
     flex-direction: row;
     align-items: center;
     gap: var(--space-3);

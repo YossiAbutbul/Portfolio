@@ -1,0 +1,157 @@
+/* ── Wrapper ─────────────────────────────── */
+.wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-soft);
+  user-select: none;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+/* ── Sliding track ───────────────────────── */
+.track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  padding-block: 4%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ── Image ───────────────────────────────── */
+.img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: filter 650ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Theme filter (card view only) ──────── */
+.filtered .img {
+  filter: grayscale(100%) brightness(0.55) contrast(1.15);
+}
+
+.hovered .img {
+  filter: grayscale(0%) brightness(1) contrast(1);
+}
+
+/* ── Grain overlay (card view only) ─────── */
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+  transition: opacity 650ms ease-out;
+}
+
+.hovered .grain {
+  opacity: 0.1;
+}
+
+/* ── Scroll-reveal wipe (card view only) ── */
+.wipe {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  transform: scaleY(1);
+  transform-origin: top;
+  transition: transform 700ms cubic-bezier(0.76, 0, 0.24, 1);
+  z-index: 4;
+  pointer-events: none;
+}
+
+.wipeGone {
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+
+/* ── Arrows ──────────────────────────────── */
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(5, 5, 5, 0.55);
+  border: 1px solid var(--hairline);
+  color: var(--fg);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 200ms ease-out,
+    background 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.wrap:hover .arrow {
+  opacity: 1;
+}
+
+.arrow:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.arrowPrev { left: 10px; }
+.arrowNext { right: 10px; }
+
+/* ── Dot indicators ──────────────────────── */
+.dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: background 250ms ease-out, transform 250ms ease-out;
+}
+
+.dotActive {
+  background: var(--accent);
+  transform: scale(1.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .img,
+  .grain,
+  .wipe,
+  .arrow,
+  .dot { transition: none; }
+}

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { Project } from "@/types/project";
 import TagPill from "./TagPill";
-import InkReveal from "@/components/fx/InkReveal";
-import { withBasePath } from "@/lib/env";
+import ImageSlider from "./ImageSlider";
 import styles from "./ProjectCard.module.css";
 
 const TAG_LABEL: Record<Project["tags"][number], string> = {
@@ -12,23 +11,15 @@ const TAG_LABEL: Record<Project["tags"][number], string> = {
 };
 
 export default function ProjectCard({ project }: { project: Project }) {
-  const img = project.images[0];
   return (
     <article className={styles.card}>
-      <Link
-        href={`/projects/${project.slug}/`}
-        className={styles.link}
-        aria-label={`Open case study: ${project.title}`}
-      >
-        <div className={styles.imageWrap}>
-          <InkReveal
-            src={withBasePath(img.src)}
-            alt={img.alt}
-            width={img.width}
-            height={img.height}
-          />
-        </div>
-      </Link>
+      <div className={styles.imageWrap}>
+        <ImageSlider
+          images={project.images}
+          slug={project.slug}
+          interval={2200}
+        />
+      </div>
 
       <div className={styles.body}>
         <div className={styles.meta}>

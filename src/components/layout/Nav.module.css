@@ -30,6 +30,25 @@
   gap: var(--space-2);
 }
 
+.backLink {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.backArrow {
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.backLink:hover .backArrow {
+  transform: translateX(-3px);
+}
+
 .monogramDot {
   width: 6px;
   height: 6px;
