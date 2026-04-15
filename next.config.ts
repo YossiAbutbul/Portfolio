@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import createMDX from "@next/mdx";
 
 const isProd = process.env.NODE_ENV === "production";
-const repo = "Protfolio"; // GitHub repo name — case-sensitive
+const repo = "Portfolio"; // GitHub repo name — case-sensitive
 
 const nextConfig: NextConfig = {
   output: "export",
