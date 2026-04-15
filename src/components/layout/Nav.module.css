@@ -95,7 +95,6 @@
 
 .linkText {
   display: inline-block;
-  min-width: max-content;
   white-space: nowrap;
   text-align: left;
 }

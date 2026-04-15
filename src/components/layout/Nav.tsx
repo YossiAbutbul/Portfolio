@@ -115,7 +115,10 @@ function NavLink({
   function handleEnter() {
     if (!ref.current) return;
     if (prefersReducedMotion()) return;
-    scrambleText(ref.current, label, { duration: 500 });
+    const el = ref.current;
+    // Pin pixel width before scramble so flex siblings never shift
+    el.style.width = `${el.getBoundingClientRect().width}px`;
+    scrambleText(el, label, { duration: 500 });
   }
 
   return (
