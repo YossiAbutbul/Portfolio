@@ -23,4 +23,5 @@ export interface Project {
   links: ProjectLink[];
   images: ProjectImage[]; // [0] is card + detail hero
   featured?: boolean;
+  wip?: boolean;
 }

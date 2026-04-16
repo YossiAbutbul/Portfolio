@@ -27,6 +27,7 @@ export default function ProjectCard({ project }: { project: Project }) {
             {project.tags.map((t) => (
               <TagPill key={t}>{TAG_LABEL[t]}</TagPill>
             ))}
+            {project.wip && <TagPill>WIP</TagPill>}
           </span>
         </div>
 

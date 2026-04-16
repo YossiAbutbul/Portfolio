@@ -36,8 +36,8 @@ const LINKS: LinkRow[] = [
   {
     label: "CV",
     href: withBasePath("/cv.pdf"),
-    display: "Open PDF",
-    meta: "PDF",
+    display: "Download CV",
+    meta: "",
     newTab: true,
   },
 ];

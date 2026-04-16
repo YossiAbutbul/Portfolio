@@ -51,6 +51,7 @@ export const PROJECTS: Project[] = [
     year: 2024,
     role: "Solo",
     stack: ["React", "TypeScript", "Vite"],
+    wip: true,
     links: [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/Pipeline_CPU" },
       { label: "Live Demo", href: "https://yossiabutbul.github.io/Pipeline_CPU/" },

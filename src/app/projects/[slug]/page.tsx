@@ -98,6 +98,11 @@ export default async function ProjectDetail({
                   <TagPill>{TAG_LABEL[t]}</TagPill>
                 </li>
               ))}
+              {project.wip && (
+                <li>
+                  <TagPill>WIP</TagPill>
+                </li>
+              )}
             </ul>
             <ul className={styles.links} aria-label="External links">
               {project.links.map((l) => (
