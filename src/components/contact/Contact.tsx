@@ -57,9 +57,6 @@ export default function Contact() {
         <h2 className={styles.headline} data-reveal data-reveal-delay="1">
           Get in <em>touch</em>.
         </h2>
-        <p className={styles.lede} data-reveal data-reveal-delay="2">
-          Open to internships, freelance, collaborations, and RF / embedded engineering work.
-        </p>
 
         <p className={styles.cta} data-reveal data-reveal-delay="3">
           <span className={styles.ctaPrefix}>Write me at </span>
