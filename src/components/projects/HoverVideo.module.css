@@ -5,18 +5,5 @@
   height: 100%;
   object-fit: contain;
   background: var(--bg-soft);
-  opacity: 0;
-  transition: opacity var(--dur-med) var(--ease-out);
   pointer-events: none;
-}
-
-.active {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .video,
-  .active {
-    display: none;
-  }
 }

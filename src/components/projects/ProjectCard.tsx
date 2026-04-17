@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { Project } from "@/types/project";
-import { withBasePath } from "@/lib/env";
 import TagPill from "./TagPill";
 import ImageSlider from "./ImageSlider";
 import HoverVideo from "./HoverVideo";
@@ -19,12 +18,10 @@ export default function ProjectCard({ project }: { project: Project }) {
   const [hovered, setHovered] = useState(false);
   const hasVideo = Boolean(project.video);
 
-  const posterImage = project.images[0];
-  const fallbackAspect = posterImage.width / posterImage.height;
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
 
   const wrapStyle = hasVideo
-    ? { aspectRatio: String(videoAspect ?? fallbackAspect) }
+    ? { aspectRatio: String(videoAspect ?? 16 / 9) }
     : undefined;
 
   return (
@@ -35,38 +32,29 @@ export default function ProjectCard({ project }: { project: Project }) {
     >
       <div className={styles.imageWrap} style={wrapStyle}>
         {hasVideo ? (
-          <Link
-            href={`/projects/${project.slug}/`}
-            className={styles.posterLink}
-            aria-label={posterImage.alt}
-          >
-            <img
-              src={withBasePath(posterImage.src)}
-              alt={posterImage.alt}
-              className={styles.poster}
-              draggable={false}
+          <>
+            <HoverVideo
+              src={project.video!}
+              active={hovered}
+              onAspect={setVideoAspect}
             />
-          </Link>
+            <Link
+              href={`/projects/${project.slug}/`}
+              className={styles.posterLink}
+              aria-label={project.title}
+            />
+            <span className={styles.hoverHint} aria-hidden="true">
+              <span className={styles.hoverHintIcon}>▶</span>
+              HOVER
+            </span>
+          </>
         ) : (
           <ImageSlider
             images={project.images}
             slug={project.slug}
             interval={2200}
+            paddingRatio={0}
           />
-        )}
-        {hasVideo && (
-          <HoverVideo
-            src={project.video!}
-            poster={posterImage.src}
-            active={hovered}
-            onAspect={setVideoAspect}
-          />
-        )}
-        {hasVideo && (
-          <span className={styles.hoverHint} aria-hidden="true">
-            <span className={styles.hoverHintIcon}>▶</span>
-            HOVER
-          </span>
         )}
       </div>
 

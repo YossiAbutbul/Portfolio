@@ -6,12 +6,11 @@ import styles from "./HoverVideo.module.css";
 
 interface Props {
   src: string;
-  poster: string;
   active: boolean;
   onAspect?: (aspect: number) => void;
 }
 
-export default function HoverVideo({ src, poster, active, onAspect }: Props) {
+export default function HoverVideo({ src, active, onAspect }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -23,16 +22,16 @@ export default function HoverVideo({ src, poster, active, onAspect }: Props) {
       });
     } else {
       v.pause();
-      v.currentTime = 0;
+      // Seek to a hair past 0 so the first frame renders as the idle "poster".
+      v.currentTime = 0.001;
     }
   }, [active]);
 
   return (
     <video
       ref={ref}
-      className={`${styles.video} ${active ? styles.active : ""}`}
+      className={styles.video}
       src={withBasePath(src)}
-      poster={withBasePath(poster)}
       muted
       loop
       playsInline
@@ -42,6 +41,10 @@ export default function HoverVideo({ src, poster, active, onAspect }: Props) {
         const v = e.currentTarget;
         if (v.videoWidth && v.videoHeight) {
           onAspect?.(v.videoWidth / v.videoHeight);
+        }
+        // Force first-frame decode while paused so the card shows a still.
+        if (v.paused && v.currentTime === 0) {
+          v.currentTime = 0.001;
         }
       }}
     />

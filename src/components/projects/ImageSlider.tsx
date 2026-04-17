@@ -13,14 +13,15 @@ interface Props {
   slug?: string;
   interval?: number;
   drag?: boolean;
+  paddingRatio?: number;
 }
 
 const DEFAULT_INTERVAL = 2200;
 const DRAG_THRESHOLD = 50;
 
-const PADDING = 0.04;
-function calcRatio(w: number, h: number) {
-  return `${w} / ${Math.round(h + 2 * PADDING * w)}`;
+const DEFAULT_PADDING = 0.04;
+function calcRatio(w: number, h: number, padding: number) {
+  return `${w} / ${Math.round(h + 2 * padding * w)}`;
 }
 
 export default function ImageSlider({
@@ -30,6 +31,7 @@ export default function ImageSlider({
   slug,
   interval = DEFAULT_INTERVAL,
   drag = false,
+  paddingRatio = DEFAULT_PADDING,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -64,14 +66,14 @@ export default function ImageSlider({
   // Aspect ratio
   const firstImg = images[0];
   const [aspectRatio, setAspectRatio] = useState(
-    calcRatio(firstImg.width, firstImg.height),
+    calcRatio(firstImg.width, firstImg.height, paddingRatio),
   );
 
   const applyNaturalRatio = useCallback((el: HTMLImageElement) => {
     if (el.naturalWidth && el.naturalHeight) {
-      setAspectRatio(calcRatio(el.naturalWidth, el.naturalHeight));
+      setAspectRatio(calcRatio(el.naturalWidth, el.naturalHeight, paddingRatio));
     }
-  }, []);
+  }, [paddingRatio]);
 
   useEffect(() => {
     const el = imgRef.current;
