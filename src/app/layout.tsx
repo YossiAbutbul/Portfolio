@@ -29,7 +29,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://yossiabutbul.github.io/Protfolio/"),
+  metadataBase: new URL("https://yossiabutbul.github.io/Portfolio/"),
   title: "Yossi Abutbul — Software for RF and embedded systems",
   description:
     "CS student at The Open University and RF & electronics integrator at Arad Technologies. I build test-automation platforms, antenna tooling, and workflow software for engineering labs.",
