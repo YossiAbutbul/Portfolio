@@ -86,6 +86,7 @@
 .h1Wrap {
   margin: 0;
   max-width: min(18ch, 100%);
+  position: relative;
 }
 
 .subtitle {
@@ -122,17 +123,19 @@
    drifts slowly. */
 .signal {
   position: absolute;
-  left: min(38%, 420px);
-  right: 0;
+  left: 100%;
   top: 50%;
   transform: translateY(-50%);
+  width: 100vw;
   height: 120px;
+  padding-left: var(--space-4);
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
   color: var(--fg-muted);
   opacity: 0.32;
-  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 88%, transparent 100%);
+  box-sizing: border-box;
+  mask-image: linear-gradient(to right, transparent 0%, black 6%, black 90%, transparent 100%);
 }
 
 @media (max-width: 760px) {
