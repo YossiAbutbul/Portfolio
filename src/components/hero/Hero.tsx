@@ -18,7 +18,7 @@ export default function Hero() {
                 d="M0 20 C 60 20, 100 4, 160 20 S 280 34, 340 20 S 460 6, 520 20 S 640 32, 700 20 S 820 8, 880 20 S 1000 30, 1060 20 S 1180 10, 1200 20"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.2"
+                strokeWidth="0.8"
                 strokeLinecap="round"
                 pathLength="1"
               />

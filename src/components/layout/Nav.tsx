@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { scrambleText } from "@/lib/scramble";
-import { prefersReducedMotion } from "@/hooks/useReducedMotion";
 import styles from "./Nav.module.css";
 
 const LINKS = [
@@ -145,23 +143,6 @@ function NavLink({
   active: boolean;
   onNavigate: () => void;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  function handleEnter() {
-    if (!ref.current) return;
-    if (prefersReducedMotion()) return;
-    const el = ref.current;
-    // Pin pixel width only during scramble so flex siblings don't shift,
-    // then release it so width reflects the actual label (which may change
-    // between renders).
-    el.style.width = `${el.getBoundingClientRect().width}px`;
-    const handle = scrambleText(el, label, { duration: 500 });
-    window.setTimeout(() => {
-      handle.stop();
-      el.style.width = "";
-    }, 520);
-  }
-
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     const id = href.replace(/^\/?#/, ""); // "/#about" → "about"
@@ -183,14 +164,12 @@ function NavLink({
     <a
       href={href}
       className={`${styles.link} ${active ? styles.linkActive : ""}`}
-      onPointerEnter={handleEnter}
-      onFocus={handleEnter}
       onClick={handleClick}
     >
       <span className={styles.linkMarker} aria-hidden="true">
         {active ? "●" : ""}
       </span>
-      <span ref={ref} className={styles.linkText}>
+      <span className={styles.linkText}>
         {label}
       </span>
     </a>
