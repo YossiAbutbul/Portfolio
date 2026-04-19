@@ -159,7 +159,7 @@ function NavLink({
   }
 
   return (
-    <a
+    <Link
       href={href}
       className={`${styles.link} ${active ? styles.linkActive : ""}`}
       onPointerEnter={handleEnter}
@@ -172,6 +172,6 @@ function NavLink({
       <span ref={ref} className={styles.linkText}>
         {label}
       </span>
-    </a>
+    </Link>
   );
 }
