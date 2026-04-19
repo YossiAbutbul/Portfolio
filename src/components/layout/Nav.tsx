@@ -89,7 +89,6 @@ export default function Nav() {
                 } else {
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }
-                history.replaceState(null, "", "/");
               } else {
                 sessionStorage.removeItem("scroll:/");
               }
@@ -168,7 +167,11 @@ function NavLink({
     const id = href.replace(/^\/?#/, ""); // "/#about" → "about"
     const el = document.getElementById(id);
     if (el) {
-      window.__lenis?.scrollTo(el, { offset: -16, duration: 1.4 });
+      if (window.__lenis) {
+        window.__lenis.scrollTo(el, { offset: -16, duration: 1.4 });
+      } else {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
     } else {
       const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
       window.location.href = base + href;

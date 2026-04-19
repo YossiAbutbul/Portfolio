@@ -28,10 +28,14 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     if (hash) history.replaceState(null, "", window.location.pathname);
 
     // If navigating to a hash section (e.g. via "Back to Projects"), scroll there.
-    if (hash && !isProject && window.__lenis) {
+    if (hash && !isProject) {
       const el = document.querySelector(hash);
       if (el) {
-        window.__lenis.scrollTo(el as HTMLElement, { offset: -16, immediate: true, force: true });
+        if (window.__lenis) {
+          window.__lenis.scrollTo(el as HTMLElement, { offset: -16, immediate: true, force: true });
+        } else {
+          el.scrollIntoView();
+        }
         return;
       }
     }
