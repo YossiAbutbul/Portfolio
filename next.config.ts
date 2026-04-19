@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   basePath: isProd ? `/${repo}` : "",
   assetPrefix: isProd ? `/${repo}/` : "",
+  env: {
+    NEXT_PUBLIC_BASE_PATH: isProd ? `/${repo}` : "",
+  },
   trailingSlash: true,
   reactStrictMode: true,
   pageExtensions: ["ts", "tsx", "mdx"],

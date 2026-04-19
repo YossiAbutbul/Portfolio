@@ -24,9 +24,9 @@ export default function ProjectsGrid() {
   }, [filter]);
 
   return (
-    <section id="work" className={styles.section} aria-labelledby="work-label">
+    <section id="projects" className={styles.section} aria-labelledby="projects-label">
       <div className="container">
-        <div id="work-label">
+        <div id="projects-label">
           <SectionLabel index="02">Projects</SectionLabel>
         </div>
 

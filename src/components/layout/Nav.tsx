@@ -9,7 +9,7 @@ import styles from "./Nav.module.css";
 
 const LINKS = [
   { href: "/#about", label: "About", id: "about" },
-  { href: "/#work", label: "Projects", id: "work" },
+  { href: "/#projects", label: "Projects", id: "projects" },
   { href: "/#experience", label: "Experience", id: "experience" },
   { href: "/#skills", label: "Skills", id: "skills" },
   { href: "/#contact", label: "Contact", id: "contact" },
@@ -22,6 +22,10 @@ export default function Nav() {
   const isProject = pathname.startsWith("/projects/");
 
   useEffect(() => {
+    if (isProject) {
+      setActive(null);
+      return;
+    }
     const sections = LINKS.map((l) => document.getElementById(l.id)).filter(
       (el): el is HTMLElement => !!el,
     );
@@ -30,17 +34,18 @@ export default function Nav() {
     const firstSection = sections[0];
 
     // Scroll-position spy: pick the section whose top has passed a probe
-    // line 40% down the viewport. More reliable than IntersectionObserver
-    // for tall sections (ratio would plateau and not re-fire).
+    // line 40% down the viewport. getBoundingClientRect is used instead of
+    // offsetTop so the measurement is always viewport-relative and immune to
+    // positioned-ancestor offset chains.
     function update() {
-      const probe = window.scrollY + window.innerHeight * 0.4;
-      if (probe < firstSection.offsetTop) {
+      const probe = window.innerHeight * 0.4;
+      if (firstSection.getBoundingClientRect().top > probe) {
         setActive(null);
         return;
       }
       let current: string | null = null;
       for (const s of sections) {
-        if (s.offsetTop <= probe) current = s.id;
+        if (s.getBoundingClientRect().top <= probe) current = s.id;
       }
       if (current) setActive(current);
     }
@@ -52,7 +57,7 @@ export default function Nav() {
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, []);
+  }, [isProject]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,9 +72,9 @@ export default function Nav() {
     <header className={styles.nav}>
       <div className={`container ${styles.inner}`}>
         {isProject ? (
-          <Link href="/#work" className={`link-inline ${styles.backLink}`} aria-label="Back to work">
+          <Link href="/#projects" className={`link-inline ${styles.backLink}`} aria-label="Back to Projects">
             <span className={styles.backArrow} aria-hidden="true">←</span>
-            back to work
+            Back to Projects
           </Link>
         ) : (
           <Link
@@ -158,13 +163,26 @@ function NavLink({
     }, 520);
   }
 
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    e.preventDefault();
+    const id = href.replace(/^\/?#/, ""); // "/#about" → "about"
+    const el = document.getElementById(id);
+    if (el) {
+      window.__lenis?.scrollTo(el, { offset: -16, duration: 1.4 });
+    } else {
+      const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+      window.location.href = base + href;
+    }
+    onNavigate();
+  }
+
   return (
-    <Link
+    <a
       href={href}
       className={`${styles.link} ${active ? styles.linkActive : ""}`}
       onPointerEnter={handleEnter}
       onFocus={handleEnter}
-      onClick={onNavigate}
+      onClick={handleClick}
     >
       <span className={styles.linkMarker} aria-hidden="true">
         {active ? "●" : ""}
@@ -172,6 +190,6 @@ function NavLink({
       <span ref={ref} className={styles.linkText}>
         {label}
       </span>
-    </Link>
+    </a>
   );
 }

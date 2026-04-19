@@ -21,10 +21,24 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   // the same spot the user left.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const isProject = pathname.startsWith("/projects/");
+    const hash = window.location.hash; // e.g. "#projects"
+
+    // Always strip the hash from the URL — sections are reached by scroll, not URL fragment.
+    if (hash) history.replaceState(null, "", window.location.pathname);
+
+    // If navigating to a hash section (e.g. via "Back to Projects"), scroll there.
+    if (hash && !isProject && window.__lenis) {
+      const el = document.querySelector(hash);
+      if (el) {
+        window.__lenis.scrollTo(el as HTMLElement, { offset: -16, immediate: true, force: true });
+        return;
+      }
+    }
+
     // Project detail pages always start at the top. Other routes restore
     // the last saved scroll position so returning home lands where the
     // user left off.
-    const isProject = pathname.startsWith("/projects/");
     const saved = isProject ? null : sessionStorage.getItem(`scroll:${pathname}`);
     const target = saved ? parseInt(saved, 10) : 0;
     if (window.__lenis) {
@@ -68,20 +82,31 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       touchMultiplier: 1.2,
     });
     window.__lenis = lenis;
-    lenis.scrollTo(0, { immediate: true });
+
+    // On initial load, scroll to hash section if present; otherwise top.
+    const initHash = window.location.hash;
+    const hashEl = initHash ? document.querySelector(initHash) : null;
+    if (hashEl) {
+      lenis.scrollTo(hashEl as HTMLElement, { offset: -16, immediate: true });
+      history.replaceState(null, "", window.location.pathname);
+    } else {
+      lenis.scrollTo(0, { immediate: true });
+    }
 
     // Intercept in-page hash links so they animate via Lenis instead of jumping.
+    // Handles both "#section" and "/#section" formats.
     function handleAnchorClick(e: MouseEvent) {
       const target = (e.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
       if (!target) return;
       const href = target.getAttribute("href");
-      if (!href || !href.startsWith("#")) return;
-      if (href === "#") return;
-      const dest = document.querySelector(href);
+      if (!href || href === "#") return;
+      // Extract hash — accept "#section" or "/#section"
+      const hash = href.startsWith("/#") ? href.slice(1) : href.startsWith("#") ? href : null;
+      if (!hash) return;
+      const dest = document.querySelector(hash);
       if (!dest) return;
       e.preventDefault();
       lenis.scrollTo(dest as HTMLElement, { offset: -16, duration: 1.4 });
-      history.replaceState(null, "", href);
     }
     document.addEventListener("click", handleAnchorClick);
 
