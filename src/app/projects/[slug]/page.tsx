@@ -4,16 +4,16 @@ import type { Metadata } from "next";
 
 import { PROJECTS, getAllSlugs, getProjectBySlug } from "@content/projects";
 import ImageSlider from "@/components/projects/ImageSlider";
+import InViewVideo from "@/components/projects/InViewVideo";
 import TagPill from "@/components/projects/TagPill";
 import { withBasePath } from "@/lib/env";
 import ReadingProgress from "@/components/ui/ReadingProgress";
 import Toc from "@/components/ui/Toc";
 import ReportGeneratorBody from "@content/projects/report-generator.mdx";
 import PipelineCpuBody from "@content/projects/pipeline-cpu.mdx";
-import AssemblerBody from "@content/projects/two-pass-assembler.mdx";
 import OPlannerBody from "@content/projects/oplanner.mdx";
-import MiniCircuitsBody from "@content/projects/mini-circuits-power-sensor.mdx";
 import HaparlamentorBody from "@content/projects/haparlamentor.mdx";
+import LoraVizBody from "@content/projects/lora-viz.mdx";
 import styles from "./detail.module.css";
 
 type MDXComponent = (props: object) => React.ReactElement;
@@ -21,13 +21,10 @@ type MDXComponent = (props: object) => React.ReactElement;
 const MDX_BY_SLUG: Record<string, MDXComponent> = {
   "report-generator": ReportGeneratorBody as unknown as MDXComponent,
   "pipeline-cpu": PipelineCpuBody as unknown as MDXComponent,
-  "two-pass-assembler": AssemblerBody as unknown as MDXComponent,
   oplanner: OPlannerBody as unknown as MDXComponent,
-  "mini-circuits-power-sensor": MiniCircuitsBody as unknown as MDXComponent,
   haparlamentor: HaparlamentorBody as unknown as MDXComponent,
+  "lora-viz": LoraVizBody as unknown as MDXComponent,
 };
-
-const TAG_LABEL = { software: "SW", hardware: "HW", embedded: "EMB" } as const;
 
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }));
@@ -67,24 +64,10 @@ export default async function ProjectDetail({
       <ReadingProgress />
       <header className={styles.header}>
         <div className="container">
-          <p className={styles.eyebrow}>
-            <span>{project.role}</span>
-          </p>
-
           <h1 className={styles.title}>{project.title}</h1>
           <p className={styles.summary}>{project.summary}</p>
 
           <div className={styles.metaBand}>
-            <div className={styles.metaCell}>
-              <span className={styles.metaLabel}>Year</span>
-              <span className={styles.metaValue}>{project.year}</span>
-            </div>
-            <div className={styles.metaCell}>
-              <span className={styles.metaLabel}>Discipline</span>
-              <span className={styles.metaValue}>
-                {project.tags.map((t) => TAG_LABEL[t]).join(" · ")}
-              </span>
-            </div>
             <div className={styles.metaCell}>
               <span className={styles.metaLabel}>Stack</span>
               <span className={styles.metaValue}>{project.stack.join(" · ")}</span>
@@ -92,12 +75,7 @@ export default async function ProjectDetail({
           </div>
 
           <div className={styles.metaRow}>
-            <ul className={styles.tags} aria-label="Disciplines">
-              {project.tags.map((t) => (
-                <li key={t}>
-                  <TagPill>{TAG_LABEL[t]}</TagPill>
-                </li>
-              ))}
+            <ul className={styles.tags} aria-label="Tags">
               {project.wip && (
                 <li>
                   <TagPill>WIP</TagPill>
@@ -122,32 +100,32 @@ export default async function ProjectDetail({
         </div>
       </header>
 
-      <figure className={styles.hero}>
-        <div className="container">
-          <div className={styles.heroFrame}>
-            {project.video ? (
-              <video
-                className={styles.heroVideo}
-                src={withBasePath(project.video)}
-                poster={withBasePath(project.images[0].src)}
-                autoPlay
-                muted
-                loop
-                playsInline
-                aria-label={project.images[0].alt}
-              />
-            ) : (
-              <ImageSlider
-                images={project.images}
-                autoPlay
-                interval={3000}
-                drag
-              />
+      {(project.video || (project.images && project.images.length > 0)) && (
+        <figure className={styles.hero}>
+          <div className="container">
+            <div className={styles.heroFrame}>
+              {project.video ? (
+                <InViewVideo
+                  className={styles.heroVideo}
+                  src={withBasePath(project.video)}
+                  poster={project.images?.[0]?.src ? withBasePath(project.images[0].src) : undefined}
+                  ariaLabel={project.images?.[0]?.alt ?? project.title}
+                />
+              ) : (
+                <ImageSlider
+                  images={project.images!}
+                  autoPlay
+                  interval={3000}
+                  drag
+                />
+              )}
+            </div>
+            {project.images?.[0]?.alt && (
+              <figcaption className={styles.cap}>{project.images[0].alt}</figcaption>
             )}
           </div>
-          <figcaption className={styles.cap}>{project.images[0].alt}</figcaption>
-        </div>
-      </figure>
+        </figure>
+      )}
 
       <section className={styles.body}>
         <div className="container">

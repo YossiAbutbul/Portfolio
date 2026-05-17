@@ -1,11 +1,6 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import type { Project } from "@/types/project";
 import TagPill from "./TagPill";
-import ImageSlider from "./ImageSlider";
-import HoverVideo from "./HoverVideo";
 import styles from "./ProjectCard.module.css";
 
 const TAG_LABEL: Record<Project["tags"][number], string> = {
@@ -14,69 +9,46 @@ const TAG_LABEL: Record<Project["tags"][number], string> = {
   embedded: "EMB",
 };
 
-const NO_HOVER_HINT = new Set(["two-pass-assembler", "mini-circuits-power-sensor"]);
+export default function ProjectCard({ project, marker }: { project: Project; marker: string }) {
+  void marker;
+  const detailHref = project.noCase
+    ? project.links.find((l) => l.href.startsWith("http"))?.href ?? "#"
+    : `/projects/${project.slug}/`;
+  const isExternal = project.noCase;
+  const LinkComp: React.ElementType = isExternal ? "a" : Link;
+  const linkProps = isExternal
+    ? { href: detailHref, target: "_blank", rel: "noreferrer noopener" }
+    : { href: detailHref };
 
-export default function ProjectCard({ project }: { project: Project }) {
-  const [hovered, setHovered] = useState(false);
-  const hasVideo = Boolean(project.video);
-  const showHint = !NO_HOVER_HINT.has(project.slug);
-
-  const [videoAspect, setVideoAspect] = useState<number | null>(null);
-
-  const wrapStyle = hasVideo
-    ? { aspectRatio: String(videoAspect ?? 16 / 9) }
-    : undefined;
+  // Split off the last word so we can glue it to the external arrow with a
+  // non-breaking space — keeps "Positioner ↗" together when the title wraps.
+  const titleText = project.title;
+  const lastSpace = titleText.lastIndexOf(" ");
+  const head = lastSpace >= 0 ? titleText.slice(0, lastSpace + 1) : "";
+  const tail = lastSpace >= 0 ? titleText.slice(lastSpace + 1) : titleText;
 
   return (
-    <article
-      className={styles.card}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className={styles.imageWrap} style={wrapStyle}>
-        {hasVideo ? (
-          <>
-            <HoverVideo
-              src={project.video!}
-              active={hovered}
-              onAspect={setVideoAspect}
-            />
-            <Link
-              href={`/projects/${project.slug}/`}
-              className={styles.posterLink}
-              aria-label={project.title}
-            />
-          </>
-        ) : (
-          <ImageSlider
-            images={project.images}
-            slug={project.slug}
-            interval={2200}
-            paddingRatio={0}
-          />
-        )}
-        {showHint && (
-          <span className={styles.hoverHint} aria-hidden="true">
-            <span className={styles.hoverHintIcon}>▸</span>
-            {hasVideo ? "HOVER TO PLAY" : "HOVER TO PREVIEW"}
-          </span>
-        )}
-      </div>
+    <article className={styles.card}>
+      <header className={styles.cardHead}>
+        <span className={styles.tags}>
+          {project.tags.map((t) => (
+            <TagPill key={t}>{TAG_LABEL[t]}</TagPill>
+          ))}
+          {project.wip && <TagPill>WIP</TagPill>}
+        </span>
+      </header>
 
       <div className={styles.body}>
-        <div className={styles.meta}>
-          <span className={styles.tags}>
-            {project.tags.map((t) => (
-              <TagPill key={t}>{TAG_LABEL[t]}</TagPill>
-            ))}
-            {project.wip && <TagPill>WIP</TagPill>}
-          </span>
-        </div>
-
         <h3 className={styles.title}>
-          <Link href={`/projects/${project.slug}/`} className={styles.titleLink}>
-            {project.title}
-          </Link>
+          <LinkComp {...linkProps} className={styles.titleLink}>
+            {head}
+            <span className={styles.lastChunk}>
+              {tail}
+              {isExternal && (
+                <span className={styles.extArrow} aria-hidden="true">{" ↗"}</span>
+              )}
+            </span>
+          </LinkComp>
         </h3>
         <p className={styles.summary}>{project.summary}</p>
         <p className={styles.stack}>{project.stack.join(" · ")}</p>

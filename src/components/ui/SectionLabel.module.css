@@ -12,7 +12,7 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--fg-muted);
-  background: linear-gradient(180deg, rgba(5, 5, 5, 0.92) 70%, rgba(5, 5, 5, 0) 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 92%, transparent) 70%, transparent 100%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }

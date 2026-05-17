@@ -121,10 +121,9 @@
 }
 
 .role {
-  font-family: var(--font-serif);
   font-size: var(--step-3);
-  font-variation-settings: "wght" 400, "opsz" 72;
-  letter-spacing: -0.015em;
+  font-weight: 550;
+  letter-spacing: -0.025em;
   line-height: 1.1;
   margin: 0 0 var(--space-1);
 }

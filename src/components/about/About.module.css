@@ -5,65 +5,75 @@
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: var(--space-8);
   align-items: start;
 }
 
-.prose {
-  max-width: 54ch;
-}
+.prose { max-width: 56ch; }
 
 .lead {
-  font-family: var(--font-serif);
   font-size: var(--step-3);
-  font-variation-settings: "wght" 360, "opsz" 96;
-  line-height: 1.18;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   color: var(--fg);
   margin-bottom: var(--space-5);
 }
 
-.rail {
-  position: sticky;
-  top: var(--space-9);
-  border-left: 1px solid var(--hairline);
-  padding-left: var(--space-5);
+.prose p { color: var(--fg); }
+.prose strong { color: var(--accent); font-weight: 500; }
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.facts {
+.stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
+  gap: 0;
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--space-4);
-  margin: 0;
+  align-items: baseline;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--hairline);
 }
 
-.fact {
-  display: grid;
-  gap: var(--space-1);
+.statNum {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 0.9;
+  color: var(--accent);
+  font-feature-settings: "tnum";
+  display: inline-flex;
+  align-items: baseline;
 }
 
-.fact dt {
+.statUnit {
+  font-size: 0.45em;
+  letter-spacing: 0.02em;
+  margin-left: 4px;
+  color: var(--accent-dim);
+}
+
+.statLabel {
   font-family: var(--font-mono);
-  font-size: var(--step--1);
+  font-size: 0.72rem;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--fg-muted);
-  line-height: 1.3;
-}
-
-.fact dd {
-  margin: 0;
-  color: var(--fg);
-  font-size: var(--step-0);
+  line-height: 1.4;
 }
 
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-  .rail {
-    position: static;
-    border-left: 0;
-    border-top: 1px solid var(--hairline);
-    padding-left: 0;
-    padding-top: var(--space-5);
-  }
+  .grid { grid-template-columns: 1fr; gap: var(--space-6); }
 }

@@ -1,0 +1,113 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-soft);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.headLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.partLabel {
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+}
+
+.partNum {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+@media (prefers-reduced-motion: reduce) {
+  .statusDot { animation: none; }
+}
+
+.specs {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--hairline);
+}
+
+.row:last-child { border-bottom: 0; }
+
+.dt {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.dd {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fg);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
+.foot {
+  padding: 10px var(--space-4);
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--hairline);
+  font-size: 0.65rem;
+  color: var(--fg-dim);
+  letter-spacing: 0.04em;
+}

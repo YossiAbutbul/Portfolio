@@ -1,17 +1,18 @@
 ## The problem
 
-Juggling a full CS degree alongside work means Notion, Google Calendar, and a stack of sticky notes eventually lose the plot. I wanted a planner that spoke the language of a semester: courses, assignments, due dates, milestones, and *how far through the term you actually are*.
+Juggling a full CS degree alongside work means Notion, Google Calendar, and a stack of sticky notes eventually lose the plot. I wanted a planner that spoke the language of a semester &mdash; courses, assignments, due dates, and *how far through the term you actually are*.
 
 ## What I built
 
-A full-stack web app: React + TypeScript on the front end, Firebase on the back, responsive UI with progress-visualization dashboards. Built around semester-scoped planning, not generic to-do lists.
+A full-stack web app: React + TypeScript on the front end, Firebase on the back, responsive UI with progress-visualization dashboards. Built around semester-scoped planning, not generic to-do lists. Imports your university `.ics` calendar in one paste, then groups everything into year &rarr; semester &rarr; course &rarr; task.
 
 ## Highlights
 
-- **Reusable React components** — progress rings, course cards, heatmap of upcoming load.
-- **Firebase-backed state** — realtime sync across devices without a custom server.
-- **Responsive UI** — the same planner reads cleanly on phone during a commute and on laptop during a study session.
+- **.ics parser** &mdash; one paste from the uni portal becomes a fully structured year, with deterministic IDs that survive re-imports.
+- **Reusable React components** &mdash; progress rings, course cards, heatmap of upcoming load.
+- **Firestore-backed state** &mdash; realtime sync across devices without a custom backend.
+- **Responsive UI** &mdash; same planner reads cleanly on phone during a commute and on laptop during a study session.
 
-## Status
+## What I learned
 
-Private repo; living case study. Happy to talk through the architecture and trade-offs in a call.
+Deterministic IDs matter more than the schema looks like it should. Once import had to be idempotent, the whole data model needed to be re-thought around stable hashes &mdash; better to do that on day one than retro-fit it after the first wipe-and-re-import bug.
