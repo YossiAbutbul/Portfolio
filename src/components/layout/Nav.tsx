@@ -16,7 +16,7 @@ interface NavLink {
 const LINKS: NavLink[] = [
   { href: "/#about", label: "About", id: "about" },
   { href: "/#showcase", label: "Projects", id: "showcase", aliases: ["projects"] },
-  { href: "/#experience", label: "Path", id: "experience" },
+  { href: "/#experience", label: "Experience", id: "experience" },
   { href: "/#skills", label: "Stack", id: "skills" },
   { href: "/#contact", label: "Contact", id: "contact" },
 ];

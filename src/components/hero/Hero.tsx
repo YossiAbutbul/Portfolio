@@ -29,7 +29,7 @@ export default function Hero() {
           </p>
 
           <div className={styles.cta}>
-            <a className={styles.ctaPrimary} href="#showcase">See work</a>
+            <a className={styles.ctaPrimary} href="#showcase">View work</a>
             <a className={styles.ctaGhost} href="#contact">Get in touch</a>
           </div>
         </div>

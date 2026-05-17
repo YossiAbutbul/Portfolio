@@ -2,26 +2,27 @@
 
 :root,
 [data-theme="dark"] {
-  --bg: #0a0b0a;
-  --bg-soft: #121316;
-  --bg-elevated: #1a1c20;
-  --bg-sunken: #060707;
+  /* Variant 10 — Ayu Dark. Orange-yellow accent on deep navy. */
+  --bg: #0a0e14;
+  --bg-soft: #0d1117;
+  --bg-elevated: #131822;
+  --bg-sunken: #060910;
 
-  --fg: #e7e9ec;
-  --fg-muted: #8b9095;
-  --fg-dim: #4a5056;
+  --fg: #bfbdb6;
+  --fg-muted: #626a73;
+  --fg-dim: #3d4453;
 
-  --accent: #c7f03a;
-  --accent-soft: rgba(199, 240, 58, 0.14);
-  --accent-strong: #d9ff5a;
-  --accent-dim: #8aa826;
+  --accent: #2bbd4f;
+  --accent-soft: rgba(43, 189, 79, 0.16);
+  --accent-strong: #4dd66c;
+  --accent-dim: #1a8a37;
 
-  --hairline: rgba(231, 233, 236, 0.08);
-  --hairline-strong: rgba(231, 233, 236, 0.22);
+  --hairline: rgba(191, 189, 182, 0.07);
+  --hairline-strong: rgba(191, 189, 182, 0.2);
 
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.5);
-  --shadow-2: 0 8px 24px rgba(0,0,0,0.5);
-  --shadow-3: 0 24px 64px rgba(0,0,0,0.6);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.6);
 
   --grain-opacity: 0.06;
   --grain-blend: overlay;
@@ -59,7 +60,9 @@
   --radius-xl: 24px;
 
   /* Fonts */
-  --font-sans: var(--font-geist-sans, "Geist"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans:
+    var(--font-geist-sans, "Geist"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
+    sans-serif;
   --font-mono: var(--font-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Layout */
