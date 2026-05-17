@@ -1,0 +1,42 @@
+.wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 200px;
+  width: 100%;
+  pointer-events: none;
+  z-index: 0;
+  /* Fade ends so it integrates with the bg, no hard line. */
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+/* Wave is decorative — on narrow viewports it overlaps content. Hide it. */
+@media (max-width: 760px) {
+  .wrap { display: none; }
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wave {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 50%, transparent));
+  opacity: 0.7;
+}
+
+.trail {
+  stroke: var(--fg-dim);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.4;
+}

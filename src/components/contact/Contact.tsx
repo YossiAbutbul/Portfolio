@@ -3,7 +3,7 @@ import { withBasePath } from "@/lib/env";
 import styles from "./Contact.module.css";
 
 const EMAIL = "abyossi22@gmail.com";
-const EMAIL_SUBJECT = "New signal — from your portfolio";
+const EMAIL_SUBJECT = "Hello — from your portfolio";
 const EMAIL_BODY = [
   "Hi Yossi,",
   "",
@@ -25,6 +25,7 @@ interface LinkRow {
 }
 
 const LINKS: LinkRow[] = [
+  { label: "Email", href: `mailto:${EMAIL}`, display: EMAIL },
   { label: "Phone", href: "tel:+972525476603", display: "+972 52-547-6603" },
   { label: "GitHub", href: "https://github.com/YossiAbutbul", display: "@YossiAbutbul" },
   {
@@ -36,7 +37,7 @@ const LINKS: LinkRow[] = [
     label: "CV",
     href: withBasePath("/cv.pdf"),
     display: "Download CV",
-    meta: "",
+    meta: "PDF",
     newTab: true,
   },
 ];

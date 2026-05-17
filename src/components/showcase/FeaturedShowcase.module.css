@@ -1,0 +1,289 @@
+.section {
+  padding: var(--space-9) 0;
+  position: relative;
+}
+
+/* ───── HERO ───────────────────────────────────────────────────────────── */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: stretch;
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background: var(--bg-soft);
+  animation: fadeIn 280ms var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.heroMedia {
+  position: relative;
+  border-radius: var(--radius-md);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  max-height: 48vh;
+}
+
+.heroBadge {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bg);
+  background: var(--accent);
+  padding: 3px 7px;
+  border-radius: 3px;
+  z-index: 1;
+}
+
+.heroCopy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  min-width: 0;
+}
+
+.heroIdx {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.heroTitle {
+  font-size: var(--step-4);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.0;
+  margin: 0;
+  color: var(--fg);
+}
+
+.heroSummary {
+  font-size: var(--step-0);
+  color: var(--fg);
+  max-width: 50ch;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.heroMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--hairline);
+}
+
+.heroMeta > div { display: grid; gap: 1px; }
+
+.heroMeta dt {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.heroMeta dd {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--fg);
+  line-height: 1.25;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.btnPrimary,
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid var(--accent);
+}
+
+.btnGhost {
+  color: var(--fg);
+  border: 1px solid var(--hairline-strong);
+  background: transparent;
+}
+.btnGhost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ───── SECONDARY TILES ───────────────────────────────────────────────── */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  cursor: pointer;
+  font: inherit;
+  color: var(--fg);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+
+.tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.tileMedia {
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+}
+
+.tileCopy {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 4px 4px;
+  min-width: 0;
+}
+
+.tileIdx {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.tileTitle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ───── MEDIA HELPERS ─────────────────────────────────────────────────── */
+.mediaImg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mediaContain { object-fit: contain; background: var(--bg-sunken); }
+.mediaCover { object-fit: cover; }
+
+.mediaPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    var(--bg-sunken);
+}
+
+.placeholderLabel {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+  padding: var(--space-3);
+}
+
+/* ───── RESPONSIVE ────────────────────────────────────────────────────── */
+@media (max-width: 1000px) {
+  .hero { grid-template-columns: 1fr; }
+  .heroMedia { aspect-ratio: 16 / 10; max-height: none; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  /* Whole showcase aims to fit one mobile viewport. Shrink section padding,
+     cap hero media, and run tiles as a compact vertical carousel below. */
+  .section { padding: var(--space-6) 0; }
+
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .heroMedia { aspect-ratio: 16 / 10; max-height: 32vh; }
+  .heroTitle { font-size: var(--step-3); }
+  .heroSummary { font-size: 0.9rem; max-width: none; }
+  .heroMeta { grid-template-columns: 1fr; gap: 4px; padding-top: var(--space-2); margin-top: var(--space-2); }
+  .heroActions { gap: 6px; }
+  .btnPrimary, .btnGhost { padding: 8px 14px; font-size: 0.7rem; }
+
+  /* Horizontal carousel: tiles in a row, swipe sideways to switch the pick. */
+  .tiles {
+    display: flex;
+    grid-template-columns: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: var(--space-3);
+    padding-bottom: var(--space-2);
+    scrollbar-width: none;
+  }
+  .tiles::-webkit-scrollbar { display: none; }
+
+  .tile {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    flex: 0 0 70%;
+    max-width: 70%;
+    flex-direction: column;
+    padding: var(--space-2);
+  }
+
+  .tileMedia { aspect-ratio: 16 / 10; }
+  .tileCopy { padding: 4px 6px 2px; }
+}

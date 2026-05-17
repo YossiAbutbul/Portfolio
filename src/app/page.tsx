@@ -1,8 +1,9 @@
 import Hero from "@/components/hero/Hero";
 import About from "@/components/about/About";
+import FeaturedShowcase from "@/components/showcase/FeaturedShowcase";
 import ProjectsGrid from "@/components/projects/ProjectsGrid";
-import Skills from "@/components/skills/Skills";
 import Experience from "@/components/experience/Experience";
+import Skills from "@/components/skills/Skills";
 import Contact from "@/components/contact/Contact";
 
 export default function HomePage() {
@@ -10,6 +11,7 @@ export default function HomePage() {
     <>
       <Hero />
       <About />
+      <FeaturedShowcase />
       <ProjectsGrid />
       <Experience />
       <Skills />

@@ -1,0 +1,18 @@
+## The problem
+
+LoRa gateway logs are dense, line-oriented, and useless until you visualize them. A bring-up session generates thousands of packets &mdash; join requests, uplinks, downlinks, ADR adjustments &mdash; and most of the time spent debugging is just *re-reading the log file*. RSSI, SNR, and frequency drift only make sense when plotted over time, but no off-the-shelf viewer reads the raw gateway format directly.
+
+## What I built
+
+A drop-in browser viewer for LoRa gateway logs. Paste or upload the file and it parses every packet, plots RSSI / SNR / frequency over time, and flags duty-cycle violations and join events on the same timeline. No backend, no install &mdash; just a static page.
+
+## Highlights
+
+- **Streaming log parser** &mdash; handles multi-MB log files in the browser without freezing the UI.
+- **Time-series visualizations** &mdash; RSSI, SNR, and frequency on a shared time axis so drift and packet loss line up.
+- **Join + duty-cycle markers** &mdash; surfaced as first-class annotations, not buried in a table.
+- **Zero-install** &mdash; static GitHub Pages deploy; drag a log file in and read it.
+
+## What I learned
+
+The viewer ended up being more useful than the underlying gateway tooling. Once the data was on a chart, problems that had been hiding in plain text became obvious in seconds &mdash; the lesson, again, was that a small visualization layer is worth more than another protocol parser.

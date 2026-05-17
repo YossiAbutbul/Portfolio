@@ -5,11 +5,15 @@
   right: 0;
   z-index: 30;
   padding: var(--space-3) 0;
-  background: rgba(5, 5, 5, 0.72);
+  background: color-mix(in srgb, var(--bg) 75%, transparent);
   backdrop-filter: blur(14px) saturate(130%);
   -webkit-backdrop-filter: blur(14px) saturate(130%);
   border-bottom: 1px solid var(--hairline);
-  transition: background var(--dur-med) var(--ease-out);
+  transition: transform var(--dur-med) var(--ease-out), background var(--dur-med) var(--ease-out);
+}
+
+.navHidden {
+  transform: translateY(-100%);
 }
 
 .inner {
@@ -21,33 +25,22 @@
 }
 
 .monogram {
-  font-family: var(--font-mono);
-  font-size: var(--step--1);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--fg);
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-}
-
-.backLink {
   font-family: var(--font-mono);
   font-size: var(--step--1);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   color: var(--fg);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35em;
+  font-weight: 500;
 }
 
-.backArrow {
-  display: inline-block;
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-
-.backLink:hover .backArrow {
-  transform: translateX(-3px);
+.monogramMark {
+  padding: 4px 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
 }
 
 .monogramDot {
@@ -56,47 +49,55 @@
   background: var(--accent);
   border-radius: 50%;
   display: inline-block;
+  box-shadow: 0 0 8px var(--accent);
 }
 
-.navWrap {
-  display: flex;
+.backLink {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.12em;
+  color: var(--fg);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  text-transform: uppercase;
 }
+
+.backArrow {
+  display: inline-block;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.backLink:hover .backArrow { transform: translateX(-3px); }
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.navWrap { display: flex; }
 
 .links {
   list-style: none;
   display: flex;
-  gap: var(--space-6);
+  gap: var(--space-5);
   margin: 0;
   padding: 0;
   font-family: var(--font-mono);
   font-size: var(--step--1);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .link {
-  color: var(--fg);
+  color: var(--fg-muted);
   position: relative;
-  padding-bottom: 2px;
+  padding: 6px 2px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   text-decoration: none;
-}
-
-.linkMarker {
-  display: inline-block;
-  width: 0.7em;
-  color: var(--accent);
-  font-size: 0.55em;
-  line-height: 1;
-  transform: translateY(-0.1em);
-}
-
-.linkText {
-  display: inline-block;
-  white-space: nowrap;
-  text-align: left;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 .link::after {
@@ -112,15 +113,17 @@
   transition: transform var(--dur-med) var(--ease-out);
 }
 
+.link:hover,
+.link:focus-visible,
+.linkActive {
+  color: var(--fg);
+}
+
 .link:hover::after,
 .link:focus-visible::after,
 .linkActive::after {
   transform: scaleX(1);
   transform-origin: left;
-}
-
-.linkActive {
-  color: var(--fg);
 }
 
 .menuBtn {
@@ -138,7 +141,6 @@
   cursor: pointer;
   color: var(--fg);
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .menuBar {
@@ -150,24 +152,17 @@
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
 }
 
-/* gap=5px + bar=1.5px → centre offset = (5+1.5)/2 = 3.25px */
-.menuBarOpen:first-child {
-  transform: translateY(3.25px) rotate(45deg);
-}
-.menuBarOpen:last-child {
-  transform: translateY(-3.25px) rotate(-45deg);
-}
+.menuBarOpen:first-child { transform: translateY(3.25px) rotate(45deg); }
+.menuBarOpen:last-child { transform: translateY(-3.25px) rotate(-45deg); }
 
-@media (max-width: 640px) {
-  .menuBtn {
-    display: inline-flex;
-  }
+@media (max-width: 720px) {
+  .menuBtn { display: inline-flex; }
   .navWrap {
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    background: rgba(5, 5, 5, 0.96);
+    background: color-mix(in srgb, var(--bg) 96%, transparent);
     backdrop-filter: blur(14px) saturate(130%);
     border-bottom: 1px solid var(--hairline);
     padding: var(--space-5) 0;
@@ -187,8 +182,5 @@
     padding: 0 var(--space-5);
     font-size: var(--step-0);
     letter-spacing: 0.18em;
-  }
-  .linkText {
-    min-width: 0;
   }
 }

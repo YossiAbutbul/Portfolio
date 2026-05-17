@@ -6,23 +6,31 @@ export interface ProjectLink {
 }
 
 export interface ProjectImage {
-  src: string; // relative to basePath — prefix with basePath() helper when rendering
+  src: string;
   alt: string;
   width: number;
   height: number;
 }
 
 export interface Project {
-  slug: string; // kebab-case, matches MDX filename
+  slug: string;
   title: string;
-  summary: string; // 1–2 sentences for the card
-  tags: ProjectTag[]; // at least one
+  summary: string;
+  tags: ProjectTag[];
   year: number;
-  role: string; // 'Solo', 'Team — role', etc.
+  role: string;
   stack: string[];
   links: ProjectLink[];
-  images: ProjectImage[]; // [0] is card + detail hero
-  video?: string; // optional WebM clip; relative to basePath
+  images?: ProjectImage[];
+  video?: string;
   featured?: boolean;
   wip?: boolean;
+  /** Whether a /projects/[slug] case study page exists (MDX written). When false, cards link to first external href. */
+  noCase?: boolean;
+  /** RF "frequency" in MHz — used as x-position on the spectrum hero peak. Roughly tied to project domain. */
+  frequency: number;
+  /** Peak amplitude in dB (relative). Higher = taller peak in hero. */
+  amplitude: number;
+  /** RF band label for marker chip. */
+  band: string;
 }

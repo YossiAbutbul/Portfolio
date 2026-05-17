@@ -1,0 +1,30 @@
+.toggle {
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-strong);
+  background: var(--bg-elevated);
+  padding: 2px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+
+.toggle:hover { border-color: var(--accent); }
+
+.thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--fg);
+  color: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--dur-med) var(--ease-spring), background var(--dur-fast) var(--ease-out);
+}
+
+.thumbLight { transform: translateX(0); }
+.thumbDark  { transform: translateX(18px); background: var(--accent); color: var(--bg); }

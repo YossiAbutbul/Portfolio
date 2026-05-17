@@ -1,0 +1,347 @@
+.hero {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  padding: var(--space-9) 0 var(--space-7);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.inner {
+  display: grid;
+  gap: var(--space-7);
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* HEADER */
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 56rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 4px;
+  background: var(--bg-soft);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  width: fit-content;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.sep { color: var(--fg-dim); }
+
+.title {
+  font-size: clamp(3rem, 9vw, 7.5rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  margin: 0;
+}
+
+.titleAccent {
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 450;
+}
+
+.subtitle {
+  font-size: var(--step-2);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--fg);
+  max-width: 32ch;
+  margin: 0;
+}
+
+.under {
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  padding-bottom: 2px;
+}
+
+.meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.metaSep { color: var(--fg-dim); }
+
+/* INSTRUMENT */
+.instrument {
+  position: relative;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-soft);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), var(--shadow-2);
+}
+
+.instrumentHead,
+.instrumentFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  background: var(--bg-sunken);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.instrumentFoot {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 0;
+  justify-content: space-between;
+}
+
+.lcdRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.lcdKey { color: var(--fg-dim); }
+.lcdVal { color: var(--fg); font-feature-settings: "tnum"; }
+
+.lcdValLive {
+  color: var(--accent);
+  font-weight: 600;
+  position: relative;
+  padding-left: 12px;
+}
+
+.lcdValLive::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translateY(-50%);
+  box-shadow: 0 0 8px var(--accent);
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
+
+.hint {
+  color: var(--fg-dim);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 0.7rem;
+}
+
+/* SVG plot */
+.svg {
+  display: block;
+  width: 100%;
+  height: clamp(320px, 42vh, 460px);
+  background:
+    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
+    var(--bg-sunken);
+}
+
+.gridH,
+.gridV {
+  stroke: var(--hairline);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.axisLabel {
+  fill: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.trace {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 60%, transparent));
+}
+
+.traceFill {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Peaks */
+.peakStem {
+  stroke: color-mix(in srgb, var(--accent) 50%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.peakDot {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent));
+  transition: r var(--dur-fast) var(--ease-out);
+}
+
+.peakLabel {
+  fill: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.peak {
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.peakOn .peakLabel,
+.peakOn .peakStem {
+  opacity: 1;
+  stroke: var(--accent);
+}
+.peakOn .peakLabel { fill: var(--fg); }
+
+/* Cursor */
+.cursorLine {
+  stroke: var(--fg);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.45;
+}
+
+.cursorBox {
+  fill: color-mix(in srgb, var(--bg-elevated) 95%, transparent);
+  stroke: var(--hairline-strong);
+  stroke-width: 1;
+}
+
+.cursorTextKey {
+  fill: var(--fg-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.cursorTextVal {
+  fill: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cursorTextSub {
+  fill: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+/* Peak click targets (overlay on top of SVG) */
+.peakLinks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Plot inset matches PAD constants. */
+  --plot-left: calc((56 / 1200) * 100%);
+  --plot-right: calc((56 / 1200) * 100%);
+}
+
+.peakLink {
+  position: absolute;
+  top: 24px;
+  bottom: 40px;
+  width: 36px;
+  margin-left: -18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--fg);
+  pointer-events: auto;
+  border-radius: 4px;
+  transition: background var(--dur-fast) var(--ease-out);
+  /* Position: left = plot-left + xpct * (1 - plot-left - plot-right) */
+  left: calc(var(--plot-left) + var(--xpct, 0%) * (100% - var(--plot-left) - var(--plot-right)) / 100%);
+}
+
+.peakLink:hover,
+.peakLink:focus-visible {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  outline: none;
+}
+
+.peakLinkLabel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  transform-origin: bottom;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+.peakLink:hover .peakLinkLabel,
+.peakLink:focus-visible .peakLinkLabel {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+@media (max-width: 760px) {
+  .instrumentHead,
+  .instrumentFoot {
+    font-size: 0.62rem;
+    gap: var(--space-3);
+  }
+  .svg { height: 280px; }
+  .peakLinkLabel { display: none; }
+}

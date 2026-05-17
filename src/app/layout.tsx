@@ -1,19 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, JetBrains_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import BackToTop from "@/components/ui/BackToTop";
-import BootLog from "@/components/fx/BootLog";
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["opsz", "SOFT", "WONK"],
-});
+import PageTransition from "@/components/layout/PageTransition";
 
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
@@ -61,8 +55,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050505",
-  colorScheme: "dark",
+  themeColor: "#1a1614",
 };
 
 export default function RootLayout({
@@ -71,16 +64,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${jetbrains.variable}`}
+      className={`${GeistSans.variable} ${jetbrains.variable}`}
+      data-theme="dark"
     >
       <body>
         <SkipToContent />
         <SmoothScroll>
           <Nav />
-          <main id="main">{children}</main>
+          <main id="main">
+            <PageTransition>{children}</PageTransition>
+          </main>
         </SmoothScroll>
         <BackToTop />
-        <BootLog />
       </body>
     </html>
   );

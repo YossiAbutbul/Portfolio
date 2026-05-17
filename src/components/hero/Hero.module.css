@@ -3,219 +3,152 @@
   min-height: 100dvh;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+  padding: var(--space-9) 0;
+  background: var(--bg);
   overflow: hidden;
-  isolation: isolate;
 }
 
-.hero::before {
-  /* Subtle vignette on edges to anchor type */
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 30% 30%, transparent 0%, rgba(0, 0, 0, 0.4) 80%);
-  pointer-events: none;
-  z-index: -1;
-}
-
-.inner {
+.layout {
   position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.copy {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
-  padding-top: var(--space-9);
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+  max-width: 56rem;
 }
 
-/* Staggered fade-up for every direct child on first paint */
-.inner > * {
+.copy > * {
   opacity: 0;
-  transform: translateY(14px);
-  animation: heroIn 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateY(12px);
+  animation: heroIn 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+.copy > *:nth-child(1) { animation-delay: 80ms; }
+.copy > *:nth-child(2) { animation-delay: 200ms; }
+.copy > *:nth-child(3) { animation-delay: 320ms; }
+.copy > *:nth-child(4) { animation-delay: 440ms; }
 
-.inner > *:nth-child(1) {
-  animation-delay: 80ms;
-}
-.inner > *:nth-child(2) {
-  animation-delay: 180ms;
-}
-.inner > *:nth-child(3) {
-  animation-delay: 280ms;
-}
-.inner > *:nth-child(4) {
-  animation-delay: 380ms;
-}
-.inner > *:nth-child(5) {
-  animation-delay: 480ms;
-}
-.inner > *:nth-child(n + 6) {
-  animation-delay: 580ms;
-}
-
-@keyframes heroIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+@keyframes heroIn { to { opacity: 1; transform: translateY(0); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .inner > * {
-    opacity: 1 !important;
-    transform: none !important;
-    animation: none !important;
-  }
+  .copy > * { opacity: 1 !important; transform: none !important; animation: none !important; }
 }
 
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-3);
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: inline-block;
-  box-shadow: 0 0 12px var(--accent);
-}
-
-.h1Wrap {
+.title {
+  font-size: clamp(3rem, 12vw, 11rem);
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
   margin: 0;
-  max-width: min(18ch, 100%);
-  position: relative;
+  text-align: center;
+  word-wrap: break-word;
+  hyphens: auto;
 }
 
-.subtitle {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-variation-settings:
-    "wght" 380,
-    "opsz" 96;
-  font-size: var(--step-3);
+.titleAccent {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.tagline {
+  font-size: clamp(1rem, 2.2vw, 1.55rem);
+  line-height: 1.4;
   color: var(--fg);
-  margin: var(--space-3) 0 0;
-  white-space: nowrap;
+  margin: 0;
+  font-weight: 500;
   max-width: 100%;
-  overflow: visible;
+}
+
+.taglineInner {
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.taglinePrefix,
+.taglineBridge {
+  display: inline;
 }
 
 @media (max-width: 760px) {
-  .subtitle {
-    white-space: normal;
-    font-size: var(--step-2);
-  }
+  .tagline { font-size: 1rem; line-height: 1.5; }
+  .taglineInner { white-space: normal; display: block; }
+  .taglinePrefix { display: block; }
+  .taglineBridge { display: inline-block; white-space: nowrap; margin-top: var(--space-2); }
+}
+
+.kw {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   font-family: var(--font-mono);
   font-size: var(--step--1);
   color: var(--fg-muted);
-  letter-spacing: 0.14em;
+  margin: 0;
   text-transform: uppercase;
-  margin-top: var(--space-2);
+  letter-spacing: 0.12em;
 }
 
-/* Spectrum trace running horizontally behind the title. Muted, low opacity,
-   drifts slowly. */
-.signal {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 100vw;
-  height: 120px;
-  padding-left: clamp(64px, 6vw, 120px);
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 0;
-  color: var(--fg-muted);
-  opacity: 0.32;
-  box-sizing: border-box;
-  mask-image: linear-gradient(to right, transparent 0%, black 6%, black 90%, transparent 100%);
-}
-
-@media (max-width: 760px) {
-  .signal {
-    display: none;
-  }
-}
-
-.inner {
-  z-index: 1;
-}
-
-.signal svg {
+.metaLine {
   display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  white-space: nowrap;
 }
 
-/* Oscilloscope sweep — trace draws left-to-right, holds, fades, repeats.
-   Two staggered paths keep the rhythm organic (no visible loop). */
-.sweepA,
-.sweepB {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: scopeSweep 7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+@media (max-width: 720px) {
+  .meta {
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+  }
+  .metaLine { white-space: normal; }
 }
 
-.sweepB {
-  animation-duration: 9s;
-  animation-delay: -2.4s;
+.metaSep { color: var(--fg-dim); }
+
+.cta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
-@keyframes scopeSweep {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  6% {
-    opacity: 1;
-  }
-  80% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  92% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
-  100% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
+.ctaPrimary,
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
-/* Leading-edge sample dot — pulses to suggest live sampling. */
-.sample {
-  transform-origin: 1190px 20px;
-  filter: drop-shadow(0 0 4px var(--accent));
-  animation: scopeSample 1.4s ease-in-out infinite;
+.ctaPrimary {
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid var(--accent);
 }
+.ctaPrimary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 
-@keyframes scopeSample {
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.3);
-  }
+.ctaGhost {
+  color: var(--fg);
+  border: 1px solid var(--hairline-strong);
+  background: transparent;
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .sweepA,
-  .sweepB,
-  .sample {
-    animation: none;
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-}
+.ctaGhost:hover { border-color: var(--accent); color: var(--accent); }
