@@ -17,9 +17,9 @@
 }
 
 .headline em {
-  font-style: italic;
+  font-style: normal;
   color: var(--accent);
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .lede {

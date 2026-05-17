@@ -52,6 +52,7 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/report-generator/demo.webm",
     featured: true,
+    noCase: true,
   },
   {
     slug: "haparlamentor",
@@ -75,6 +76,7 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/haparlamentor/demo.webm",
     featured: true,
+    noCase: true,
   },
   {
     slug: "lora-viz",
@@ -95,6 +97,7 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/lora-viz/demo.webm",
     featured: true,
+    noCase: true,
   },
   {
     slug: "pipeline-cpu",
@@ -117,6 +120,7 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/pipeline-cpu/demo.webm",
     featured: true,
+    noCase: true,
   },
   {
     slug: "two-pass-assembler",
@@ -151,6 +155,7 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/oplanner/demo.webm",
     featured: true,
+    noCase: true,
   },
   {
     slug: "attenuator-wrapper",

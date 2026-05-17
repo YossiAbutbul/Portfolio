@@ -25,7 +25,6 @@ interface LinkRow {
 }
 
 const LINKS: LinkRow[] = [
-  { label: "Email", href: `mailto:${EMAIL}`, display: EMAIL },
   { label: "Phone", href: "tel:+972525476603", display: "+972 52-547-6603" },
   { label: "GitHub", href: "https://github.com/YossiAbutbul", display: "@YossiAbutbul" },
   {
@@ -37,7 +36,6 @@ const LINKS: LinkRow[] = [
     label: "CV",
     href: withBasePath("/cv.pdf"),
     display: "Download CV",
-    meta: "PDF",
     newTab: true,
   },
 ];
