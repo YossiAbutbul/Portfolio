@@ -159,7 +159,7 @@ export const PROJECTS: Project[] = [
     slug: "two-pass-assembler",
     title: "Two-Pass Assembler",
     summary:
-      "ANSI C90 assembler. Two-stage: symbol-table build then instruction parsing and base-4 machine-code emission. Built for Systems Programming Lab.",
+      "ANSI C90 assembler. Two-stage: symbol-table build then instruction parsing and base-4 machine-code emission. Built for Systems Programming Lab course.",
     tags: ["embedded"],
     year: 2023,
     role: "Coursework",
@@ -238,9 +238,9 @@ export const PROJECTS: Project[] = [
   },
   {
     slug: "dmx-motor",
-    title: "DMX-J-SA Antenna Positioner",
+    title: "DMX-J-SA Motor Wrapper",
     summary:
-      "Python interface to the DMX-J-SA antenna positioner motor. Scriptable azimuth / elevation sweeps for chamber measurements.",
+      "Python wrapper for the DMX-J-SA motor controller. Clean API over the vendor interface for scripted motion control in lab automation workflows.",
     tags: ["hardware"],
     year: 2026,
     role: "Solo",

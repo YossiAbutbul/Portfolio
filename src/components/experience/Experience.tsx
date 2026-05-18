@@ -10,7 +10,7 @@ interface TimelineItem {
   org: string;
   role: string;
   bullets: string[];
-  kind: "work" | "education" | "service";
+  kind: "work" | "education" | "army";
   current?: boolean;
 }
 
@@ -46,7 +46,7 @@ const ITEMS: TimelineItem[] = [
     year: "2017 – 19",
     org: "IDF · Intelligence Corps · Unit 81",
     role: "Operational Project Leader · RF Technician",
-    kind: "service",
+    kind: "army",
     bullets: [
       "Led and managed multi-disciplinary RF/tech projects under tight operational deadlines.",
       "Built Python automation tools to log and analyze Spectrum Analyzer data in the field.",
@@ -58,7 +58,7 @@ const ITEMS: TimelineItem[] = [
 const KIND_LABEL: Record<TimelineItem["kind"], string> = {
   work: "WORK",
   education: "EDU",
-  service: "SERVICE",
+  army: "ARMY",
 };
 
 export default function Experience() {

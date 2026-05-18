@@ -23,11 +23,6 @@ export default function ProjectDetail({ project }: { project: Project }) {
 
         {/* ── Header ── */}
         <header className={styles.header}>
-          {project.wip && (
-            <div className={styles.headerMeta}>
-              <span className={styles.wipBadge}>WIP</span>
-            </div>
-          )}
           <h1 className={styles.title}>{project.title}</h1>
         </header>
 
@@ -62,6 +57,12 @@ export default function ProjectDetail({ project }: { project: Project }) {
           </div>
 
           <aside className={styles.sidebar}>
+            {project.wip && (
+              <div className={styles.wipRow}>
+                <span className={styles.wipDot} aria-hidden="true" />
+                <span className={styles.wipBadge}>Work in progress</span>
+              </div>
+            )}
             <div className={styles.stackSection}>
               <span className={styles.stackLabel}>Stack</span>
               <div className={styles.stackPills}>

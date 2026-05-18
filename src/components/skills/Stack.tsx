@@ -1,5 +1,5 @@
 import SectionLabel from "@/components/ui/SectionLabel";
-import styles from "./Skills.module.css";
+import styles from "./Stack.module.css";
 
 interface Group {
   label: string;
@@ -7,19 +7,18 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
-  { label: "Languages", items: ["TypeScript", "JavaScript", "Python", "C (ANSI C90)"] },
+  { label: "Languages", items: ["TypeScript", "JavaScript", "Python", "C"] },
   { label: "Frontend", items: ["React", "Next.js", "Vite", "Plotly", "Three.js", "Chart.js", "Tailwind"] },
-  { label: "Backend / Data", items: ["FastAPI", "REST", "Firebase", "Firestore", "Excel parsing", "n8n"] },
-  { label: "Systems / Embedded", items: ["xv6 / RISC-V", "Make / GDB", "ANSI C90", "Chrome MV3 extensions"] },
-  { label: "Tooling", items: ["Git", "GitHub Actions", "VS Code", "Claude Code", ".NET interop"] },
+  { label: "Backend / Data", items: ["FastAPI", "REST", "Firebase", "Firestore", "Excel parsing"] },
+  { label: "Tooling", items: ["Git", "GitHub Actions", "VS Code", "Claude Code", "n8n"] },
   { label: "RF / Hardware", items: ["Spectrum analyzer", "Power sensor", "FEM bring-up", "Bluetooth", "LoRa", "LTE / NB-IoT / CAT-M", "Antenna patterns"] },
 ];
 
-export default function Skills() {
+export default function Stack() {
   return (
-    <section id="skills" className={styles.section} aria-labelledby="skills-label">
+    <section id="stack" className={styles.section} aria-labelledby="stack-label">
       <div className="container">
-        <div id="skills-label">
+        <div id="stack-label">
           <SectionLabel index="04">Stack</SectionLabel>
         </div>
 

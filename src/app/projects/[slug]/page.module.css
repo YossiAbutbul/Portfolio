@@ -8,12 +8,6 @@
   margin-bottom: var(--space-5);
 }
 
-.headerMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
 
 .metaChip {
   font-family: var(--font-mono);
@@ -28,15 +22,35 @@
   font-size: 0.75rem;
 }
 
+.wipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.wipDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e5a00d;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(229, 160, 13, 0.6);
+  animation: wipPulse 2s ease-in-out infinite;
+}
+
+@keyframes wipPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
 .wipBadge {
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--bg);
-  background: #e5a00d;
-  padding: 2px 6px;
-  border-radius: 3px;
+  color: #e5a00d;
 }
 
 .title {

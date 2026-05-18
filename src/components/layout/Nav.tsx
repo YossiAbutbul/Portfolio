@@ -17,7 +17,7 @@ const LINKS: NavLink[] = [
   { href: "/#about", label: "About", id: "about" },
   { href: "/#showcase", label: "Projects", id: "showcase", aliases: ["projects"] },
   { href: "/#experience", label: "Experience", id: "experience" },
-  { href: "/#skills", label: "Stack", id: "skills" },
+  { href: "/#stack", label: "Stack", id: "stack" },
   { href: "/#contact", label: "Contact", id: "contact" },
 ];
 
@@ -43,7 +43,7 @@ export default function Nav() {
     let last: string | null | undefined = undefined;
 
     function update() {
-      const probe = window.innerHeight * 0.4;
+      const probe = window.innerHeight * 0.6;
       let firstTop: number | null = null;
       let next: string | null = null;
       for (const l of LINKS) {
