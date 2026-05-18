@@ -37,10 +37,16 @@
 }
 
 .monogramMark {
-  padding: 4px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 28px;
+  text-indent: 0.18em;
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
+  flex-shrink: 0;
 }
 
 .monogramDot {
