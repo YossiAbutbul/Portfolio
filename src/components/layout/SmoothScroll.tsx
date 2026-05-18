@@ -22,22 +22,73 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isProject = pathname.startsWith("/projects/");
-    const hash = window.location.hash; // e.g. "#projects"
+    const hash = window.location.hash; // e.g. "#showcase"
 
     // Always strip the hash from the URL — sections are reached by scroll, not URL fragment.
     if (hash) history.replaceState(null, "", window.location.pathname);
 
-    // If navigating to a hash section (e.g. via "Back to Projects"), scroll there.
-    if (hash && !isProject) {
-      const el = document.querySelector(hash);
-      if (el) {
-        if (window.__lenis) {
-          window.__lenis.scrollTo(el as HTMLElement, { offset: -16, immediate: true, force: true });
-        } else {
-          el.scrollIntoView();
-        }
-        return;
+    // Resolve the scroll target. Order of priority:
+    //  1) sessionStorage["__navTarget"] — set by the back link on click. This
+    //     survives React StrictMode's double-effect (the first run can't strip
+    //     it from a future second run) and the URL-hash being cleared above.
+    //  2) URL hash — for direct/external entries to e.g. "/#showcase".
+    let targetId: string | null = null;
+    try { targetId = sessionStorage.getItem("__navTarget"); } catch {}
+    if (!targetId && hash && !isProject) targetId = hash.replace(/^#/, "");
+
+    if (targetId && !isProject) {
+      // AnimatePresence (mode="wait") doesn't mount the new page until the
+      // old page's exit animation finishes (~400ms), and even after mount
+      // section offsets can shift as fonts/images settle for a few frames.
+      // We re-snap every frame until the layout is stable, then stop.
+      //
+      // Lenis 1.x's scrollTo({ immediate: true }) still interpolates in
+      // practice, fighting our snap. We stop Lenis' raf loop while we
+      // snap and force its internal scroll state directly, then restart it.
+      const lenis = window.__lenis;
+      if (lenis) lenis.stop();
+
+      let raf = 0;
+      let frames = 0;
+      let stableTargetY: number | null = null;
+      let stableCount = 0;
+      const maxFrames = 240; // ~4s
+      const stableFramesNeeded = 4;
+      const finalId = targetId;
+      let finished = false;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        if (lenis) lenis.start();
+        try { sessionStorage.removeItem("__navTarget"); } catch {}
       }
+      function tryScroll() {
+        const el = document.getElementById(finalId);
+        if (el && document.contains(el)) {
+          const targetY = Math.max(0, el.offsetTop - 16);
+          window.scrollTo(0, targetY);
+          if (lenis) {
+            // Force Lenis' internal state to match the native scroll
+            // position so when we re-start it, no lerp catches up.
+            (lenis as unknown as { animatedScroll: number; targetScroll: number }).animatedScroll = targetY;
+            (lenis as unknown as { animatedScroll: number; targetScroll: number }).targetScroll = targetY;
+          }
+          if (stableTargetY === targetY) {
+            stableCount++;
+            if (stableCount >= stableFramesNeeded) { finish(); return; }
+          } else {
+            stableTargetY = targetY;
+            stableCount = 1;
+          }
+        }
+        if (++frames < maxFrames) raf = requestAnimationFrame(tryScroll);
+        else finish();
+      }
+      raf = requestAnimationFrame(tryScroll);
+      return () => {
+        cancelAnimationFrame(raf);
+        if (!finished && lenis) lenis.start();
+      };
     }
 
     // Project detail pages always start at the top. Other routes restore

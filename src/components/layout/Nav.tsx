@@ -32,39 +32,45 @@ export default function Nav() {
       setActive(null);
       return;
     }
-    // Build flat list of (sectionId, linkId) pairs, ordered by DOM order.
-    const tracked: { el: HTMLElement; linkId: string }[] = [];
-    for (const l of LINKS) {
-      const ids = [l.id, ...(l.aliases ?? [])];
-      for (const sid of ids) {
-        const el = document.getElementById(sid);
-        if (el) tracked.push({ el, linkId: l.id });
-      }
-    }
-    tracked.sort((a, b) => a.el.offsetTop - b.el.offsetTop);
-    if (tracked.length === 0) return;
-    const firstSection = tracked[0].el;
+
+    // Poll via rAF. We re-query the section elements every frame because:
+    //  (1) Lenis' programmatic scrolls don't reliably dispatch native scroll events;
+    //  (2) AnimatePresence with key={pathname} unmounts and remounts the page on
+    //      every soft-nav, so cached element refs become stale (a detached element
+    //      reports getBoundingClientRect().top = 0, which collapses the algorithm
+    //      onto the last-defined section — Contact).
+    let raf = 0;
+    let last: string | null | undefined = undefined;
 
     function update() {
       const probe = window.innerHeight * 0.4;
-      if (firstSection.getBoundingClientRect().top > probe) {
-        setActive(null);
-        return;
+      let firstTop: number | null = null;
+      let next: string | null = null;
+      for (const l of LINKS) {
+        const ids = [l.id, ...(l.aliases ?? [])];
+        for (const sid of ids) {
+          const el = document.getElementById(sid);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (firstTop === null) firstTop = top;
+          if (top <= probe) next = l.id;
+        }
       }
-      let current: string | null = null;
-      for (const t of tracked) {
-        if (t.el.getBoundingClientRect().top <= probe) current = t.linkId;
+      // If the first section is still below the probe line, nothing is "active".
+      if (firstTop === null || firstTop > probe) next = null;
+      if (next !== last) {
+        last = next;
+        setActive(next);
       }
-      if (current) setActive(current);
     }
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [isProject]);
+
+    function loop() {
+      update();
+      raf = requestAnimationFrame(loop);
+    }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [isProject, pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -79,7 +85,18 @@ export default function Nav() {
     <header className={styles.nav}>
       <div className={`container ${styles.inner}`}>
         {isProject ? (
-          <Link href="/#projects" className={styles.backLink} aria-label="Back to Work">
+          <Link
+            href="/"
+            className={styles.backLink}
+            aria-label="Back to Projects"
+            onClick={() => {
+              try {
+                sessionStorage.setItem("__navTarget", "showcase");
+                // Saved scroll for "/" would otherwise override the target.
+                sessionStorage.removeItem("scroll:/");
+              } catch {}
+            }}
+          >
             <span className={styles.backArrow} aria-hidden="true">←</span>
             Back
           </Link>

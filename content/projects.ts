@@ -44,15 +44,20 @@ export const PROJECTS: Project[] = [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/ReportGenrator" },
       { label: "Live Demo", href: "https://yossiabutbul.github.io/ReportGenrator/" },
     ],
-    images: [
-      { src: "/projects/report-generator/01-setup.png", alt: "RF Report Generator — setup and data table", width: 1600, height: 935 },
-      { src: "/projects/report-generator/02-report.png", alt: "RF Report Generator — report preview and export", width: 1600, height: 935 },
-      { src: "/projects/report-generator/03-3d-graph.png", alt: "RF Report Generator — 3D radiation surface", width: 1600, height: 935 },
-      { src: "/projects/report-generator/04-2d-graph.png", alt: "RF Report Generator — 2D polar plots", width: 1600, height: 935 },
-    ],
     video: "/projects/report-generator/demo.webm",
     featured: true,
-    noCase: true,
+    overview: [
+      "Full-stack RF test-automation workspace that turns raw chamber measurements into structured Word reports. Engineers upload Excel workbooks or Howland WTL text exports, scrub through 2D polar plots and 3D radiation surfaces, then export a polished A4 document with embedded graphs and metadata — work that used to take half a day, now in minutes.",
+      "The frontend is a React + Three.js single-page app; the backend is a FastAPI service handling Bluetooth device integration, file parsing, and Word generation. The 3D viewer is custom WebGL with spherical wireframe overlays, orbit controls, and vertex-colored heatmaps so technicians can spot pattern defects at a glance.",
+    ],
+    highlights: [
+      "3D radiation pattern viewer with vertex-colored heatmap and orbit controls",
+      "2D polar plots for azimuth and elevation with spline interpolation",
+      "Real-time TRP (Total Radiated Power) calculation in watts",
+      "A4 document viewer with direct Word export",
+      "Multi-format input: Excel workbooks + Howland WTL text exports",
+      "Searchable metadata grid — filter by unit, ID, frequency",
+    ],
   },
   {
     slug: "haparlamentor",
@@ -71,12 +76,21 @@ export const PROJECTS: Project[] = [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/Haparlamentor" },
       { label: "Live Demo", href: "https://yossiabutbul.github.io/Haparlamentor/" },
     ],
-    images: [
-      { src: "/projects/haparlamentor/01-haparlamentor.svg", alt: "Haparlamentor — CRT-framed Hebrew search UI", width: 1919, height: 1079 },
-    ],
     video: "/projects/haparlamentor/demo.webm",
     featured: true,
-    noCase: true,
+    overview: [
+      "Hebrew phrase-to-episode search for the cult Israeli sitcom הפרלמנט. Type a quote, see which episode and timestamp it came from, and jump straight to that moment on Mako. Built around a fuzzy index over auto-generated transcripts.",
+      "The transcript corpus is built by an agent that scrapes episodes from Mako and runs them through OpenAI's Whisper model for Hebrew speech-to-text - turning hours of raw audio into a searchable, timestamp-aligned index without any manual transcription work.",
+      
+    ],
+    highlights: [
+      "Automated transcript pipeline: scraper agent + Whisper Hebrew speech-to-text",
+      "Fuzzy search across episode transcripts with timestamp deep-links to Mako",
+      "CRT-frame UI: scanlines, grain, vignette, phosphor glow",
+      "Channel-flip transition system between views",
+      "Full RTL Hebrew support (Heebo / Assistant / JetBrains Mono)",
+      "Static export via Next.js 15 with GitHub Actions deploy",
+    ],
   },
   {
     slug: "lora-viz",
@@ -97,7 +111,18 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/lora-viz/demo.webm",
     featured: true,
-    noCase: true,
+    overview: [
+      "Browser-only viewer for LoRa gateway logs — drop in a .log or .txt file and get instant statistics, packet decoding, and time-series charts. Nothing leaves the page; parsing and visualization both happen client-side, which matters when you're staring at production traffic on a customer site.",
+      "Loads multiple files at once, lets you toggle visibility per file, and remembers human-readable labels assigned to device addresses across sessions. Built as plain HTML + vanilla JS + Chart.js — no build step, no framework, drop the folder onto a static host and it runs.",
+    ],
+    highlights: [
+      "Multi-file loading with per-file toggle and persistent device labels",
+      "Interactive charts: RSSI, SNR, rolling PER, frequency-channel map",
+      "Packet inspector with raw payload and frame-counter gap detection",
+      "Side-by-side time window comparison with automatic bisection",
+      "Per-chart Y-axis pin to stabilize ranges across comparisons",
+      "CSV export at both summary and packet level",
+    ],
   },
   {
     slug: "pipeline-cpu",
@@ -115,12 +140,20 @@ export const PROJECTS: Project[] = [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/Pipeline_CPU" },
       { label: "Live Demo", href: "https://yossiabutbul.github.io/Pipeline_CPU/" },
     ],
-    images: [
-      { src: "/projects/pipeline-cpu/01-Pipeline-CPU-Diagram.png", alt: "Pipeline CPU simulator — pipeline diagram", width: 1919, height: 1079 },
-    ],
     video: "/projects/pipeline-cpu/demo.webm",
     featured: true,
-    noCase: true,
+    overview: [
+      "Educational simulator that makes the classic 5-stage CPU pipeline tangible. Step through instructions one cycle at a time and watch them flow through fetch / decode / execute / memory / writeback — with hazards, forwarding, and stalls drawn directly onto the diagram. Built for computer-architecture students who learned the theory in lecture and need to see it move.",
+      "React + TypeScript single-page app, Vite-built and shipped to GitHub Pages. The pipeline state is fully observable: every register, every forwarding bypass, every stall bubble is visible at every cycle, so you can pause on any instruction and read off exactly what the hardware is doing.",
+    ],
+    highlights: [
+      "Cycle-accurate visualization of a 5-stage MIPS-style pipeline",
+      "Step-through execution: pause, advance, inspect any cycle",
+      "Hazard detection visualized — data, structural, control",
+      "Forwarding and stall logic drawn on the pipeline diagram",
+      "Register file and memory state live-updated each cycle",
+      "Loadable instruction sequences for classic teaching examples",
+    ],
   },
   {
     slug: "two-pass-assembler",
@@ -130,7 +163,7 @@ export const PROJECTS: Project[] = [
     tags: ["embedded"],
     year: 2023,
     role: "Coursework",
-    stack: ["C (ANSI C90)", "Make", "GDB"],
+    stack: ["C", "Assembler"],
     frequency: 30,
     amplitude: 6,
     band: "Baseband",
@@ -155,7 +188,18 @@ export const PROJECTS: Project[] = [
     ],
     video: "/projects/oplanner/demo.webm",
     featured: true,
-    noCase: true,
+    overview: [
+      "Student-focused semester planner that pulls course schedules, assignments, and deadlines from a single source instead of scattered spreadsheets. Drop in an .ics file from the university portal and the semester populates itself — courses, due dates, and exams ready in around 30 seconds.",
+      "Tracks completion and overdue state at the semester level, then lets you drill into a single course view without the visual noise of the rest of the term. Cloud-sync via Firebase keeps progress consistent across devices, and the mobile layout was tuned to feel like a native app.",
+    ],
+    highlights: [
+      "One-click .ics import — no manual course entry",
+      "Semester dashboard: completed, remaining, overdue, total progress",
+      "Per-course focused view with isolated task list",
+      "Re-import updates existing tasks in place (no duplicates)",
+      "Mobile-first responsive layout with drawer navigation",
+      "Customizable color-coding for years, semesters, and courses",
+    ],
   },
   {
     slug: "attenuator-wrapper",

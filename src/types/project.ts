@@ -33,4 +33,8 @@ export interface Project {
   amplitude: number;
   /** RF band label for marker chip. */
   band: string;
+  /** Longer-form description paragraphs, rendered on the detail page. */
+  overview?: string[];
+  /** Bullet-point feature list, rendered on the detail page. */
+  highlights?: string[];
 }
