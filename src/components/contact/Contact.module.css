@@ -319,7 +319,7 @@
   }
   .right { position: static; }
   .headline { font-size: var(--step-5); }
-  .lede { max-width: 100%; }
+  .lede { white-space: normal; }
 }
 
 @media (max-width: 480px) {
