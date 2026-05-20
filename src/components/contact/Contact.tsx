@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm, ValidationError } from "@formspree/react";
+import { useEffect, useState } from "react";
 import SectionLabel from "@/components/ui/SectionLabel";
 import { withBasePath } from "@/lib/env";
 import styles from "./Contact.module.css";
@@ -17,64 +18,74 @@ const LINKS: LinkRow[] = [
   { label: "CV",       href: withBasePath(`/${CV_FILENAME}`),                         display: "View CV",         newTab: true },
 ];
 
+const RESET_DELAY = 5000; // ms before form reappears after success
+
 export default function Contact() {
   const [state, handleSubmit] = useForm(FORMSPREE_ID);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!state.succeeded) return;
+    setShowSuccess(true);
+    const t = setTimeout(() => setShowSuccess(false), RESET_DELAY);
+    return () => clearTimeout(t);
+  }, [state.succeeded]);
 
   return (
     <section id="contact" className={styles.section} aria-labelledby="contact-label">
       <div className="container">
+
+        {/* ── Section label + headline above grid ── */}
         <div id="contact-label">
           <SectionLabel index="05">Contact</SectionLabel>
         </div>
+        <div className={styles.header}>
+          <h2 className={styles.headline} data-reveal data-reveal-delay="1">
+            Get in <em>touch</em>.
+          </h2>
+          <p className={styles.lede} data-reveal data-reveal-delay="2">
+            Have a project in mind or just want to say hi?
+            Fill out the form or reach me directly.
+          </p>
+        </div>
 
+        {/* ── Two-column grid: links | form ── */}
         <div className={styles.grid}>
 
-          {/* ── Left ── */}
-          <div className={styles.left}>
-            <div>
-              <h2 className={styles.headline} data-reveal data-reveal-delay="1">
-                Get in <em>touch</em>.
-              </h2>
-              <p className={styles.lede} data-reveal data-reveal-delay="2">
-                Have a project in mind or just want to say hi?
-                Fill out the form or reach me directly.
-              </p>
-            </div>
-
-            <ul className={styles.list}>
-              {LINKS.map((l, i) => (
-                <li
-                  key={l.label}
-                  className={styles.row}
-                  data-reveal
-                  data-reveal-delay={(((i % 4) + 2)).toString()}
+          {/* Left: links */}
+          <ul className={styles.list}>
+            {LINKS.map((l, i) => (
+              <li
+                key={l.label}
+                className={styles.row}
+                data-reveal
+                data-reveal-delay={(((i % 4) + 1)).toString()}
+              >
+                <span className={styles.rowLabel}>{l.label}</span>
+                <a
+                  className={styles.rowValue}
+                  href={l.href}
+                  {...(l.href.startsWith("http") || l.newTab
+                    ? { target: "_blank", rel: "noreferrer noopener" }
+                    : {})}
                 >
-                  <span className={styles.rowLabel}>{l.label}</span>
-                  <a
-                    className={styles.rowValue}
-                    href={l.href}
-                    {...(l.href.startsWith("http") || l.newTab
-                      ? { target: "_blank", rel: "noreferrer noopener" }
-                      : {})}
-                  >
-                    <span className={styles.rowText}>{l.display}</span>
-                    <span className={styles.rowArrow} aria-hidden="true">→</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <span className={styles.rowText}>{l.display}</span>
+                  <span className={styles.rowArrow} aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))}
+          </ul>
 
-          {/* ── Right: form ── */}
-          <div className={styles.right}>
-            {state.succeeded ? (
-              <div className={styles.success} data-reveal>
+          {/* Right: form / success */}
+          <div className={styles.right} data-reveal data-reveal-delay="2">
+            {showSuccess ? (
+              <div className={styles.success}>
                 <span className={styles.successIcon} aria-hidden="true">✓</span>
                 <p className={styles.successTitle}>Message sent.</p>
                 <p className={styles.successSub}>I&apos;ll get back to you shortly.</p>
               </div>
             ) : (
-              <form className={styles.form} onSubmit={handleSubmit} data-reveal data-reveal-delay="2">
+              <form className={styles.form} onSubmit={handleSubmit}>
                 <div className={styles.row2}>
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor="cf-name">Name</label>
