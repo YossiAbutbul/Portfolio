@@ -87,7 +87,7 @@ export default function Contact() {
                       name="name"
                       className={styles.input}
                       type="text"
-                      placeholder="Yossi Abutbul"
+                      placeholder="Jane Smith"
                       autoComplete="name"
                     />
                   </div>

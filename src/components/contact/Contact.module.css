@@ -135,6 +135,7 @@
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25), 0 8px 32px rgba(0,0,0,0.15);
 }
 
 .form {
@@ -154,13 +155,13 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .label {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--fg-muted);
 }
@@ -176,46 +177,59 @@
   border: 1px solid var(--hairline-strong);
   border-radius: var(--radius-md);
   padding: 10px 14px;
-  font-family: var(--font-sans, inherit);
-  font-size: var(--step-0);
+  font-family: inherit;
+  font-size: 0.9rem;
   color: var(--fg);
   outline: none;
   transition:
     border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
   box-sizing: border-box;
+  -webkit-appearance: none;
 }
 
 .input::placeholder {
-  color: var(--fg-dim, var(--fg-muted));
+  color: var(--fg-muted);
+  opacity: 0.5;
 }
 
 .input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Fix browser autofill white flash */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-elevated) inset;
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .textarea {
   resize: vertical;
-  min-height: 120px;
-  line-height: 1.55;
+  min-height: 130px;
+  line-height: 1.6;
 }
 
 /* ── Form footer ─────────────────────────────────────────────────────────── */
 .formFooter {
   display: flex;
   justify-content: flex-end;
+  padding-top: var(--space-2);
 }
 
 .btnSubmit {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: 11px 24px;
+  padding: 11px 26px;
   border-radius: 999px;
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   background: var(--accent);
   color: var(--bg);
   border: 1px solid var(--accent);
