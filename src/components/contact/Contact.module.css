@@ -2,7 +2,6 @@
 .section {
   position: relative;
   padding: var(--space-9) 0 var(--space-8);
-  border-top: 1px solid var(--hairline);
 }
 
 /* ── Header above grid ───────────────────────────────────────────────────── */
@@ -204,7 +203,7 @@
 
 .textarea {
   resize: none;
-  min-height: 140px;
+  min-height: 100px;
   line-height: 1.6;
 }
 
