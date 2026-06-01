@@ -82,7 +82,7 @@ export default function InlineWaves() {
       <span className={styles.half}>
         <Wave direction="in" />
       </span>
-      <span className={styles.label}>meets</span>
+      <span className={styles.label}>meet</span>
       <span className={styles.half}>
         <Wave direction="out" />
       </span>
