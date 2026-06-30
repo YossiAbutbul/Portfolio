@@ -62,7 +62,8 @@ function HeroCard({ project }: { project: Project }) {
         <div className={styles.heroActions}>
           {(() => {
             const liveDemo = project.links.find((l) => /live/i.test(l.label));
-            const others = project.links.filter((l) => l !== liveDemo);
+            const github = project.links.find((l) => /github/i.test(l.label));
+            const others = project.links.filter((l) => l !== liveDemo && l !== github);
             return (
               <>
                 {liveDemo && (
@@ -75,9 +76,20 @@ function HeroCard({ project }: { project: Project }) {
                     {liveDemo.label} ↗
                   </a>
                 )}
+                {github && (
+                  <a
+                    key={github.href}
+                    href={github.href}
+                    className={styles.btnGhost}
+                    target={github.href.startsWith("http") ? "_blank" : undefined}
+                    rel={github.href.startsWith("http") ? "noreferrer noopener" : undefined}
+                  >
+                    {github.label} ↗
+                  </a>
+                )}
                 {!project.noCase && (
                   <Link href={`/projects/${project.slug}/`} className={styles.btnGhost}>
-                    Case study →
+                    Details →
                   </Link>
                 )}
                 {others.map((l) => (

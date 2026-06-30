@@ -24,6 +24,8 @@ interface LinkRow {
   newTab?: boolean;
 }
 
+const CV_FILENAME = `Yossi Abutbul - CV ${new Date().getFullYear()}.pdf`;
+
 const LINKS: LinkRow[] = [
   { label: "Phone", href: "tel:+972525476603", display: "+972 52-547-6603" },
   { label: "GitHub", href: "https://github.com/YossiAbutbul", display: "@YossiAbutbul" },
@@ -34,8 +36,8 @@ const LINKS: LinkRow[] = [
   },
   {
     label: "CV",
-    href: withBasePath("/cv.pdf"),
-    display: "Download CV",
+    href: withBasePath(`/${CV_FILENAME}`),
+    display: "View CV",
     newTab: true,
   },
 ];

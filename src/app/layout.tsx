@@ -17,7 +17,7 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://yossiabutbul.github.io/Portfolio/"),
-  title: "Yossi Abutbul — Software for RF and embedded systems",
+  title: "Yossi Abutbul - Portfolio",
   description:
     "BSc Computer Science student at The Open University and RF & electronics integrator at Arad Technologies. I build test-automation platforms, antenna tooling, and workflow software for engineering labs.",
   authors: [{ name: "Yossi Abutbul" }],
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     "test automation",
   ],
   openGraph: {
-    title: "Yossi Abutbul — Software for RF and embedded systems",
+    title: "Yossi Abutbul - Portfolio",
     description:
       "Portfolio of Yossi Abutbul: BSc Computer Science student + RF integrator. Test-automation, antenna tooling, full-stack engineering.",
     type: "website",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Yossi Abutbul — Portfolio",
+    title: "Yossi Abutbul - Portfolio",
     images: ["og.png"],
   },
 };

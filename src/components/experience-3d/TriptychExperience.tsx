@@ -22,8 +22,8 @@ export default function TriptychExperience() {
     let raf = 0;
 
     function update() {
-      const rect = root.getBoundingClientRect();
-      const total = root.offsetHeight - window.innerHeight;
+      const rect = root!.getBoundingClientRect();
+      const total = root!.offsetHeight - window.innerHeight;
       const scrolled = Math.max(0, -rect.top);
       const p = total > 0 ? Math.max(0, Math.min(1, scrolled / total)) : 0;
       progressRef.current = p;
