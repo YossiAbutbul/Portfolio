@@ -7,6 +7,7 @@ export const FEATURED_SLUGS = [
   "haparlamentor",
   "lora-viz",
   "pipeline-cpu",
+  "trump-jump",
 ] as const;
 
 export const PROJECTS: Project[] = [
@@ -26,6 +27,37 @@ export const PROJECTS: Project[] = [
     band: "L-band",
     links: [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/rf-instrument-wrappers" },
+    ],
+  },
+  {
+    slug: "trump-jump",
+    title: "Trump Jump: Strait of Hormuz",
+    summary:
+      "Browser-based vertical arcade climber. Bounce up moving platforms, stomp drones, dodge missiles, grab power-ups. Firebase cloud saves, global leaderboard, shop economy.",
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["JavaScript", "HTML5 Canvas", "Firebase", "Firestore", "Vercel"],
+    frequency: 5800,
+    amplitude: 10,
+    band: "C-band",
+    links: [
+      { label: "GitHub", href: "https://github.com/YossiAbutbul/TrumpJump-Hormuz" },
+      { label: "Live Demo", href: "https://trump-jump-hormuz.vercel.app" },
+    ],
+    video: "/projects/trump-jump/demo.webm",
+    featured: true,
+    overview: [
+      "Browser-based vertical arcade climber — bounce upward through an endless stack of moving platforms while difficulty scales with altitude. Tap left/right (touch, arrow keys, or A/D) to steer; land on oil tankers and speedboats, stomp drones, and dodge incoming missiles. Loads instantly in the browser, no install.",
+      "Built in vanilla JavaScript on an HTML5 canvas, deployed on Vercel, with Firebase Firestore backing cloud saves and a global leaderboard. Google sign-in syncs progress across devices; a shop economy unlocks character skins, fleet themes, and map variations, plus an eight-level power-up upgrade track.",
+    ],
+    highlights: [
+      "Endless vertical climber with altitude-scaled difficulty",
+      "Hazard system: stompable drones and dodgeable missiles",
+      "Power-ups: Jet Cap flight, mega-bounce springs, Golden Dome shield, money magnet",
+      "Firebase cloud saves via Google sign-in + global leaderboard",
+      "Shop economy: character skins, fleet themes, map variations",
+      "Eight-level power-up upgrade track and secret friend-code unlocks",
     ],
   },
   {
@@ -218,23 +250,6 @@ export const PROJECTS: Project[] = [
     links: [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/Mini-Circuits-Programmable-Attenuator-wrapper" },
     ],
-  },
-  {
-    slug: "mini-circuits-power-sensor",
-    title: "Mini-Circuits Power Sensor Wrapper",
-    summary:
-      "Python wrapper around a USB power sensor, bridging vendor .NET DLLs into a clean Pythonic API for lab automation scripts.",
-    tags: ["hardware"],
-    year: 2024,
-    role: "Solo",
-    stack: ["Python", ".NET DLL interop", "USB"],
-    frequency: 8000,
-    amplitude: 6,
-    band: "X-band",
-    links: [
-      { label: "GitHub", href: "https://github.com/YossiAbutbul/Mini-Circuits-Power-Sensor" },
-    ],
-    noCase: true,
   },
   {
     slug: "dmx-motor",

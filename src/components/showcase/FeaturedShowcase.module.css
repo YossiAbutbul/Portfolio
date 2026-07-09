@@ -141,10 +141,82 @@
 .btnGhost:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ───── SECONDARY TILES ───────────────────────────────────────────────── */
+/* Slider: hero above, a horizontal track of tiles below showing ~3 at a time.
+   Hover reveals arrows that page the track; arrows disable at the ends. */
+.slider {
+  position: relative;
+}
+
 .tiles {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-direction: row;
   gap: var(--space-3);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Vertical room so the tile hover-lift + border isn't clipped by overflow. */
+  padding: 6px 2px 8px;
+}
+.tiles::-webkit-scrollbar { display: none; }
+
+/* Three tiles per view: full width minus the two inter-tile gaps, ÷3. */
+.tiles > * {
+  flex: 0 0 calc((100% - 2 * var(--space-3)) / 3);
+  max-width: calc((100% - 2 * var(--space-3)) / 3);
+  scroll-snap-align: start;
+}
+
+/* Edge buttons: full-height strips with no border/box — just a soft fade from
+   the slide edge into the tiles, and a green chevron. */
+.arrow {
+  position: absolute;
+  top: 6px;
+  bottom: 8px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  opacity: 0.9;
+  transition:
+    opacity var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.arrowPrev {
+  left: 0;
+  justify-items: start;
+  padding-left: 10px;
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--bg) 52%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 24%, transparent) 45%,
+    transparent 100%);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+.arrowNext {
+  right: 0;
+  justify-items: end;
+  padding-right: 10px;
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--bg) 52%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 24%, transparent) 45%,
+    transparent 100%);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.slider:hover .arrow { opacity: 1; }
+.arrow:hover:not(:disabled) { color: color-mix(in srgb, var(--accent) 80%, white); }
+.arrow:disabled { opacity: 0; pointer-events: none; }
+
+.arrowIcon {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
 .tile {
@@ -159,6 +231,7 @@
   font: inherit;
   color: var(--fg);
   text-align: left;
+  text-decoration: none;
   transition: border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
 }
 
@@ -172,7 +245,7 @@
   border-radius: var(--radius-sm);
   background: var(--bg-sunken);
   overflow: hidden;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
 }
 
 .tileCopy {
@@ -239,7 +312,13 @@
 @media (max-width: 1000px) {
   .hero { grid-template-columns: 1fr; }
   .heroMedia { aspect-ratio: 16 / 10; max-height: none; }
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Two tiles per view on tablet. */
+  .tiles > * {
+    flex: 0 0 calc((100% - var(--space-3)) / 2);
+    max-width: calc((100% - var(--space-3)) / 2);
+  }
+  /* Arrows need hover; touch devices swipe instead. */
+  .arrow { display: none; }
 }
 
 @media (max-width: 600px) {

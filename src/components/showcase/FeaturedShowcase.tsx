@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FEATURED_PROJECTS } from "@content/projects";
 import type { Project } from "@/types/project";
 import SectionLabel from "@/components/ui/SectionLabel";
@@ -10,11 +10,9 @@ import styles from "./FeaturedShowcase.module.css";
 
 export default function FeaturedShowcase() {
   const featured = FEATURED_PROJECTS;
-  const [activeIdx, setActiveIdx] = useState(0);
   if (featured.length === 0) return null;
 
-  const active = featured[activeIdx];
-  const others = featured.map((p, i) => ({ p, i })).filter((x) => x.i !== activeIdx);
+  const active = featured[0];
 
   return (
     <section id="showcase" className={styles.section} aria-labelledby="showcase-label">
@@ -25,18 +23,100 @@ export default function FeaturedShowcase() {
 
         <HeroCard project={active} />
 
-        <div className={styles.tiles}>
-          {others.map(({ p, i }) => (
-            <SecondaryTile
-              key={p.slug}
-              project={p}
-              index={i + 1}
-              onSelect={() => setActiveIdx(i)}
-            />
+        <TileSlider>
+          {featured.map((p, i) => (
+            <SecondaryTile key={p.slug} project={p} index={i + 1} />
           ))}
-        </div>
+        </TileSlider>
       </div>
     </section>
+  );
+}
+
+/**
+ * Horizontal slider that shows ~3 tiles at a time. Prev/next arrows stay
+ * faded-in and brighten on hover; each click pages the track by roughly one
+ * viewport width. Arrows dim at the track ends. Mobile keeps native swipe.
+ */
+function TileSlider({ children }: { children: ReactNode }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+
+  function updateEdges() {
+    const el = trackRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    // Tolerate scroll-snap jitter: treat within half a tile of an end as "at" it.
+    const first = el.firstElementChild as HTMLElement | null;
+    const tol = first ? first.offsetWidth / 2 : 24;
+    setAtStart(el.scrollLeft <= tol);
+    setAtEnd(el.scrollLeft >= max - tol);
+  }
+
+  useEffect(() => {
+    updateEdges();
+    const el = trackRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", updateEdges, { passive: true });
+    window.addEventListener("resize", updateEdges);
+    return () => {
+      el.removeEventListener("scroll", updateEdges);
+      window.removeEventListener("resize", updateEdges);
+    };
+  }, []);
+
+  function page(dir: 1 | -1) {
+    const el = trackRef.current;
+    if (!el) return;
+    // Advance a full view — 3 tiles + the two gaps between them.
+    const first = el.firstElementChild as HTMLElement | null;
+    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+    const step = first ? first.offsetWidth * 3 + gap * 3 : el.clientWidth;
+    el.scrollBy({ left: dir * step, behavior: "smooth" });
+  }
+
+  return (
+    <div className={styles.slider}>
+      <button
+        type="button"
+        className={`${styles.arrow} ${styles.arrowPrev}`}
+        onClick={() => page(-1)}
+        disabled={atStart}
+        aria-label="Previous projects"
+      >
+        <Chevron dir="left" />
+      </button>
+      <div className={styles.tiles} ref={trackRef}>
+        {children}
+      </div>
+      <button
+        type="button"
+        className={`${styles.arrow} ${styles.arrowNext}`}
+        onClick={() => page(1)}
+        disabled={atEnd}
+        aria-label="More projects"
+      >
+        <Chevron dir="right" />
+      </button>
+    </div>
+  );
+}
+
+function Chevron({ dir }: { dir: "left" | "right" }) {
+  return (
+    <svg
+      className={styles.arrowIcon}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {dir === "left" ? <path d="M15 5 8 12l7 7" /> : <path d="M9 5l7 7-7 7" />}
+    </svg>
   );
 }
 
@@ -112,24 +192,38 @@ function HeroCard({ project }: { project: Project }) {
   );
 }
 
-function SecondaryTile({
-  project,
-  index,
-  onSelect,
-}: {
-  project: Project;
-  index: number;
-  onSelect: () => void;
-}) {
-  return (
-    <button type="button" className={styles.tile} onClick={onSelect} aria-label={`Show ${project.title}`}>
+function SecondaryTile({ project }: { project: Project; index: number }) {
+  const inner = (
+    <>
       <div className={styles.tileMedia}>
         <Media project={project} contain playing={false} />
       </div>
       <div className={styles.tileCopy}>
         <span className={styles.tileTitle}>{project.title}</span>
       </div>
-    </button>
+    </>
+  );
+
+  // Tiles link out instead of swapping the hero. Case-study page when it
+  // exists, otherwise the project's first external link.
+  if (project.noCase) {
+    const href = project.links[0]?.href ?? "#";
+    return (
+      <a
+        className={styles.tile}
+        href={href}
+        target={href.startsWith("http") ? "_blank" : undefined}
+        rel={href.startsWith("http") ? "noreferrer noopener" : undefined}
+        aria-label={project.title}
+      >
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <Link className={styles.tile} href={`/projects/${project.slug}/`} aria-label={project.title}>
+      {inner}
+    </Link>
   );
 }
 
