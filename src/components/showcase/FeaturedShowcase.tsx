@@ -10,9 +10,10 @@ import styles from "./FeaturedShowcase.module.css";
 
 export default function FeaturedShowcase() {
   const featured = FEATURED_PROJECTS;
+  const [activeIdx, setActiveIdx] = useState(0);
   if (featured.length === 0) return null;
 
-  const active = featured[0];
+  const active = featured[activeIdx];
 
   return (
     <section id="showcase" className={styles.section} aria-labelledby="showcase-label">
@@ -23,9 +24,15 @@ export default function FeaturedShowcase() {
 
         <HeroCard project={active} />
 
-        <TileSlider>
+        <TileSlider count={featured.length}>
           {featured.map((p, i) => (
-            <SecondaryTile key={p.slug} project={p} index={i + 1} />
+            <SecondaryTile
+              key={p.slug}
+              project={p}
+              index={i}
+              active={i === activeIdx}
+              onSelect={() => setActiveIdx(i)}
+            />
           ))}
         </TileSlider>
       </div>
@@ -34,12 +41,13 @@ export default function FeaturedShowcase() {
 }
 
 /**
- * Horizontal slider that shows ~3 tiles at a time. Prev/next arrows stay
- * faded-in and brighten on hover; each click pages the track by roughly one
- * viewport width. Arrows dim at the track ends. Mobile keeps native swipe.
+ * Horizontal slider: 3 tiles + a peek of the 4th so overflow reads at rest.
+ * Two bare chevrons flank the track, vertically centered on the artwork.
+ * Touch devices swipe natively.
  */
-function TileSlider({ children }: { children: ReactNode }) {
+function TileSlider({ children, count }: { children: ReactNode; count: number }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const animRef = useRef(0);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
 
@@ -63,42 +71,86 @@ function TileSlider({ children }: { children: ReactNode }) {
     return () => {
       el.removeEventListener("scroll", updateEdges);
       window.removeEventListener("resize", updateEdges);
+      cancelAnimationFrame(animRef.current);
     };
   }, []);
+
+  // Native smooth scrolling is cancelled by Lenis' per-frame window scroll,
+  // and mandatory snap quantizes intermediate values — so tween scrollLeft
+  // manually with snap disabled for the duration.
+  function tweenTo(el: HTMLDivElement, target: number) {
+    cancelAnimationFrame(animRef.current);
+    el.style.scrollSnapType = "none";
+    const from = el.scrollLeft;
+    const start = performance.now();
+    const dur = 420;
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / dur);
+      el.scrollLeft = from + (target - from) * ease(t);
+      if (t < 1) {
+        animRef.current = requestAnimationFrame(step);
+      } else {
+        el.style.scrollSnapType = "";
+        updateEdges();
+      }
+    };
+    animRef.current = requestAnimationFrame(step);
+  }
+
+  /** Tile width + gap — the snap grid everything aligns to. */
+  function unitOf(el: HTMLDivElement) {
+    const first = el.firstElementChild as HTMLElement | null;
+    const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
+    return first ? first.offsetWidth + gap : el.clientWidth;
+  }
 
   function page(dir: 1 | -1) {
     const el = trackRef.current;
     if (!el) return;
-    // Advance a full view — 3 tiles + the two gaps between them.
-    const first = el.firstElementChild as HTMLElement | null;
+    // Advance by however many tiles fit fully in the viewport (3 desktop,
+    // 2 tablet, 1 mobile) so no tile is skipped past unseen.
     const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;
-    const step = first ? first.offsetWidth * 3 + gap * 3 : el.clientWidth;
-    el.scrollBy({ left: dir * step, behavior: "smooth" });
+    const unit = unitOf(el);
+    const per = Math.max(1, Math.floor((el.clientWidth + gap) / unit));
+    const max = el.scrollWidth - el.clientWidth;
+    // Land on a tile boundary so re-enabling snap after the tween doesn't jump.
+    const target = Math.max(0, Math.min(max, Math.round((el.scrollLeft + dir * unit * per) / unit) * unit));
+    tweenTo(el, target);
   }
 
   return (
-    <div className={styles.slider}>
-      <button
-        type="button"
-        className={`${styles.arrow} ${styles.arrowPrev}`}
-        onClick={() => page(-1)}
-        disabled={atStart}
-        aria-label="Previous projects"
-      >
-        <Chevron dir="left" />
-      </button>
-      <div className={styles.tiles} ref={trackRef}>
-        {children}
+    <div className={styles.slider} data-at-end={atEnd ? "true" : undefined}>
+      <div className={styles.sliderHead}>
+        <span className={styles.sliderLabel}>
+          All projects · {String(count).padStart(2, "0")}
+        </span>
+        <span className={styles.sliderRule} aria-hidden="true" />
       </div>
-      <button
-        type="button"
-        className={`${styles.arrow} ${styles.arrowNext}`}
-        onClick={() => page(1)}
-        disabled={atEnd}
-        aria-label="More projects"
-      >
-        <Chevron dir="right" />
-      </button>
+      <div className={styles.viewport}>
+        <div className={styles.tiles} ref={trackRef}>
+          {children}
+        </div>
+        <div className={styles.edgeFade} aria-hidden="true" />
+        <button
+          type="button"
+          className={`${styles.navBtn} ${styles.navPrev}`}
+          onClick={() => page(-1)}
+          disabled={atStart}
+          aria-label="Previous projects"
+        >
+          <Chevron dir="left" />
+        </button>
+        <button
+          type="button"
+          className={`${styles.navBtn} ${styles.navNext}`}
+          onClick={() => page(1)}
+          disabled={atEnd}
+          aria-label="More projects"
+        >
+          <Chevron dir="right" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -107,15 +159,15 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
   return (
     <svg
       className={styles.arrowIcon}
-      viewBox="0 0 24 24"
+      viewBox="0 0 12 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.2"
+      strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {dir === "left" ? <path d="M15 5 8 12l7 7" /> : <path d="M9 5l7 7-7 7" />}
+      {dir === "left" ? <path d="M9 2 2 12l7 10" /> : <path d="m3 2 7 10-7 10" />}
     </svg>
   );
 }
@@ -192,38 +244,33 @@ function HeroCard({ project }: { project: Project }) {
   );
 }
 
-function SecondaryTile({ project }: { project: Project; index: number }) {
-  const inner = (
-    <>
+function SecondaryTile({
+  project,
+  index,
+  active,
+  onSelect,
+}: {
+  project: Project;
+  index: number;
+  active: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`${styles.tile} ${active ? styles.tileActive : ""}`}
+      onClick={onSelect}
+      aria-pressed={active}
+      aria-label={`Show ${project.title}`}
+    >
       <div className={styles.tileMedia}>
         <Media project={project} contain playing={false} />
       </div>
       <div className={styles.tileCopy}>
+        <span className={styles.tileIdx}>{String(index + 1).padStart(2, "0")}</span>
         <span className={styles.tileTitle}>{project.title}</span>
       </div>
-    </>
-  );
-
-  // Tiles link out instead of swapping the hero. Case-study page when it
-  // exists, otherwise the project's first external link.
-  if (project.noCase) {
-    const href = project.links[0]?.href ?? "#";
-    return (
-      <a
-        className={styles.tile}
-        href={href}
-        target={href.startsWith("http") ? "_blank" : undefined}
-        rel={href.startsWith("http") ? "noreferrer noopener" : undefined}
-        aria-label={project.title}
-      >
-        {inner}
-      </a>
-    );
-  }
-  return (
-    <Link className={styles.tile} href={`/projects/${project.slug}/`} aria-label={project.title}>
-      {inner}
-    </Link>
+    </button>
   );
 }
 

@@ -141,9 +141,76 @@
 .btnGhost:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ───── SECONDARY TILES ───────────────────────────────────────────────── */
-/* Slider: hero above, a horizontal track of tiles below showing ~3 at a time.
-   Hover reveals arrows that page the track; arrows disable at the ends. */
+/* Slider: header row (counter · rule · round nav buttons) above a horizontal
+   track that shows 3 tiles plus a peek of the 4th, so overflow reads without
+   any interaction. A right-edge fade marks "more" until the end is reached. */
 .slider {
+  position: relative;
+}
+
+.sliderHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.sliderLabel {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.sliderRule {
+  flex: 1;
+  height: 1px;
+  background: var(--hairline);
+}
+
+/* Bare chevrons flanking the track, vertically centered on the artwork.
+   No chrome — just the glyph. Hidden at an exhausted end. */
+.navBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 12px 8px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.navPrev { left: -40px; }
+.navNext { right: -40px; }
+
+.navBtn:hover:not(:disabled) { color: var(--accent); }
+.navBtn:disabled { opacity: 0.18; cursor: default; }
+
+.arrowIcon {
+  width: 13px;
+  height: 26px;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.navPrev:hover:not(:disabled) .arrowIcon { transform: translateX(-3px); }
+.navNext:hover:not(:disabled) .arrowIcon { transform: translateX(3px); }
+
+/* Not enough gutter to sit outside the container — tuck inside the track
+   edges with a shadow for legibility over artwork. */
+@media (max-width: 1380px) {
+  .navPrev { left: 0; }
+  .navNext { right: 0; }
+  .arrowIcon { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8)); }
+}
+
+.viewport {
   position: relative;
 }
 
@@ -154,7 +221,8 @@
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  /* No scroll-behavior: smooth — it would make the paging tween's direct
+     scrollLeft writes animate natively, which Lenis' raf loop cancels. */
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   /* Vertical room so the tile hover-lift + border isn't clipped by overflow. */
@@ -162,62 +230,26 @@
 }
 .tiles::-webkit-scrollbar { display: none; }
 
-/* Three tiles per view: full width minus the two inter-tile gaps, ÷3. */
+/* Three full tiles + a 35% peek of the fourth signals more content. */
 .tiles > * {
-  flex: 0 0 calc((100% - 2 * var(--space-3)) / 3);
-  max-width: calc((100% - 2 * var(--space-3)) / 3);
+  flex: 0 0 calc((100% - 3 * var(--space-3)) / 3.35);
+  max-width: calc((100% - 3 * var(--space-3)) / 3.35);
   scroll-snap-align: start;
 }
 
-/* Edge buttons: full-height strips with no border/box — just a soft fade from
-   the slide edge into the tiles, and a green chevron. */
-.arrow {
+/* Soft fade over the peeking tile; lifts once the track reaches the end. */
+.edgeFade {
   position: absolute;
   top: 6px;
   bottom: 8px;
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  width: 92px;
-  border: none;
-  color: var(--accent);
-  cursor: pointer;
-  opacity: 0.9;
-  transition:
-    opacity var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
-}
-
-.arrowPrev {
-  left: 0;
-  justify-items: start;
-  padding-left: 10px;
-  background: linear-gradient(to right,
-    color-mix(in srgb, var(--bg) 52%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 24%, transparent) 45%,
-    transparent 100%);
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-}
-.arrowNext {
   right: 0;
-  justify-items: end;
-  padding-right: 10px;
-  background: linear-gradient(to left,
-    color-mix(in srgb, var(--bg) 52%, transparent) 0%,
-    color-mix(in srgb, var(--bg) 24%, transparent) 45%,
-    transparent 100%);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  width: 72px;
+  pointer-events: none;
+  background: linear-gradient(to right, transparent, var(--bg));
+  opacity: 1;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
-
-.slider:hover .arrow { opacity: 1; }
-.arrow:hover:not(:disabled) { color: color-mix(in srgb, var(--accent) 80%, white); }
-.arrow:disabled { opacity: 0; pointer-events: none; }
-
-.arrowIcon {
-  width: 26px;
-  height: 26px;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
-}
+.slider[data-at-end="true"] .edgeFade { opacity: 0; }
 
 .tile {
   display: flex;
@@ -238,6 +270,13 @@
 .tile:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
+}
+
+/* Tile currently shown in the hero above. */
+.tileActive,
+.tileActive:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-soft));
 }
 
 .tileMedia {
@@ -312,13 +351,13 @@
 @media (max-width: 1000px) {
   .hero { grid-template-columns: 1fr; }
   .heroMedia { aspect-ratio: 16 / 10; max-height: none; }
-  /* Two tiles per view on tablet. */
+  /* Two full tiles + a peek of the third on tablet. */
   .tiles > * {
-    flex: 0 0 calc((100% - var(--space-3)) / 2);
-    max-width: calc((100% - var(--space-3)) / 2);
+    flex: 0 0 calc((100% - 2 * var(--space-3)) / 2.35);
+    max-width: calc((100% - 2 * var(--space-3)) / 2.35);
   }
-  /* Arrows need hover; touch devices swipe instead. */
-  .arrow { display: none; }
+  /* Touch devices swipe; the peek and progress line signal overflow. */
+  .navBtn { display: none; }
 }
 
 @media (max-width: 600px) {
