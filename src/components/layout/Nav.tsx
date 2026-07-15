@@ -181,8 +181,7 @@ function NavLink({
         el.scrollIntoView({ behavior: "smooth" });
       }
     } else {
-      const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-      window.location.href = base + href;
+      window.location.href = href;
     }
     onNavigate();
   }

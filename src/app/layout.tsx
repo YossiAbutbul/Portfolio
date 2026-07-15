@@ -16,7 +16,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://yossiabutbul.github.io/Portfolio/"),
+  metadataBase: new URL("https://yossiabutbul.vercel.app/"),
   title: "Yossi Abutbul - Portfolio",
   description:
     "BSc Computer Science student at The Open University and RF & electronics integrator at Arad Technologies. I build test-automation platforms, antenna tooling, and workflow software for engineering labs.",

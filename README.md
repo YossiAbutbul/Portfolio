@@ -5,7 +5,7 @@
 Personal site. Dark editorial, ink on black, one sharp cadmium-red accent.
 Built because a résumé never quite explains what I do.
 
-**Live** → <https://yossiabutbul.github.io/Portfolio/>
+**Live** → <https://yossiabutbul.vercel.app/>
 
 ---
 
