@@ -7,7 +7,7 @@ interface Group {
 }
 
 const GROUPS: Group[] = [
-  { label: "Languages", items: ["TypeScript", "JavaScript", "Python", "C"] },
+  { label: "Languages", items: ["TypeScript", "JavaScript", "Python", "C", "C++"] },
   { label: "Frontend", items: ["React", "Next.js", "Vite", "Plotly", "Three.js", "Chart.js", "Tailwind"] },
   { label: "Backend / Data", items: ["FastAPI", "REST", "Firebase", "Firestore", "Excel parsing"] },
   { label: "Tooling", items: ["Git", "GitHub Actions", "VS Code", "Claude Code", "n8n"] },

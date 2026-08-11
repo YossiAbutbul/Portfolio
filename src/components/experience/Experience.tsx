@@ -23,10 +23,10 @@ const ITEMS: TimelineItem[] = [
     kind: "work",
     current: true,
     bullets: [
-      "Designed a React + FastAPI platform to automate RF testing over Bluetooth, integrating Power and Spectrum Analyzers for real-time measurement, analysis, and report generation — cut lab reporting time by 50%+.",
-      "Built an interactive web interface for visualizing antenna radiation patterns (2D polar + 3D surface) and RF performance metrics.",
-      "Led hardware–software bring-up of NB-IoT, CAT-M, and LoRa modules — including FEM integration and system validation via custom Python automation.",
-      "Advanced signal analysis, debugging, and optimization for LoRa, LTE, and Bluetooth systems — both software-driven and RF measurement-driven.",
+      "Designed a React + FastAPI platform automating RF tests over Bluetooth with Power and Spectrum Analyzers - cut lab reporting time by 50%+.",
+      "Built an automated load-pull test system (DC Power Analyzer, Network Analyzer, Power Sensor, motor-driven trombone tuner, Arduino-controlled RF switch on a custom 3D-printed rig) - from a 3-day manual test to ~8 minutes automated.",
+      "Built an interactive web tool for visualizing antenna radiation patterns (2D polar + 3D surface) and RF performance metrics.",
+      "Led hardware–software bring-up of NB-IoT, CAT-M, and LoRa modules with FEM integration and Python-based validation.",
     ],
   },
   {
@@ -38,7 +38,7 @@ const ITEMS: TimelineItem[] = [
     current: true,
     bullets: [
       "Coursework focus on systems programming, algorithms, and computer architecture.",
-      "Project work in C, TypeScript, and React — including a two-pass ANSI C90 assembler and a cycle-accurate pipeline-CPU simulator.",
+      "Project work in C, TypeScript, and React - including a two-pass ANSI C90 assembler and a cycle-accurate pipeline-CPU simulator.",
     ],
   },
   {
