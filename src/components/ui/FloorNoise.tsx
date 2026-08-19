@@ -6,7 +6,7 @@ import styles from "./FloorNoise.module.css";
 const VB_W = 1200;
 const VB_H = 64;
 const MID  = VB_H / 2;
-const N    = 700; // dense — high-freq aliasing creates noise appearance
+const N    = 700; // dense - high-freq aliasing creates noise appearance
 
 // [freq, amp, speed, phase]
 const COMPS: [number, number, number, number][] = [

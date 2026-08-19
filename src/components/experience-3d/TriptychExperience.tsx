@@ -34,7 +34,7 @@ export default function TriptychExperience() {
       setChapterIdx(ci);
     }
 
-    // Poll via rAF — Lenis' immediate scrolls don't always dispatch a native scroll event,
+    // Poll via rAF - Lenis' immediate scrolls don't always dispatch a native scroll event,
     // and Triptych needs to track sub-pixel progress smoothly regardless.
     function loop() {
       update();
@@ -125,7 +125,7 @@ export default function TriptychExperience() {
                 if (window.__lenis) window.__lenis.scrollTo(targetY, { duration: 1.2 });
                 else window.scrollTo({ top: targetY, behavior: "smooth" });
               }}
-              aria-label={`Jump to chapter ${c.index} — ${c.title}`}
+              aria-label={`Jump to chapter ${c.index} - ${c.title}`}
             >
               <span className={styles.railIdx}>{c.index}</span>
               <span className={styles.railTitle}>{c.title}</span>
@@ -145,6 +145,6 @@ export default function TriptychExperience() {
 }
 
 function CapturesList() {
-  /* Lightweight inline list — full bento removed to honour "not stacked sections" brief. */
+  /* Lightweight inline list - full bento removed to honour "not stacked sections" brief. */
   return null;
 }

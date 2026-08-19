@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * DevTools easter egg — logs a compact "boot" banner the first time the site
+ * DevTools easter egg - logs a compact "boot" banner the first time the site
  * is opened. Zero visible UI cost; discoverable by anyone who opens the console.
  */
 export default function BootLog() {
@@ -21,7 +21,7 @@ export default function BootLog() {
     const dimStyle = "color:#8a857c;font-family:ui-monospace,Menlo,monospace;font-size:11px";
     const lblStyle = "color:#ece7df;font-family:ui-monospace,Menlo,monospace;font-size:11px";
 
-    // Monogram — compact
+    // Monogram - compact
     // eslint-disable-next-line no-console
     console.log(
       [

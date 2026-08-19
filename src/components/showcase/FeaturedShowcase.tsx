@@ -76,7 +76,7 @@ function TileSlider({ children, count }: { children: ReactNode; count: number })
   }, []);
 
   // Native smooth scrolling is cancelled by Lenis' per-frame window scroll,
-  // and mandatory snap quantizes intermediate values — so tween scrollLeft
+  // and mandatory snap quantizes intermediate values - so tween scrollLeft
   // manually with snap disabled for the duration.
   function tweenTo(el: HTMLDivElement, target: number) {
     cancelAnimationFrame(animRef.current);
@@ -98,7 +98,7 @@ function TileSlider({ children, count }: { children: ReactNode; count: number })
     animRef.current = requestAnimationFrame(step);
   }
 
-  /** Tile width + gap — the snap grid everything aligns to. */
+  /** Tile width + gap - the snap grid everything aligns to. */
   function unitOf(el: HTMLDivElement) {
     const first = el.firstElementChild as HTMLElement | null;
     const gap = parseFloat(getComputedStyle(el).columnGap || "0") || 0;

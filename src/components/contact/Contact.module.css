@@ -134,7 +134,7 @@
   top: calc(64px + var(--space-6));
 }
 
-/* Grid overlay — both children occupy same cell so height never shifts */
+/* Grid overlay - both children occupy same cell so height never shifts */
 .formSlot {
   display: grid;
 }
@@ -219,7 +219,7 @@
 .input:-webkit-autofill:hover,
 .input:-webkit-autofill:focus,
 .input:-webkit-autofill:active {
-  /* CSS vars don't resolve in autofill box-shadow — use hardcoded token values */
+  /* CSS vars don't resolve in autofill box-shadow - use hardcoded token values */
   -webkit-box-shadow: 0 0 0px 1000px #131822 inset;
   -webkit-text-fill-color: #e2e8f0;
   caret-color: #e2e8f0;
@@ -287,7 +287,7 @@
   text-align: center;
   gap: var(--space-5);
   position: relative;
-  /* hidden by default — fades in when [data-visible] */
+  /* hidden by default - fades in when [data-visible] */
   opacity: 0;
   transform: translateY(10px);
   pointer-events: none;
@@ -352,7 +352,7 @@
   color: var(--accent);
 }
 
-/* Checkmark draws itself — stroke-dash trick */
+/* Checkmark draws itself - stroke-dash trick */
 .checkMark {
   stroke-dasharray: 28;
   stroke-dashoffset: 28;
@@ -381,7 +381,7 @@
   margin: 0;
 }
 
-/* ── Reset progress bar — drains left → right over RESET_DELAY ───────────── */
+/* ── Reset progress bar - drains left → right over RESET_DELAY ───────────── */
 .resetBar {
   position: absolute;
   bottom: 0;

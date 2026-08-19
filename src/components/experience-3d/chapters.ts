@@ -60,7 +60,7 @@ for stage in chain:
     title: "Automation Layer",
     body: "Python wrappers over vendor .NET DLLs. FastAPI servers exposing instruments to n8n. React + TS frontends so engineers stop fighting Excel. The lab speaks HTTP now.",
     codeLang: "py",
-    code: `# rf-instrument-wrappers — exposes Mini-Circuits + Agilent ENA over HTTP
+    code: `# rf-instrument-wrappers - exposes Mini-Circuits + Agilent ENA over HTTP
 @app.get("/measure/{unit_id}")
 async def measure(unit_id: str) -> Measurement:
     sensor = await PowerSensor.attach()

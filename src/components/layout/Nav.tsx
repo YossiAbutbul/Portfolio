@@ -38,7 +38,7 @@ export default function Nav() {
     //  (2) AnimatePresence with key={pathname} unmounts and remounts the page on
     //      every soft-nav, so cached element refs become stale (a detached element
     //      reports getBoundingClientRect().top = 0, which collapses the algorithm
-    //      onto the last-defined section — Contact).
+    //      onto the last-defined section - Contact).
     let raf = 0;
     let frame = 0;
     let last: string | null | undefined = undefined;
@@ -66,7 +66,7 @@ export default function Nav() {
     }
 
     function loop() {
-      // Run scroll-spy every 3rd frame (~20fps) — accurate enough, lighter on CPU
+      // Run scroll-spy every 3rd frame (~20fps) - accurate enough, lighter on CPU
       if (++frame % 3 === 0) update();
       raf = requestAnimationFrame(loop);
     }
@@ -106,7 +106,7 @@ export default function Nav() {
           <Link
             href="/"
             className={styles.monogram}
-            aria-label="Home — Yossi Abutbul"
+            aria-label="Home - Yossi Abutbul"
             onClick={(e) => {
               if (pathname === "/") {
                 e.preventDefault();

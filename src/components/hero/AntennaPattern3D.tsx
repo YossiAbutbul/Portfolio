@@ -15,7 +15,7 @@ interface TraceCfg {
   freq: number;
   /** Peak amplitude. */
   amp: number;
-  /** Group-velocity of the outgoing wavepacket — emanation speed. */
+  /** Group-velocity of the outgoing wavepacket - emanation speed. */
   speed: number;
   /** Phase offset per trace. */
   phase: number;
@@ -46,7 +46,7 @@ const TRACES: TraceCfg[] = [
 /** RF-like sample: high-frequency carrier × travelling wave-packet envelope,
  *  with an emanation ramp so amplitude is zero at the origin and grows outward. */
 function rfSample(x: number, cfg: TraceCfg, t: number): number {
-  // 0 at origin, full by ~25% of span — wave appears to leave the text.
+  // 0 at origin, full by ~25% of span - wave appears to leave the text.
   const ramp = Math.min(1, Math.max(0, (x - X_MIN) / (0.25 * (X_MAX - X_MIN))));
 
   // Travelling Gaussian wavepacket centred at u, moving right with time.
@@ -56,7 +56,7 @@ function rfSample(x: number, cfg: TraceCfg, t: number): number {
   // Slow AM modulation overlaid on top.
   const am = 0.65 + 0.35 * Math.sin(x * 0.35 - t * 0.18 + cfg.phase * 0.3);
 
-  // RF carrier — fast oscillation.
+  // RF carrier - fast oscillation.
   const carrier = Math.sin(x * cfg.freq + cfg.phase - t * cfg.speed * 1.2);
 
   // Tiny analog jitter.
@@ -111,7 +111,7 @@ function TraceField() {
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     if (groupRef.current) {
-      // Very slow drift — barely moves.
+      // Very slow drift - barely moves.
       groupRef.current.rotation.y = -0.05 + Math.sin(t * 0.03) * 0.08;
       groupRef.current.rotation.x = -0.25 + Math.sin(t * 0.025) * 0.04;
     }

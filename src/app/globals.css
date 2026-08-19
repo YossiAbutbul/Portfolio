@@ -34,7 +34,7 @@ body {
   transition: color var(--dur-med) var(--ease-out), background-color var(--dur-med) var(--ease-out);
 }
 
-/* Film-grain overlay — keeps it human, anti-AI feel. Theme-aware blend. */
+/* Film-grain overlay - keeps it human, anti-AI feel. Theme-aware blend. */
 body::before {
   content: "";
   position: fixed;

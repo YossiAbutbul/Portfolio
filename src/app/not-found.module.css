@@ -19,7 +19,7 @@
   padding: var(--space-9) 0 var(--space-8);
 }
 
-/* Staggered entrance — same pattern as hero copy */
+/* Staggered entrance - same pattern as hero copy */
 .inner > * {
   opacity: 0;
   transform: translateY(16px);
@@ -56,7 +56,7 @@
   color: var(--fg);
 }
 
-/* The zero — accent colour + gentle idle drift */
+/* The zero - accent colour + gentle idle drift */
 .zero {
   color: var(--accent);
   display: inline-block;

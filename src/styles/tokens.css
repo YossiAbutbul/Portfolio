@@ -1,8 +1,8 @@
-/* Design tokens — grayscale + near-black surfaces, acid-lime accent. */
+/* Design tokens - grayscale + near-black surfaces, acid-lime accent. */
 
 :root,
 [data-theme="dark"] {
-  /* Variant 10 — Ayu Dark. Orange-yellow accent on deep navy. */
+  /* Variant 10 - Ayu Dark. Orange-yellow accent on deep navy. */
   --bg: #0a0e14;
   --bg-soft: #0d1117;
   --bg-elevated: #131822;

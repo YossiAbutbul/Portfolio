@@ -30,7 +30,7 @@ export default function About() {
             </p>
             <p data-reveal data-reveal-delay="2">
               I design <strong>test-automation platforms</strong>,
-              antenna-pattern tooling, and workflow software &mdash; pairing
+              antenna-pattern tooling, and workflow software, pairing
               system-level thinking with low-level hands-on.
             </p>
             <p data-reveal data-reveal-delay="3">

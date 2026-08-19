@@ -21,7 +21,7 @@ export default function ProjectCard({ project, marker }: { project: Project; mar
     : { href: detailHref };
 
   // Split off the last word so we can glue it to the external arrow with a
-  // non-breaking space — keeps "Positioner ↗" together when the title wraps.
+  // non-breaking space - keeps "Positioner ↗" together when the title wraps.
   const titleText = project.title;
   const lastSpace = titleText.lastIndexOf(" ");
   const head = lastSpace >= 0 ? titleText.slice(0, lastSpace + 1) : "";

@@ -35,12 +35,12 @@ export default function LiveCountStat({
     function loop(now: number, t0: number) {
       const elapsed = now - t0;
       if (elapsed < introMs) {
-        // Phase 1 — ramp 0 → base, ease-out-cubic
+        // Phase 1 - ramp 0 → base, ease-out-cubic
         const p = elapsed / introMs;
         const eased = 1 - Math.pow(1 - p, 3);
         setN(Math.floor(base * eased));
       } else {
-        // Phase 2 — live tick from base
+        // Phase 2 - live tick from base
         const liveSec = (elapsed - introMs) / 1000;
         setN(base + Math.floor(liveSec * ratePerSecond));
       }

@@ -57,7 +57,7 @@ export default function ImageSlider({
 
   const dotIdx = canLoop ? ((trackIdx - 1) % total + total) % total : trackIdx;
 
-  // Drag refs — no React state, DOM mutations only → zero re-renders during drag
+  // Drag refs - no React state, DOM mutations only → zero re-renders during drag
   const isDragging = useRef(false);
   const startX = useRef(0);
   const startY = useRef(0);
@@ -102,7 +102,7 @@ export default function ImageSlider({
   }, []);
 
   // When the CSS transition ends on a clone, jump to the real counterpart.
-  // Guard: only the track's own transform transition — ignore bubbled child events.
+  // Guard: only the track's own transform transition - ignore bubbled child events.
   const handleTransitionEnd = useCallback((e: React.TransitionEvent<HTMLDivElement>) => {
     if (e.target !== trackRef.current) return;
     if (e.propertyName !== "transform") return;
@@ -221,7 +221,7 @@ export default function ImageSlider({
     isDragging.current = false;
     const delta = e.clientX - startX.current;
 
-    // Clear inline override — let React-controlled style take over
+    // Clear inline override - let React-controlled style take over
     if (trackRef.current) {
       trackRef.current.style.transition = "";
       trackRef.current.style.transform = "";

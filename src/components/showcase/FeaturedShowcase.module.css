@@ -171,7 +171,7 @@
 }
 
 /* Bare chevrons flanking the track, vertically centered on the artwork.
-   No chrome — just the glyph. Hidden at an exhausted end. */
+   No chrome - just the glyph. Hidden at an exhausted end. */
 .navBtn {
   position: absolute;
   top: 50%;
@@ -202,7 +202,7 @@
 .navPrev:hover:not(:disabled) .arrowIcon { transform: translateX(-3px); }
 .navNext:hover:not(:disabled) .arrowIcon { transform: translateX(3px); }
 
-/* Not enough gutter to sit outside the container — tuck inside the track
+/* Not enough gutter to sit outside the container - tuck inside the track
    edges with a shadow for legibility over artwork. */
 @media (max-width: 1380px) {
   .navPrev { left: 0; }
@@ -221,7 +221,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  /* No scroll-behavior: smooth — it would make the paging tween's direct
+  /* No scroll-behavior: smooth - it would make the paging tween's direct
      scrollLeft writes animate natively, which Lenis' raf loop cancels. */
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;

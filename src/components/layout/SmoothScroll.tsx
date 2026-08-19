@@ -24,14 +24,14 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     const isProject = pathname.startsWith("/projects/");
     const hash = window.location.hash; // e.g. "#showcase"
 
-    // Always strip the hash from the URL — sections are reached by scroll, not URL fragment.
+    // Always strip the hash from the URL - sections are reached by scroll, not URL fragment.
     if (hash) history.replaceState(null, "", window.location.pathname);
 
     // Resolve the scroll target. Order of priority:
-    //  1) sessionStorage["__navTarget"] — set by the back link on click. This
+    //  1) sessionStorage["__navTarget"] - set by the back link on click. This
     //     survives React StrictMode's double-effect (the first run can't strip
     //     it from a future second run) and the URL-hash being cleared above.
-    //  2) URL hash — for direct/external entries to e.g. "/#showcase".
+    //  2) URL hash - for direct/external entries to e.g. "/#showcase".
     let targetId: string | null = null;
     try { targetId = sessionStorage.getItem("__navTarget"); } catch {}
     if (!targetId && hash && !isProject) targetId = hash.replace(/^#/, "");
@@ -125,7 +125,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (prefersReducedMotion()) return;
 
-    // Force scroll to top on hard reload — browsers restore the previous
+    // Force scroll to top on hard reload - browsers restore the previous
     // scroll position by default which fights the hero entrance.
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     window.scrollTo(0, 0);
@@ -155,7 +155,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       if (!target) return;
       const href = target.getAttribute("href");
       if (!href || href === "#") return;
-      // Extract hash — accept "#section" or "/#section"
+      // Extract hash - accept "#section" or "/#section"
       const hash = href.startsWith("/#") ? href.slice(1) : href.startsWith("#") ? href : null;
       if (!hash) return;
       const dest = document.querySelector(hash);

@@ -1,4 +1,4 @@
-# Yossi Abutbul — portfolio
+# Yossi Abutbul portfolio
 
 > _Building software where signals meet code._
 
@@ -12,7 +12,7 @@ Built because a résumé never quite explains what I do.
 ## What's inside
 
 - A hero that morphs its serif with your pointer
-- Projects — software, hardware, embedded, and the gap between
+- Projects: software, hardware, embedded, and the gap between
 - A timeline that dims everything you're not reading
 - A Contents rail on long writeups that rides the prose
 - A cursor that leaves a small red comet behind

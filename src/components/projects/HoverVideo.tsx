@@ -16,13 +16,13 @@ export default function HoverVideo({ src, active, onAspect }: Props) {
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    // Touch devices can't hover — always play there.
+    // Touch devices can't hover - always play there.
     const isTouch =
       typeof window !== "undefined" &&
       window.matchMedia("(hover: none)").matches;
     if (active || isTouch) {
       v.play().catch(() => {
-        /* autoplay can fail before any user gesture — ignore */
+        /* autoplay can fail before any user gesture - ignore */
       });
     } else {
       v.pause();

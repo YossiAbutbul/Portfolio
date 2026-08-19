@@ -27,7 +27,7 @@ export interface Project {
   wip?: boolean;
   /** Whether a /projects/[slug] case study page exists (MDX written). When false, cards link to first external href. */
   noCase?: boolean;
-  /** RF "frequency" in MHz — used as x-position on the spectrum hero peak. Roughly tied to project domain. */
+  /** RF "frequency" in MHz - used as x-position on the spectrum hero peak. Roughly tied to project domain. */
   frequency: number;
   /** Peak amplitude in dB (relative). Higher = taller peak in hero. */
   amplitude: number;

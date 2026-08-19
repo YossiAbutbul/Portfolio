@@ -175,7 +175,7 @@ export default function HeroTerminal() {
         <span className={styles.dotR} />
         <span className={styles.dotY} />
         <span className={styles.dotG} />
-        <span className={styles.title}>~/portfolio — yossi</span>
+        <span className={styles.title}>~/portfolio - yossi</span>
       </header>
 
       <pre className={styles.body} ref={bodyRef}>

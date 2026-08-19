@@ -20,7 +20,7 @@ const LINKS: LinkRow[] = [
 
 const RESET_DELAY = 5000; // ms before form reappears after success
 
-// ── Inner form — isolated so `key` remount resets useForm state ──────────────
+// ── Inner form - isolated so `key` remount resets useForm state ──────────────
 function ContactForm({
   hidden,
   onSuccess,
@@ -144,18 +144,18 @@ export default function Contact() {
             ))}
           </ul>
 
-          {/* Right: form / success — grid overlay keeps height stable */}
+          {/* Right: form / success - grid overlay keeps height stable */}
           <div className={styles.right} data-reveal data-reveal-delay="2">
             <div className={styles.formSlot}>
 
-              {/* Form — key remount resets useForm between sends */}
+              {/* Form - key remount resets useForm between sends */}
               <ContactForm
                 key={attempt}
                 hidden={showSuccess}
                 onSuccess={handleSuccess}
               />
 
-              {/* Success — fades in, RF signal ripple */}
+              {/* Success - fades in, RF signal ripple */}
               <div
                 className={styles.success}
                 data-visible={showSuccess ? "" : undefined}

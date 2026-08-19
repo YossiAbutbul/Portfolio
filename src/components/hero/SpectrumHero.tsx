@@ -78,7 +78,7 @@ export default function SpectrumHero() {
   }, []);
 
   // Compute trace samples (deterministic peaks + animated noise floor).
-  // Skip on SSR pass — Node and V8 transcendentals (sin/cos) diverge by a few ulp,
+  // Skip on SSR pass - Node and V8 transcendentals (sin/cos) diverge by a few ulp,
   // which triggers hydration mismatch on the SVG path string.
   const trace: Sample[] = useMemo(() => {
     if (!mounted) return [];
@@ -89,7 +89,7 @@ export default function SpectrumHero() {
       const t = i / (SAMPLES - 1);
       const fLog = logMin + t * (logMax - logMin);
       const f = Math.pow(10, fLog);
-      // Deterministic pseudo-random noise floor (~ -85 +/- 4 dB). No Math.random — SSR-stable.
+      // Deterministic pseudo-random noise floor (~ -85 +/- 4 dB). No Math.random - SSR-stable.
       const seed = i * 0.37 + tick * 0.13;
       const noise = -85
         + Math.sin(seed * 2.7) * 1.5
@@ -182,7 +182,7 @@ export default function SpectrumHero() {
           <header className={styles.instrumentHead}>
             <span className={styles.lcdRow}>
               <span className={styles.lcdKey}>SPAN</span>
-              <span className={styles.lcdVal}>10 MHz &mdash; 10 GHz</span>
+              <span className={styles.lcdVal}>10 MHz &ndash; 10 GHz</span>
             </span>
             <span className={styles.lcdRow}>
               <span className={styles.lcdKey}>RBW</span>
@@ -311,7 +311,7 @@ export default function SpectrumHero() {
                   style={{ left: `calc(${xPct}% * (100% / 100%))`, "--xpct": `${xPct}%` } as React.CSSProperties}
                   onMouseEnter={() => setHovered(p.slug)}
                   onMouseLeave={() => setHovered(null)}
-                  aria-label={`${markerLabel} — ${p.title} at ${formatFreq(p.frequency)}`}
+                  aria-label={`${markerLabel} - ${p.title} at ${formatFreq(p.frequency)}`}
                 >
                   <span className={styles.peakLinkLabel}>
                     [{markerLabel}] {p.title}

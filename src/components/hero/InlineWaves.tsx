@@ -8,7 +8,7 @@ const VB_H = 40;
 const N = 110;
 
 interface Build {
-  /** "in" — amp grows toward right (meets-side); "out" — amp grows toward left. */
+  /** "in" - amp grows toward right (meets-side); "out" - amp grows toward left. */
   direction: "in" | "out";
   /** Carrier freq cycles across the span. */
   freq: number;
@@ -27,7 +27,7 @@ function buildPath(t: number, cfg: Build): string {
     const x = u * VB_W;
 
     // Bell envelope peaks in middle, tapers to 0 at both ends so the wave
-    // collapses onto the center line at both ends — clean connection to the
+    // collapses onto the center line at both ends - clean connection to the
     // outer word AND to the MEETS pill.
     const bell = Math.sin(u * Math.PI);
     // Slight bias toward the meets-side so the "in" wave reads as entering

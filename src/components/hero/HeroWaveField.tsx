@@ -31,9 +31,9 @@ function buildPath(t: number, c: Trace): string {
   for (let i = 0; i < N; i++) {
     const u = i / (N - 1);                              // 0 → 1
     const x = u * VB_W;
-    // Emanation ramp — amp = 0 at left edge (text origin), grows outward.
+    // Emanation ramp - amp = 0 at left edge (text origin), grows outward.
     const ramp = Math.min(1, Math.max(0, (u - 0.04) / 0.20));
-    // Travelling Gaussian wavepacket — gives the "wave leaving the text" feel.
+    // Travelling Gaussian wavepacket - gives the "wave leaving the text" feel.
     const u0 = ((t * c.speed * 0.18) % 1.6) - 0.3;
     const packet = Math.exp(-Math.pow((u - u0) * 2.6, 2));
     // Slow AM envelope.

@@ -16,33 +16,33 @@ interface TimelineItem {
 
 const ITEMS: TimelineItem[] = [
   {
-    period: "May 2020 — Present",
-    year: "2020 —",
+    period: "May 2020 – Present",
+    year: "2020 –",
     org: "Arad Technologies",
     role: "RF & Electronics Integrator",
     kind: "work",
     current: true,
     bullets: [
-      "Designed a React + FastAPI platform automating RF tests over Bluetooth with Power and Spectrum Analyzers - cut lab reporting time by 50%+.",
-      "Built an automated load-pull test system (DC Power Analyzer, Network Analyzer, Power Sensor, motor-driven trombone tuner, Arduino-controlled RF switch on a custom 3D-printed rig) - from a 3-day manual test to ~8 minutes automated.",
+      "Designed a React + FastAPI platform automating RF tests over Bluetooth with Power and Spectrum Analyzers; cut lab reporting time by 50%+.",
+      "Built an automated load-pull test system (DC Power Analyzer, Network Analyzer, Power Sensor, motor-driven trombone tuner, Arduino-controlled RF switch on a custom 3D-printed rig): from a 3-day manual test to ~8 minutes automated.",
       "Built an interactive web tool for visualizing antenna radiation patterns (2D polar + 3D surface) and RF performance metrics.",
       "Led hardware–software bring-up of NB-IoT, CAT-M, and LoRa modules with FEM integration and Python-based validation.",
     ],
   },
   {
-    period: "Oct 2022 — Present",
-    year: "2022 —",
+    period: "Oct 2022 – Present",
+    year: "2022 –",
     org: "The Open University of Israel",
     role: "BSc Computer Science",
     kind: "education",
     current: true,
     bullets: [
       "Coursework focus on systems programming, algorithms, and computer architecture.",
-      "Project work in C, TypeScript, and React - including a two-pass ANSI C90 assembler and a cycle-accurate pipeline-CPU simulator.",
+      "Project work in C, TypeScript, and React, including a two-pass ANSI C90 assembler and a cycle-accurate pipeline-CPU simulator.",
     ],
   },
   {
-    period: "Apr 2017 — Dec 2019",
+    period: "Apr 2017 – Dec 2019",
     year: "2017 – 19",
     org: "IDF · Intelligence Corps · Unit 81",
     role: "Operational Project Leader · RF Technician",
