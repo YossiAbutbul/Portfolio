@@ -58,13 +58,13 @@ export const PROJECTS: Project[] = [
       },
       {
         src: "/projects/toast-turn/home.png",
-        alt: "Home screen: this week it's Maya, with the toaster lever and the queue along the bottom",
+        alt: "Home screen: this week it's Yossi, with the toaster lever and the queue along the bottom",
         width: 780,
         height: 1688,
       },
       {
         src: "/projects/toast-turn/logged.png",
-        alt: "After the lever is pulled, Maya's turn is logged and Alon is up next",
+        alt: "After the lever is pulled, Yossi's turn is logged and Alon is up next",
         width: 780,
         height: 1688,
       },
