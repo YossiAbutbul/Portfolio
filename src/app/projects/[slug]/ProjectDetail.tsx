@@ -21,17 +21,20 @@ export default function ProjectDetail({ project }: { project: Project }) {
     <article className={styles.page}>
       <div className="container">
 
-        {/* ── Header ── */}
         <header className={styles.header}>
+          <div className={styles.caseMeta}>
+            <span>CASE STUDY / {String(currentIdx + 1).padStart(2, "0")}</span>
+            <span>{project.year}</span>
+            <span>{project.band}</span>
+          </div>
           <h1 className={styles.title}>{project.title}</h1>
+          <p className={styles.headerSummary}>{project.summary}</p>
         </header>
 
-        {/* ── Full-width media ── */}
         <div className={styles.mediaWide}>
           <ProjectMedia project={project} />
         </div>
 
-        {/* ── Body: overview + sticky sidebar ── */}
         <div className={styles.body}>
           <div className={styles.content}>
             <section className={styles.section}>
@@ -98,13 +101,12 @@ export default function ProjectDetail({ project }: { project: Project }) {
           </aside>
         </div>
 
-        {/* ── Project nav ── */}
         {(prevProject || nextProject) && (
           <nav className={styles.projectNav} aria-label="Other featured projects">
             <div className={styles.navSlot}>
               {prevProject && (
                 <Link href={`/projects/${prevProject.slug}/`} className={styles.navLink}>
-                  <span className={styles.navDir}>← Prev</span>
+                  <span className={styles.navDir}>← Previous case</span>
                   <span className={styles.navTitle}>{prevProject.title}</span>
                 </Link>
               )}
@@ -112,7 +114,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
             <div className={`${styles.navSlot} ${styles.navSlotRight}`}>
               {nextProject && (
                 <Link href={`/projects/${nextProject.slug}/`} className={styles.navLink}>
-                  <span className={styles.navDir}>Next →</span>
+                  <span className={styles.navDir}>Next case →</span>
                   <span className={styles.navTitle}>{nextProject.title}</span>
                 </Link>
               )}

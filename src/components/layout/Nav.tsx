@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./Nav.module.css";
 
@@ -24,6 +24,8 @@ const LINKS: NavLink[] = [
 export default function Nav() {
   const [active, setActive] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const isProject = pathname.startsWith("/projects/");
 
@@ -76,12 +78,40 @@ export default function Nav() {
 
   useEffect(() => {
     if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.__lenis?.stop();
+
+    const focusable = menuRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
+    requestAnimationFrame(() => focusable?.[0]?.focus());
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      window.__lenis?.start();
+      menuButtonRef.current?.focus();
+    };
   }, [open]);
+
+  useEffect(() => setOpen(false), [pathname]);
 
   return (
     <header className={styles.nav}>
@@ -90,14 +120,7 @@ export default function Nav() {
           <Link
             href="/"
             className={styles.backLink}
-            aria-label="Back to Projects"
-            onClick={() => {
-              try {
-                sessionStorage.setItem("__navTarget", "showcase");
-                // Saved scroll for "/" would otherwise override the target.
-                sessionStorage.removeItem("scroll:/");
-              } catch {}
-            }}
+            aria-label="Back to portfolio"
           >
             <span className={styles.backArrow} aria-hidden="true">←</span>
             Back
@@ -124,9 +147,12 @@ export default function Nav() {
 
         <div className={styles.right}>
           <nav
+            ref={menuRef}
             id="primary-nav"
             className={`${styles.navWrap} ${open ? styles.navWrapOpen : ""}`}
             aria-label="Primary"
+            aria-hidden={!open}
+            inert={!open}
           >
             <ul className={styles.links}>
               {LINKS.map((l) => (
@@ -143,6 +169,7 @@ export default function Nav() {
           </nav>
 
           <button
+            ref={menuButtonRef}
             className={styles.menuBtn}
             type="button"
             aria-expanded={open}
@@ -171,28 +198,28 @@ function NavLink({
   onNavigate: () => void;
 }) {
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
-    e.preventDefault();
     const id = href.replace(/^\/?#/, "");
     const el = document.getElementById(id);
     if (el) {
+      e.preventDefault();
       if (window.__lenis) {
-        window.__lenis.scrollTo(el, { offset: -16, duration: 1.4 });
+        window.__lenis.scrollTo(el, { offset: -16, duration: 1.05 });
       } else {
         el.scrollIntoView({ behavior: "smooth" });
       }
     } else {
-      window.location.href = href;
+      try { sessionStorage.setItem("__navTarget", id); } catch {}
     }
     onNavigate();
   }
 
   return (
-    <a
+    <Link
       href={href}
       className={`${styles.link} ${active ? styles.linkActive : ""}`}
       onClick={handleClick}
     >
       <span className={styles.linkText}>{label}</span>
-    </a>
+    </Link>
   );
 }

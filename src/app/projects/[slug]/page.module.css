@@ -1,13 +1,44 @@
 /* ── Page shell ─────────────────────────────────────────────────────────── */
 .page {
-  padding: var(--space-8) 0 var(--space-9);
+  min-height: 100svh;
+  padding: 0 0 var(--space-9);
+  background:
+    radial-gradient(circle at 72% 12%, rgba(75, 141, 255, 0.12), transparent 30rem),
+    var(--bg);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .header {
-  margin-bottom: var(--space-5);
+  min-height: min(76svh, 52rem);
+  padding: 8rem 0 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-bottom: 1px solid var(--hairline-strong);
 }
 
+.caseMeta {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 2rem;
+  margin-bottom: clamp(3rem, 8vw, 7rem);
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--hairline-strong);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.11em;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+}
+
+.headerSummary {
+  align-self: flex-end;
+  max-width: 38rem;
+  margin: clamp(2rem, 4vw, 4rem) 0 0;
+  font-size: clamp(1rem, 1.45vw, 1.35rem);
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
 
 .metaChip {
   font-family: var(--font-mono);
@@ -54,12 +85,14 @@
 }
 
 .title {
-  font-size: var(--step-5);
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.0;
+  max-width: 13ch;
+  font-size: clamp(4rem, 10vw, 10rem);
+  font-weight: 760;
+  letter-spacing: -0.075em;
+  line-height: 0.82;
   color: var(--fg);
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  text-transform: uppercase;
 }
 
 .tags {
@@ -84,7 +117,9 @@
 
 /* ── Full-width media ───────────────────────────────────────────────────── */
 .mediaWide {
-  margin-bottom: var(--space-7);
+  margin: 0 calc(50% - 50vw) clamp(6rem, 10vw, 10rem);
+  padding: clamp(1.25rem, 3vw, 3rem);
+  background: #03070c;
 }
 
 .mediaWrap {
@@ -99,10 +134,10 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   background: var(--bg-sunken);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   overflow: hidden;
   border: 1px solid var(--hairline);
-  box-shadow: var(--shadow-2);
+  box-shadow: none;
 }
 
 .video,
@@ -163,7 +198,7 @@
 .body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
-  gap: var(--space-6);
+  gap: clamp(3rem, 8vw, 8rem);
   align-items: start;
   margin-bottom: var(--space-7);
 }
@@ -230,7 +265,7 @@
   gap: var(--space-5);
   background: var(--bg-soft);
   border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   padding: var(--space-5);
   position: sticky;
   top: calc(64px + var(--space-4));
@@ -292,7 +327,7 @@
   font-family: var(--font-mono);
   font-size: 0.7rem;
   padding: 3px 9px;
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--hairline-strong);
   color: var(--fg);
   background: var(--bg-elevated);
@@ -311,7 +346,7 @@
   align-items: center;
   justify-content: center;
   padding: 10px 16px;
-  border-radius: 999px;
+  border-radius: 0;
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -340,7 +375,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
-  padding-top: var(--space-5);
+  margin-top: clamp(5rem, 10vw, 10rem);
+  padding-top: clamp(2rem, 4vw, 4rem);
   border-top: 1px solid var(--hairline);
 }
 
@@ -370,8 +406,11 @@
 }
 
 .navTitle {
-  font-size: var(--step-0);
-  font-weight: 500;
+  max-width: 14ch;
+  font-size: clamp(1.6rem, 3vw, 3rem);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.04em;
   color: var(--fg);
   transition: color var(--dur-fast) var(--ease-out);
 }
@@ -391,8 +430,12 @@
 }
 
 @media (max-width: 600px) {
-  .page { padding: var(--space-8) 0 var(--space-8); }
-  .title { font-size: var(--step-4); }
+  .page { padding-bottom: var(--space-8); }
+  .header { min-height: 72svh; padding-top: 7rem; }
+  .caseMeta { grid-template-columns: 1fr auto; gap: 1rem; }
+  .caseMeta span:last-child { display: none; }
+  .title { font-size: clamp(3.5rem, 17vw, 6rem); }
+  .headerSummary { align-self: flex-start; }
   .paragraph { font-size: var(--step-0); }
   .projectNav { grid-template-columns: 1fr; }
   .navSlotRight { text-align: left; }

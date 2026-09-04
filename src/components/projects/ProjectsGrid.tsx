@@ -24,7 +24,7 @@ export default function ProjectsGrid() {
       <div className="container">
         <div className={styles.bento}>
           {visible.map((p, i) => (
-            <div key={p.slug} className={styles.cell} data-size={sizeFor(p)}>
+            <div key={p.slug} className={styles.cell} data-size={sizeFor(p)} data-motion-item="project">
               <ProjectCard project={p} marker={`P${(i + 1).toString().padStart(2, "0")}`} />
             </div>
           ))}

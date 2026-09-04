@@ -100,6 +100,7 @@ export default function Experience() {
               key={i}
               ref={(el) => { itemRefs.current[i] = el; }}
               className={styles.item}
+              data-motion-item="timeline"
               data-reveal
               data-reveal-delay={(((i % 3) + 1)).toString()}
             >

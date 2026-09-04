@@ -120,7 +120,7 @@ function TileSlider({ children, count }: { children: ReactNode; count: number })
   }
 
   return (
-    <div className={styles.slider} data-at-end={atEnd ? "true" : undefined}>
+    <div className={styles.slider} data-at-end={atEnd ? "true" : undefined} data-motion-group="project-rail">
       <div className={styles.sliderHead}>
         <span className={styles.sliderLabel}>
           All projects · {String(count).padStart(2, "0")}
@@ -174,7 +174,7 @@ function Chevron({ dir }: { dir: "left" | "right" }) {
 
 function HeroCard({ project }: { project: Project }) {
   return (
-    <article className={styles.hero} key={project.slug}>
+    <article className={styles.hero} key={project.slug} data-motion-group="featured-card">
       <div className={styles.heroMedia}>
         <Media project={project} contain playing />
         <span className={styles.heroBadge}>FEATURED</span>

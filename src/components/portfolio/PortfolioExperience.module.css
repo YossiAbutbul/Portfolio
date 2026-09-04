@@ -1,0 +1,1215 @@
+.page {
+  --black: #050910;
+  --black-soft: #08111a;
+  --black-lift: #0a141f;
+  --white: #eaf3f1;
+  --grey: #80939b;
+  --green: #55f2a4;
+  --blue: #4b8dff;
+  --line: rgba(205, 231, 238, 0.15);
+
+  /* Gutter: one horizontal rhythm for every section. */
+  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+  /* Vertical rhythm: one section-spacing scale. */
+  --section-pad: clamp(6rem, 11vw, 11rem);
+
+  color: var(--white);
+  background: var(--black);
+  isolation: isolate;
+}
+
+.page h1,
+.page h2,
+.page h3 {
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+}
+
+.hero,
+.statement,
+.work,
+.experience,
+.stack,
+.contact {
+  position: relative;
+  width: 100%;
+}
+
+.grid,
+.storyGrid {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(14.2857% - 1px), rgba(239, 239, 232, 0.16) calc(14.2857% - 1px) 14.2857%);
+}
+
+/* Line-reveal mask. Headlines run at line-height < 1, so the line box is
+   shorter than the glyphs; the padding keeps ascenders and descenders inside
+   the clip, and the negative margin gives the original line spacing back. */
+.reveal {
+  display: block;
+  overflow: hidden;
+  padding: 0.16em 0.05em 0.14em;
+  margin-block: -0.15em;
+}
+
+.reveal > span {
+  display: block;
+  will-change: transform;
+}
+
+.sectionBar,
+.heroTop {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-family: var(--font-mono);
+  font-size: clamp(0.62rem, 0.7vw, 0.76rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.sectionBar {
+  padding-bottom: 1rem;
+  color: var(--grey);
+  border-bottom: 1px solid var(--line);
+}
+
+.hero {
+  height: 100svh;
+  min-height: 40rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 52%, rgba(75, 141, 255, 0.1), transparent 30rem),
+    #040910;
+}
+
+/* One flow container instead of four absolutely-placed islands. */
+.heroInner {
+  position: relative;
+  z-index: 12;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: 7.5rem var(--gutter) 4rem;
+}
+
+.storyLayer video,
+.storyLayer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.heroShade {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 48%, transparent 0 13rem, rgba(0, 0, 0, 0.08) 25rem, rgba(0, 0, 0, 0.32));
+}
+
+/* Ambient ground line. Sits below the name so it never reads as a strike
+   through the title. */
+.scope {
+  position: absolute;
+  z-index: 2;
+  right: -5%;
+  bottom: 3%;
+  left: -5%;
+  height: 20%;
+  overflow: visible;
+  opacity: 0.38;
+  mix-blend-mode: screen;
+}
+
+.scopeLine {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.5;
+  stroke-dasharray: 9 4;
+  stroke-dashoffset: 0;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 6px rgba(85, 242, 164, 0.4));
+}
+
+.heroTop {
+  align-self: start;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--grey);
+}
+
+/* The name owns the optical centre; everything else hangs off it. */
+.heroMain {
+  align-self: center;
+  display: grid;
+  gap: clamp(1.75rem, 3.5vh, 3rem);
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: clamp(3.6rem, 12.5vw, 12rem);
+  font-weight: 760;
+  line-height: 0.78;
+  letter-spacing: -0.055em;
+}
+
+.heroLede {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem clamp(2rem, 4vw, 3.5rem);
+  max-width: 52rem;
+}
+
+.heroLede p {
+  margin: 0;
+  max-width: 30rem;
+  font-size: clamp(0.95rem, 1.15vw, 1.15rem);
+  line-height: 1.5;
+  color: rgba(234, 243, 241, 0.72);
+}
+
+.heroCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5rem;
+  padding: 0.85rem 1.1rem;
+  border: 1px solid var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  color: var(--black);
+  background: var(--green);
+  transition: color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.heroCta:hover,
+.heroCta:focus-visible {
+  color: var(--green);
+  background: transparent;
+}
+
+.heroCta span {
+  transition: transform 200ms var(--ease-out);
+}
+
+.heroCta:hover span {
+  transform: translateY(0.2rem);
+}
+
+.statement {
+  padding: var(--section-pad) var(--gutter);
+  display: grid;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(75, 141, 255, 0.07), transparent 32rem),
+    var(--black-soft);
+}
+
+/* Left-aligned like every other section title - one alignment system, not three. */
+.statementTitle {
+  position: relative;
+  z-index: 8;
+  margin: clamp(3.5rem, 8vw, 7rem) 0 clamp(2.5rem, 5vw, 4rem);
+  font-size: clamp(2rem, 6.1vw, 6.6rem);
+  font-weight: 760;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.statementTitle em,
+.experience h2 em {
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+}
+
+.floatShape {
+  position: absolute;
+  z-index: 4;
+  overflow: hidden;
+  border: 1px solid rgba(239, 239, 232, 0.22);
+  background: rgba(239, 239, 232, 0.025);
+  will-change: transform;
+}
+
+.floatShape span {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--green);
+}
+
+.floatShape i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(239, 239, 232, 0.22);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.floatShape i::before,
+.floatShape i::after {
+  position: absolute;
+  inset: 20% -12%;
+  border: 1px solid rgba(85, 242, 164, 0.5);
+  border-radius: 50%;
+  content: "";
+}
+
+.floatShape i::after {
+  transform: rotate(90deg);
+}
+
+.floatOne {
+  top: 14%;
+  right: 6%;
+  width: clamp(9rem, 18vw, 20rem);
+  aspect-ratio: 1.5;
+}
+
+.floatTwo {
+  top: 52%;
+  right: 24%;
+  width: clamp(10rem, 20vw, 23rem);
+  aspect-ratio: 0.82;
+}
+
+.floatThree {
+  bottom: 6%;
+  left: 6%;
+  width: clamp(8rem, 14vw, 16rem);
+  aspect-ratio: 1;
+}
+
+.statementCopy {
+  position: relative;
+  z-index: 8;
+  justify-self: end;
+  width: min(34rem, 52vw);
+  margin: 0;
+  font-size: clamp(1rem, 1.35vw, 1.3rem);
+  line-height: 1.5;
+  color: var(--grey);
+}
+
+.work {
+  background: #040910;
+}
+
+/* Reads as a section opener in normal flow. It used to be a 100svh sticky
+   panel that pinned the title to the floor and then faded out under the
+   stage, which made it feel like it vanished the moment you arrived. */
+.workHeader {
+  position: relative;
+  z-index: 3;
+  padding: var(--section-pad) var(--gutter) clamp(3rem, 6vw, 6rem);
+  background: #040910;
+}
+
+.workHeaderRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(1.5rem, 4vw, 4rem);
+  margin-top: clamp(2.5rem, 5vw, 5rem);
+}
+
+.workHeader h2 {
+  margin: 0;
+  font-size: clamp(2rem, 5.3vw, 5.8rem);
+  font-weight: 760;
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+}
+
+.workHeaderRow p {
+  margin: 0;
+  max-width: 34ch;
+  font-size: clamp(0.95rem, 1.15vw, 1.15rem);
+  line-height: 1.55;
+  color: var(--grey);
+}
+
+.storyStage {
+  position: relative;
+  z-index: 2;
+  height: 100svh;
+  min-height: 42rem;
+  overflow: hidden;
+  background: var(--black);
+}
+
+.storyGrid {
+  opacity: 0.46;
+}
+
+.storyLabel {
+  position: absolute;
+  z-index: 20;
+  top: 7.2rem;
+  left: 4.8%;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--grey);
+}
+
+.storyMedia {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  right: var(--gutter);
+  left: 31%;
+  aspect-ratio: 16 / 9;
+  max-height: 74svh;
+  overflow: hidden;
+  background: #0b1119;
+  border: 1px solid var(--line);
+  transform: translateY(-50%);
+}
+
+.storyLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  will-change: transform, opacity, clip-path, filter;
+}
+
+.storyLayer::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(145deg, transparent 55%, rgba(75, 141, 255, 0.18));
+}
+
+.storyLayer video,
+.storyLayer img {
+  object-fit: cover;
+  object-position: center top;
+  filter: saturate(0.92) contrast(1.03);
+}
+
+.mediaFallback {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  background:
+    repeating-radial-gradient(circle, transparent 0 2.8rem, rgba(85, 242, 164, 0.14) 2.85rem 2.9rem),
+    #070b08;
+}
+
+.mediaFallback strong {
+  font-size: clamp(4rem, 8vw, 8rem);
+  line-height: 1;
+  color: var(--green);
+}
+
+.mediaFallback span {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--grey);
+}
+
+.storyCopies {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+}
+
+/* One reading column: index -> title -> summary -> actions, top to bottom. */
+.storyCopy {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(29%, 26rem);
+  display: grid;
+  align-content: center;
+  gap: clamp(1rem, 1.6vw, 1.6rem);
+  padding: 6rem 0 4rem var(--gutter);
+  will-change: transform, opacity;
+}
+
+.storyEyebrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.09em;
+  color: var(--grey);
+}
+
+.storyCopy h3 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3vw, 3.6rem);
+  font-weight: 760;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  text-wrap: balance;
+}
+
+.storyCopy > p {
+  margin: 0;
+  font-size: clamp(0.86rem, 1vw, 1.05rem);
+  line-height: 1.55;
+  color: var(--grey);
+}
+
+.projectLinks {
+  display: flex;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+  pointer-events: auto;
+}
+
+.projectLinks a {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  transition: background 180ms ease, color 180ms ease;
+}
+
+.projectLinks a:first-child {
+  color: var(--black);
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.projectLinks a:hover {
+  color: var(--black);
+  background: var(--white);
+}
+
+.storyMarkers {
+  position: absolute;
+  z-index: 20;
+  right: 4.8%;
+  bottom: 4%;
+  display: flex;
+  gap: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--green);
+}
+
+.storyProgress {
+  position: absolute;
+  z-index: 20;
+  top: 22%;
+  bottom: 22%;
+  left: calc(var(--gutter) - 1.25rem);
+  width: 1px;
+  background: rgba(239, 239, 232, 0.14);
+}
+
+.storyProgressFill,
+.careerProgress {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--green);
+  transform: scaleY(0);
+  transform-origin: top;
+  will-change: transform;
+}
+
+.mobileProjects {
+  display: none;
+}
+
+.experience {
+  padding: var(--section-pad) var(--gutter);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 65% 40%, rgba(75, 141, 255, 0.1), transparent 32rem),
+    var(--black-soft);
+}
+
+.experience > h2 {
+  margin: clamp(3rem, 6vw, 6rem) 0 clamp(3.5rem, 7vw, 7rem);
+  font-size: clamp(2.2rem, 7.4vw, 8rem);
+  font-weight: 760;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.careerWrap {
+  position: relative;
+  padding-left: clamp(1.75rem, 3.5vw, 3.5rem);
+}
+
+.careerRail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: rgba(239, 239, 232, 0.12);
+}
+
+.careerList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Ledger rows: the date is the anchor, set as display type rather than a
+   mono footnote, with a marker tying each entry back to the rail. */
+.careerRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.5fr) minmax(0, 1.5fr);
+  gap: clamp(1.25rem, 3vw, 3.5rem);
+  padding: clamp(2rem, 3.5vw, 3.25rem) clamp(1.25rem, 2.5vw, 2.5rem);
+  border-top: 1px solid var(--line);
+  background: transparent;
+  transition: background 240ms var(--ease-out);
+  will-change: transform, opacity;
+}
+
+.careerRow:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.careerRow:hover {
+  background: rgba(239, 239, 232, 0.03);
+}
+
+/* Marker on the rail. */
+.careerRow::before {
+  position: absolute;
+  top: clamp(2.35rem, 3.9vw, 3.6rem);
+  left: calc(clamp(1.75rem, 3.5vw, 3.5rem) * -1 - 4px);
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--green);
+  border-radius: 50%;
+  background: var(--black-soft);
+  content: "";
+}
+
+.careerMeta {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+}
+
+.careerKind {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--green);
+}
+
+.careerYears {
+  font-size: clamp(1.5rem, 2.6vw, 2.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  color: var(--white);
+  font-variant-numeric: tabular-nums;
+}
+
+.careerBody {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 62ch;
+}
+
+.careerBody h3 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2vw, 2.1rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.careerPlace {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.63rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.careerDetail {
+  margin: 0.35rem 0 0;
+  color: var(--grey);
+  line-height: 1.6;
+}
+
+/* Quiet index, out of the reading path. */
+.careerNum {
+  position: absolute;
+  top: clamp(1.75rem, 3vw, 2.75rem);
+  right: clamp(0.75rem, 2vw, 2rem);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(239, 239, 232, 0.28);
+}
+
+.stack {
+  min-height: 100svh;
+  padding: var(--section-pad) 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--white);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(85, 242, 164, 0.09), transparent 32rem),
+    var(--black-soft);
+}
+
+.stackBar {
+  margin: 0 var(--gutter) auto;
+  color: var(--grey);
+  border-color: var(--line);
+}
+
+.core {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  width: min(34vw, 30rem);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(85, 242, 164, 0.4);
+  border-radius: 50%;
+  color: rgba(85, 242, 164, 0.85);
+  background: radial-gradient(circle, rgba(85, 242, 164, 0.09), transparent 70%);
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+.core::before,
+.core::after,
+.coreRing {
+  position: absolute;
+  border: 1px solid rgba(85, 242, 164, 0.24);
+  border-radius: 50%;
+  content: "";
+}
+
+.core::before { inset: 9%; border-style: dashed; }
+.core::after { inset: 23%; border-width: 2px; }
+.coreRing:nth-child(1) { width: 108%; height: 34%; transform: rotate(25deg); }
+.coreRing:nth-child(2) { width: 108%; height: 34%; transform: rotate(85deg); }
+.coreRing:nth-child(3) { width: 108%; height: 34%; transform: rotate(145deg); }
+
+.core strong {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 1;
+  letter-spacing: -0.1em;
+}
+
+.core small {
+  position: absolute;
+  bottom: 20%;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+}
+
+.marqueeField {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  gap: 0.5rem;
+  margin-block: auto;
+  transform: rotate(-2deg) scale(1.04);
+}
+
+.marqueeRow {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.marqueeRow span {
+  display: inline-flex;
+  align-items: center;
+  font-size: clamp(4rem, 8vw, 9rem);
+  font-weight: 760;
+  line-height: 0.8;
+  letter-spacing: -0.07em;
+  text-transform: uppercase;
+}
+
+.marqueeRow i {
+  margin-inline: 0.34em;
+  font-family: Georgia, serif;
+  font-size: 0.28em;
+  font-style: normal;
+}
+
+.marqueeRow .outlineText {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--green);
+}
+
+.contact {
+  min-height: 100svh;
+  padding: var(--section-pad) var(--gutter) 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  color: var(--white);
+  background:
+    linear-gradient(135deg, rgba(85, 242, 164, 0.07), transparent 46%),
+    var(--black-lift);
+}
+
+.contact .sectionBar {
+  color: var(--grey);
+  border-color: var(--line);
+}
+
+.contactPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  gap: clamp(2.5rem, 6vw, 6rem);
+  align-items: start;
+  margin-block: clamp(3rem, 6vw, 6rem);
+}
+
+.contactIndex {
+  display: block;
+  margin-bottom: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--grey);
+}
+
+.contactIntro h2 {
+  margin: 0;
+  font-size: clamp(2.2rem, 5.4vw, 5.8rem);
+  font-weight: 790;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.contactIntro > p {
+  max-width: 34ch;
+  margin: 1.75rem 0 2.5rem;
+  font-size: clamp(1rem, 1.25vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--grey);
+}
+
+/* Direct-contact links: each one is an explicit, labelled row rather than a
+   run of small arrows, so what you get is obvious before you click. */
+.contactLinks {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.contactLink,
+.contactLinkPrimary {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 1rem;
+  border-bottom: 1px solid var(--line);
+  transition: background 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+.contactLinkPrimary {
+  color: var(--green);
+}
+
+.contactLink:hover,
+.contactLink:focus-visible,
+.contactLinkPrimary:hover,
+.contactLinkPrimary:focus-visible {
+  color: var(--black);
+  background: var(--green);
+}
+
+.contactLinkLabel {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--grey);
+}
+
+.contactLink:hover .contactLinkLabel,
+.contactLink:focus-visible .contactLinkLabel,
+.contactLinkPrimary:hover .contactLinkLabel,
+.contactLinkPrimary:focus-visible .contactLinkLabel {
+  color: rgba(5, 9, 16, 0.7);
+}
+
+.contactLinkValue {
+  font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.contactLinkArrow {
+  font-size: 0.9rem;
+  transition: transform 200ms var(--ease-out);
+}
+
+.contactLink:hover .contactLinkArrow,
+.contactLinkPrimary:hover .contactLinkArrow {
+  transform: translate(0.2rem, -0.2rem);
+}
+
+/* ---- Form ---- */
+
+.contactForm {
+  display: grid;
+  gap: 1.1rem;
+  align-self: stretch;
+  padding: clamp(1.5rem, 2.5vw, 2.25rem);
+  border: 1px solid var(--line);
+  color: var(--white);
+  background: var(--black);
+}
+
+.formTitle {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.formField {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.formField > label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--grey);
+}
+
+.contactForm input,
+.contactForm textarea {
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  resize: vertical;
+  border: 1px solid rgba(239, 239, 232, 0.16);
+  outline: 0;
+  color: var(--white);
+  background: rgba(239, 239, 232, 0.04);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.45;
+  transition: border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+
+.contactForm textarea {
+  min-height: 8rem;
+}
+
+.contactForm input:hover,
+.contactForm textarea:hover {
+  border-color: rgba(239, 239, 232, 0.3);
+}
+
+.contactForm input:focus,
+.contactForm textarea:focus {
+  border-color: var(--green);
+  background: rgba(85, 242, 164, 0.06);
+}
+
+.contactForm input::placeholder,
+.contactForm textarea::placeholder {
+  color: #5d6672;
+}
+
+/* Chrome/Safari paint autofilled fields with their own opaque yellow-white.
+   Only an inset shadow can cover it, and the text colour needs -webkit-text-fill-color. */
+.contactForm input:-webkit-autofill,
+.contactForm input:-webkit-autofill:hover,
+.contactForm input:-webkit-autofill:focus,
+.contactForm input:-webkit-autofill:active,
+.contactForm textarea:-webkit-autofill,
+.contactForm textarea:-webkit-autofill:hover,
+.contactForm textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--white);
+  -webkit-box-shadow: 0 0 0 100vw #0b1119 inset;
+  box-shadow: 0 0 0 100vw #0b1119 inset;
+  caret-color: var(--white);
+  border-color: rgba(239, 239, 232, 0.16);
+  /* Belt and braces: outlast the UA's own background transition. */
+  transition: background-color 100000s ease-in-out 0s, border-color 180ms var(--ease-out);
+}
+
+.contactForm input:-webkit-autofill:focus,
+.contactForm textarea:-webkit-autofill:focus {
+  border-color: var(--green);
+}
+
+/* Firefox */
+.contactForm input:autofill,
+.contactForm textarea:autofill {
+  color: var(--white);
+  box-shadow: 0 0 0 100vw #0b1119 inset;
+}
+
+.contactForm button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--green);
+  color: var(--black);
+  background: var(--green);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: color 200ms var(--ease-out), background 200ms var(--ease-out);
+}
+
+.contactForm button:hover:not(:disabled),
+.contactForm button:focus-visible:not(:disabled) {
+  color: var(--green);
+  background: transparent;
+}
+
+.contactForm button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.formError {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #ff8b8b;
+}
+
+.formSuccess {
+  align-content: center;
+  min-height: 24rem;
+  gap: 0.8rem;
+}
+
+.formSuccess > span {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--green);
+}
+
+.formSuccess strong {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.formSuccess p {
+  margin: 0;
+  color: var(--grey);
+}
+
+.contactFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.copyright {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: var(--grey);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Static project list: mobile, and the reduced-motion desktop fallback. */
+.mobileProject {
+  display: grid;
+  gap: 1.2rem;
+  padding: clamp(2.5rem, 5vw, 4rem) 0;
+  border-top: 1px solid var(--line);
+}
+
+.mobileProject:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.mobileProjectMeta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  color: var(--grey);
+}
+
+.mobileProjectMedia,
+.mobileMediaFallback {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: #0b1119;
+}
+
+.mobileMediaFallback {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  color: var(--green);
+}
+
+.mobileProject h3 {
+  margin: 0;
+  max-width: 16ch;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 760;
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+}
+
+.mobileProject > p {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--grey);
+  line-height: 1.55;
+}
+
+.mobileProject .projectLinks {
+  justify-content: flex-start;
+}
+
+.mobileProject .projectLinks a {
+  flex: 0 1 12rem;
+}
+
+@media (max-width: 900px) {
+  .statementCopy { width: min(32rem, 70vw); margin-right: 0; }
+  .storyMedia { top: 16%; left: var(--gutter); width: calc(100% - var(--gutter) * 2); transform: none; }
+  .storyCopy { top: auto; bottom: 0; width: calc(100% - var(--gutter) * 2); height: 46%; align-content: end; padding: 0 0 4.5rem var(--gutter); }
+  .storyCopy h3 { font-size: clamp(1.8rem, 5vw, 2.8rem); }
+  .storyProgress { display: none; }
+  .contactPanel { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .workHeaderRow {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .storyStage {
+    display: none;
+  }
+
+  .mobileProjects {
+    display: grid;
+    padding: 0 var(--gutter) var(--section-pad);
+    background: var(--black);
+  }
+}
+
+@media (max-width: 640px) {
+  .grid,
+  .storyGrid { background-image: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(239, 239, 232, 0.12) calc(25% - 1px) 25%); }
+  .hero { min-height: 38rem; }
+  .heroInner { padding-top: 6rem; }
+  .heroTop span:nth-child(2) { display: none; }
+  .heroTitle { font-size: clamp(3.2rem, 19vw, 6rem); line-height: 0.82; }
+  .heroLede { gap: 1.25rem; }
+  .heroCta { width: 100%; justify-content: space-between; }
+  .statementTitle { font-size: clamp(1.9rem, 9.5vw, 3.6rem); }
+  .floatTwo { right: -8%; }
+  .floatThree { left: 2%; }
+  .statementCopy { width: 100%; }
+  .careerWrap { padding-left: 1.1rem; }
+  .careerRow { grid-template-columns: 1fr; gap: 1.25rem; padding-inline: 0.75rem; }
+  .experience > h2 { font-size: 11vw; }
+  .core { width: 70vw; }
+  .marqueeRow span { font-size: 16vw; }
+  .contactIntro h2 { font-size: 12vw; }
+  .contactLink,
+  .contactLinkPrimary { grid-template-columns: 5rem minmax(0, 1fr) auto; padding-inline: 0.5rem; }
+  .contactFooter { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal > span,
+  .floatShape,
+  .storyLayer,
+  .storyCopy,
+  .marqueeRow,
+  .core { transform: none !important; opacity: 1 !important; filter: none !important; clip-path: none !important; }
+
+  /* The pinned stage is scroll-driven, so with motion off it can only ever
+     show one project. Fall back to the static list at every width instead. */
+  .storyStage { display: none; }
+  .mobileProjects { display: grid; padding: 0 var(--gutter) var(--section-pad); background: var(--black); }
+}

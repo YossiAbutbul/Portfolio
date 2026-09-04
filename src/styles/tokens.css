@@ -1,21 +1,21 @@
-/* Design tokens - grayscale + near-black surfaces, acid-lime accent. */
+/* Design tokens - deep navy, cool white, cobalt, and mint. */
 
 :root,
 [data-theme="dark"] {
   /* Variant 10 - Ayu Dark. Orange-yellow accent on deep navy. */
-  --bg: #0a0e14;
-  --bg-soft: #0d1117;
-  --bg-elevated: #131822;
-  --bg-sunken: #060910;
+  --bg: #050910;
+  --bg-soft: #08111a;
+  --bg-elevated: #101b27;
+  --bg-sunken: #03070c;
 
-  --fg: #bfbdb6;
-  --fg-muted: #626a73;
-  --fg-dim: #3d4453;
+  --fg: #dce9e7;
+  --fg-muted: #80939b;
+  --fg-dim: #425563;
 
-  --accent: #2bbd4f;
-  --accent-soft: rgba(43, 189, 79, 0.16);
-  --accent-strong: #4dd66c;
-  --accent-dim: #1a8a37;
+  --accent: #55f2a4;
+  --accent-soft: rgba(85, 242, 164, 0.16);
+  --accent-strong: #86ffc1;
+  --accent-dim: #20a86b;
 
   --hairline: rgba(191, 189, 182, 0.07);
   --hairline-strong: rgba(191, 189, 182, 0.2);

@@ -24,7 +24,7 @@ export default function Stack() {
 
         <div className={styles.grid}>
           {GROUPS.map((g, i) => (
-            <div key={g.label} className={styles.group} data-reveal data-reveal-delay={(((i % 5) + 1)).toString()}>
+            <div key={g.label} className={styles.group} data-motion-item="stack" data-reveal data-reveal-delay={(((i % 5) + 1)).toString()}>
               <h3 className={styles.groupLabel}>{g.label}</h3>
               <ul className={styles.chips}>
                 {g.items.map((s) => (

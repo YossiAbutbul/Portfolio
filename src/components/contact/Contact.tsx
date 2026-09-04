@@ -107,7 +107,7 @@ export default function Contact() {
         <div id="contact-label">
           <SectionLabel index="05">Contact</SectionLabel>
         </div>
-        <div className={styles.header}>
+        <div className={styles.header} data-motion-group="contact-header">
           <h2 className={styles.headline} data-reveal data-reveal-delay="1">
             Get in <em>touch</em>.
           </h2>
@@ -121,7 +121,7 @@ export default function Contact() {
         <div className={styles.grid}>
 
           {/* Left: links */}
-          <ul className={styles.list}>
+          <ul className={styles.list} data-motion-group="contact-links">
             {LINKS.map((l, i) => (
               <li
                 key={l.label}
@@ -145,7 +145,7 @@ export default function Contact() {
           </ul>
 
           {/* Right: form / success - grid overlay keeps height stable */}
-          <div className={styles.right} data-reveal data-reveal-delay="2">
+          <div className={styles.right} data-motion-group="contact-form" data-reveal data-reveal-delay="2">
             <div className={styles.formSlot}>
 
               {/* Form - key remount resets useForm between sends */}

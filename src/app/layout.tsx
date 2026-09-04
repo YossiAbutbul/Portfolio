@@ -6,7 +6,6 @@ import "./globals.css";
 import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
-import BackToTop from "@/components/ui/BackToTop";
 import PageTransition from "@/components/layout/PageTransition";
 
 const jetbrains = JetBrains_Mono({
@@ -55,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a1614",
+  themeColor: "#050910",
 };
 
 export default function RootLayout({
@@ -75,7 +74,6 @@ export default function RootLayout({
             <PageTransition>{children}</PageTransition>
           </main>
         </SmoothScroll>
-        <BackToTop />
       </body>
     </html>
   );

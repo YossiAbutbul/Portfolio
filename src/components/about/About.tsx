@@ -23,7 +23,7 @@ export default function About() {
         </div>
 
         <div className={styles.grid}>
-          <div className={styles.prose}>
+          <div className={styles.prose} data-motion-group="about-copy">
             <p className={styles.lead} data-reveal data-reveal-delay="1">
               BSc Computer Science student at The Open University, building
               software for <strong>RF and embedded systems</strong>.
@@ -38,7 +38,7 @@ export default function About() {
             </p>
           </div>
 
-          <aside className={styles.side} aria-label="Quick stats">
+          <aside className={styles.side} aria-label="Quick stats" data-motion-group="about-stats">
             <ul className={styles.stats} data-reveal data-reveal-delay="2">
               {STATS.map((s) => (
                 <CountUpStat key={s.label} value={s.value} unit={s.unit} label={s.label} />
