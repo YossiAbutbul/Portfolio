@@ -317,7 +317,7 @@
 .workHeader {
   position: relative;
   z-index: 3;
-  padding: var(--section-pad) var(--gutter) clamp(3rem, 6vw, 6rem);
+  padding: clamp(5rem, 8vw, 8rem) var(--gutter) clamp(2.5rem, 4vw, 4rem);
   background: #040910;
 }
 
@@ -358,56 +358,80 @@
   opacity: 0.46;
 }
 
-.storyLabel {
+/* Named index across the top: gives the empty band above the media something
+   to say, and doubles as the position indicator. */
+.storyIndex {
   position: absolute;
   z-index: 20;
-  top: 7.2rem;
-  left: 4.8%;
+  top: 5rem;
+  right: var(--gutter);
+  left: var(--gutter);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
   font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  color: var(--grey);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+
+.storyIndex span {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  will-change: opacity;
+}
+
+.storyIndex i {
+  font-style: normal;
+  color: var(--green);
 }
 
 .storyMedia {
   position: absolute;
   z-index: 6;
-  top: 50%;
+  top: auto;
+  bottom: 3.5svh;
   right: var(--gutter);
-  left: 31%;
-  aspect-ratio: 16 / 9;
-  max-height: 74svh;
-  overflow: hidden;
-  background: #0b1119;
-  border: 1px solid var(--line);
-  transform: translateY(-50%);
+  left: var(--gutter);
+  height: 63svh;
+  transform: none;
 }
 
 .storyLayer {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  display: grid;
+  place-items: center;
   will-change: transform, opacity, clip-path, filter;
 }
 
-.storyLayer::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-  background: linear-gradient(145deg, transparent 55%, rgba(75, 141, 255, 0.18));
-}
-
+/* Intrinsic size, scaled down to fit. Never cropped, and never upscaled past
+   the source resolution (the assets are 1280px wide). */
+/* Absolute cap rather than a percentage: the layers are absolutely
+   positioned, and `max-height: 100%` does not reliably clamp a replaced
+   element inside them. Scaled down on whichever axis binds first, so the
+   source aspect ratio always survives. */
 .storyLayer video,
 .storyLayer img {
-  object-fit: cover;
-  object-position: center top;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 63svh;
+  border: 1px solid var(--line);
+  background: #0b1119;
   filter: saturate(0.92) contrast(1.03);
 }
 
 .mediaFallback {
   width: 100%;
   height: 100%;
+  aspect-ratio: 16 / 9;
   display: grid;
   place-content: center;
   gap: 0.5rem;
@@ -437,26 +461,26 @@
   pointer-events: none;
 }
 
-/* One reading column: index -> title -> summary -> actions, top to bottom. */
+/* Header bar across the top of the stage. The scrim is what makes text over a
+   screenshot readable, so it carries most of the contrast. */
 .storyCopy {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: min(29%, 26rem);
+  inset: 0 0 auto 0;
   display: grid;
-  align-content: center;
-  gap: clamp(1rem, 1.6vw, 1.6rem);
-  padding: 6rem 0 4rem var(--gutter);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.1fr) auto;
+  align-items: start;
+  column-gap: clamp(1.5rem, 3.5vw, 3.5rem);
+  row-gap: 1.1rem;
+  padding: 7.2rem var(--gutter) 1.5rem;
   will-change: transform, opacity;
 }
 
 .storyEyebrow {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.8rem;
-  border-bottom: 1px solid var(--line);
+  gap: 1.75rem;
+  align-self: center;
   font-family: var(--font-mono);
   font-size: 0.62rem;
   letter-spacing: 0.09em;
@@ -464,8 +488,10 @@
 }
 
 .storyCopy h3 {
+  grid-column: 1;
+  grid-row: 2;
   margin: 0;
-  font-size: clamp(1.9rem, 3vw, 3.6rem);
+  font-size: clamp(1.7rem, 2.9vw, 3.2rem);
   font-weight: 760;
   line-height: 0.9;
   letter-spacing: -0.05em;
@@ -473,17 +499,58 @@
 }
 
 .storyCopy > p {
+  grid-column: 2;
+  grid-row: 2;
   margin: 0;
+  max-width: 46ch;
   font-size: clamp(0.86rem, 1vw, 1.05rem);
   line-height: 1.55;
-  color: var(--grey);
+  color: rgba(234, 243, 241, 0.78);
+}
+
+.storyStack {
+  grid-column: 2 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.storyStack li {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(205, 231, 238, 0.22);
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(234, 243, 241, 0.72);
 }
 
 .projectLinks {
+  grid-column: 3;
+  grid-row: 2;
   display: flex;
+  align-items: flex-start;
   gap: 0.55rem;
-  margin-top: 0.5rem;
   pointer-events: auto;
+}
+
+.storyCopy::after {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  height: 1px;
+  margin-top: 0.4rem;
+  background: rgba(205, 231, 238, 0.18);
+  content: "";
+}
+
+.projectLinks a {
+  flex: 0 0 auto;
+  min-width: 8.5rem;
+  white-space: nowrap;
 }
 
 .projectLinks a {
@@ -510,29 +577,16 @@
   background: var(--white);
 }
 
-.storyMarkers {
-  position: absolute;
-  z-index: 20;
-  right: 4.8%;
-  bottom: 4%;
-  display: flex;
-  gap: 0.7rem;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--green);
-}
-
 .storyProgress {
   position: absolute;
   z-index: 20;
-  top: 22%;
-  bottom: 22%;
-  left: calc(var(--gutter) - 1.25rem);
-  width: 1px;
+  top: 7.1rem;
+  right: var(--gutter);
+  left: var(--gutter);
+  height: 1px;
   background: rgba(239, 239, 232, 0.14);
 }
 
-.storyProgressFill,
 .careerProgress {
   display: block;
   width: 100%;
@@ -540,6 +594,16 @@
   background: var(--green);
   transform: scaleY(0);
   transform-origin: top;
+  will-change: transform;
+}
+
+.storyProgressFill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left;
   will-change: transform;
 }
 
@@ -788,7 +852,7 @@
 
 .contact {
   min-height: 100svh;
-  padding: var(--section-pad) var(--gutter) 2rem;
+  padding: clamp(5rem, 8vw, 8rem) var(--gutter) 2rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -806,20 +870,15 @@
 
 .contactPanel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   gap: clamp(2.5rem, 6vw, 6rem);
   align-items: start;
-  margin-block: clamp(3rem, 6vw, 6rem);
+  margin-block: clamp(2.5rem, 5vw, 5rem) clamp(3rem, 5vw, 5rem);
 }
 
-.contactIndex {
-  display: block;
-  margin-bottom: 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--grey);
+.contactIntro {
+  display: grid;
+  align-content: start;
 }
 
 .contactIntro h2 {
@@ -830,77 +889,75 @@
   letter-spacing: -0.06em;
 }
 
-.contactIntro > p {
+.contactLede {
   max-width: 34ch;
-  margin: 1.75rem 0 2.5rem;
+  margin: 1.5rem 0 clamp(2.5rem, 5vw, 4rem);
   font-size: clamp(1rem, 1.25vw, 1.2rem);
   line-height: 1.55;
   color: var(--grey);
 }
 
-/* Direct-contact links: each one is an explicit, labelled row rather than a
-   run of small arrows, so what you get is obvious before you click. */
-.contactLinks {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  border-top: 1px solid var(--line);
+/* The one thing this section is for. Everything else here is secondary. */
+.emailLink {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--green);
+  font-size: clamp(1.15rem, 2.6vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  overflow-wrap: anywhere;
+  transition: color 200ms var(--ease-out), border-color 200ms var(--ease-out);
 }
 
-.contactLink,
-.contactLinkPrimary {
-  display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.15rem 1rem;
-  border-bottom: 1px solid var(--line);
-  transition: background 200ms var(--ease-out), color 200ms var(--ease-out);
-}
-
-.contactLinkPrimary {
+.emailLink:hover,
+.emailLink:focus-visible {
   color: var(--green);
 }
 
-.contactLink:hover,
-.contactLink:focus-visible,
-.contactLinkPrimary:hover,
-.contactLinkPrimary:focus-visible {
+.emailArrow {
+  flex: none;
+  font-size: 0.62em;
+  color: var(--green);
+  transition: transform 220ms var(--ease-out);
+}
+
+.emailLink:hover .emailArrow {
+  transform: translate(0.25rem, -0.25rem);
+}
+
+.socialRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.socialRow a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--grey);
+  transition: color 180ms var(--ease-out), border-color 180ms var(--ease-out), background 180ms var(--ease-out);
+}
+
+.socialRow a:hover,
+.socialRow a:focus-visible {
   color: var(--black);
   background: var(--green);
-}
-
-.contactLinkLabel {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--grey);
-}
-
-.contactLink:hover .contactLinkLabel,
-.contactLink:focus-visible .contactLinkLabel,
-.contactLinkPrimary:hover .contactLinkLabel,
-.contactLinkPrimary:focus-visible .contactLinkLabel {
-  color: rgba(5, 9, 16, 0.7);
-}
-
-.contactLinkValue {
-  font-size: clamp(0.95rem, 1.2vw, 1.15rem);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.contactLinkArrow {
-  font-size: 0.9rem;
-  transition: transform 200ms var(--ease-out);
-}
-
-.contactLink:hover .contactLinkArrow,
-.contactLinkPrimary:hover .contactLinkArrow {
-  transform: translate(0.2rem, -0.2rem);
+  border-color: var(--green);
 }
 
 /* ---- Form ---- */
@@ -1111,11 +1168,17 @@
   color: var(--grey);
 }
 
-.mobileProjectMedia,
+.mobileProjectMedia {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  background: #0b1119;
+}
+
 .mobileMediaFallback {
   width: 100%;
   aspect-ratio: 16 / 9;
-  object-fit: contain;
   background: #0b1119;
 }
 
@@ -1152,10 +1215,16 @@
 
 @media (max-width: 900px) {
   .statementCopy { width: min(32rem, 70vw); margin-right: 0; }
-  .storyMedia { top: 16%; left: var(--gutter); width: calc(100% - var(--gutter) * 2); transform: none; }
-  .storyCopy { top: auto; bottom: 0; width: calc(100% - var(--gutter) * 2); height: 46%; align-content: end; padding: 0 0 4.5rem var(--gutter); }
-  .storyCopy h3 { font-size: clamp(1.8rem, 5vw, 2.8rem); }
-  .storyProgress { display: none; }
+  .storyIndex span:not(:first-child) { display: none; }
+  .storyMedia { bottom: 3svh; height: 46svh; }
+  .storyLayer video, .storyLayer img { max-height: 46svh; }
+  .storyCopy { grid-template-columns: 1fr; row-gap: 0.6rem; padding: 7rem var(--gutter) 1rem; }
+  .storyEyebrow { grid-column: 1; grid-row: 1; }
+  .storyStack { display: none; }
+  .storyCopy h3 { grid-column: 1; grid-row: 2; font-size: clamp(1.6rem, 5vw, 2.4rem); }
+  .storyCopy > p { grid-column: 1; grid-row: 3; }
+  .projectLinks { grid-column: 1; grid-row: 4; }
+  .storyCopy::after { display: none; }
   .contactPanel { grid-template-columns: 1fr; }
 }
 
@@ -1195,8 +1264,8 @@
   .core { width: 70vw; }
   .marqueeRow span { font-size: 16vw; }
   .contactIntro h2 { font-size: 12vw; }
-  .contactLink,
-  .contactLinkPrimary { grid-template-columns: 5rem minmax(0, 1fr) auto; padding-inline: 0.5rem; }
+  .emailLink { font-size: clamp(1.05rem, 5.4vw, 1.6rem); }
+  .socialRow a { flex: 1 1 auto; justify-content: space-between; }
   .contactFooter { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
 }
 

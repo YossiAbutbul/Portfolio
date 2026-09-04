@@ -1,19 +1,27 @@
 /* ── Page shell ─────────────────────────────────────────────────────────── */
 .page {
+  /* Same horizontal rhythm and accent as the homepage, so a case study does
+     not read as a different site. */
+  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+  --section-pad: clamp(6rem, 11vw, 11rem);
+
   min-height: 100svh;
-  padding: 0 0 var(--space-9);
+  padding: 0 0 var(--section-pad);
   background:
-    radial-gradient(circle at 72% 12%, rgba(75, 141, 255, 0.12), transparent 30rem),
+    radial-gradient(circle at 68% 10%, rgba(85, 242, 164, 0.08), transparent 32rem),
     var(--bg);
+}
+
+.page :global(.container) {
+  max-width: none;
+  padding-inline: var(--gutter);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .header {
-  min-height: min(76svh, 52rem);
-  padding: 8rem 0 4rem;
+  padding: 9rem 0 clamp(2.5rem, 5vw, 4rem);
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   border-bottom: 1px solid var(--hairline-strong);
 }
 
@@ -21,7 +29,7 @@
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 2rem;
-  margin-bottom: clamp(3rem, 8vw, 7rem);
+  margin-bottom: clamp(2.5rem, 5vw, 4.5rem);
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--hairline-strong);
   font-family: var(--font-mono);
@@ -32,9 +40,8 @@
 }
 
 .headerSummary {
-  align-self: flex-end;
-  max-width: 38rem;
-  margin: clamp(2rem, 4vw, 4rem) 0 0;
+  max-width: 46ch;
+  margin: clamp(1.5rem, 2.5vw, 2.5rem) 0 0;
   font-size: clamp(1rem, 1.45vw, 1.35rem);
   line-height: 1.5;
   color: var(--fg-muted);
@@ -42,8 +49,8 @@
 
 .metaChip {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--accent);
 }
@@ -85,11 +92,10 @@
 }
 
 .title {
-  max-width: 13ch;
-  font-size: clamp(4rem, 10vw, 10rem);
+  font-size: clamp(2.4rem, 6.6vw, 7rem);
   font-weight: 760;
-  letter-spacing: -0.075em;
-  line-height: 0.82;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
   color: var(--fg);
   margin: 0;
   text-transform: uppercase;
@@ -107,7 +113,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   padding: 3px 8px;
-  border-radius: 3px;
+  border-radius: 0;
   border: 1px solid transparent;
 }
 
@@ -128,31 +134,41 @@
   gap: var(--space-3);
 }
 
+/* Bounding box, not a frame. Assets range from 1280x672 landscape to
+   780x1688 portrait, so a fixed 16/9 frame either crops them or shows bars
+   inside a visible border. The box is transparent and the media carries its
+   own edge, at its own aspect ratio. */
+/* The wrapper shrink-wraps the media instead of imposing a shape on it.
+   Assets range from 1280x672 landscape to 780x1688 portrait, so a fixed
+   16/9 frame either cropped them or showed bars inside a visible border.
+   Both caps are on the media itself, so the browser scales it down on
+   whichever axis binds first and the aspect ratio is always preserved. */
 .videoFrame,
 .imageFrame {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  background: var(--bg-sunken);
-  border-radius: 0;
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  box-shadow: none;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+  border: 0;
 }
 
 .video,
 .mainImage {
   display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(72svh, 40rem);
+  border: 1px solid var(--hairline);
+  background: var(--bg-sunken);
 }
 
 .mediaPlaceholder {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   border: 1px solid var(--hairline);
   background:
     radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
@@ -182,7 +198,7 @@
 .thumb {
   flex: 0 0 120px;
   height: 72px;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   border: 1px solid var(--hairline);
   overflow: hidden;
   background: var(--bg-sunken);
@@ -190,7 +206,7 @@
   padding: 0;
   transition: border-color var(--dur-fast) var(--ease-out);
 }
-.thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .thumb:hover { border-color: var(--fg-muted); }
 .thumbActive { border-color: var(--accent) !important; }
 
@@ -424,7 +440,10 @@
   .sidebar {
     position: static;
   }
-  .videoFrame, .imageFrame, .mediaPlaceholder {
+  .video, .mainImage {
+    max-height: min(58svh, 30rem);
+  }
+  .mediaPlaceholder {
     aspect-ratio: 16 / 10;
   }
 }

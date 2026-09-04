@@ -53,6 +53,13 @@ const STACK_ROWS = [
   ["WebGL", "Firestore", "C", "Hardware Integration"],
 ];
 
+/** Some projects carry a placeholder band ("n/a"); never surface that. */
+function bandLabel(project: Project): string | null {
+  const band = project.band?.trim();
+  if (!band || /^(n\/a|na|tbd|-)$/i.test(band)) return null;
+  return band;
+}
+
 export default function PortfolioExperience() {
   const root = useRef<HTMLDivElement>(null);
   const activeProjectRef = useRef(0);
@@ -173,7 +180,7 @@ export default function PortfolioExperience() {
         }
 
         gsap.to(`.${styles.storyProgressFill}`, {
-          scaleY: 1,
+          scaleX: 1,
           ease: "none",
           scrollTrigger: {
             trigger: `.${styles.storyStage}`,
@@ -293,7 +300,14 @@ export default function PortfolioExperience() {
 
         <div className={styles.storyStage}>
           <div className={styles.storyGrid} aria-hidden="true" />
-          <div className={styles.storyLabel}>PROJECT INDEX</div>
+          <div className={styles.storyIndex} aria-hidden="true">
+            {projects.map((project, index) => (
+              <span key={project.slug} data-story-marker>
+                <i>{String(index + 1).padStart(2, "0")}</i>
+                {project.title}
+              </span>
+            ))}
+          </div>
           <div className={styles.storyMedia}>
             {projects.map((project, index) => (
               <div key={project.slug} className={styles.storyLayer} data-story-layer aria-hidden={index !== activeProject}>
@@ -310,15 +324,15 @@ export default function PortfolioExperience() {
                 aria-hidden={index !== activeProject}
                 inert={index !== activeProject}
               >
-                <div className={styles.storyEyebrow}><span>{String(index + 1).padStart(2, "0")}</span><span>{project.year}</span><span>{project.band}</span></div>
+                <div className={styles.storyEyebrow}><span>{String(index + 1).padStart(2, "0")}</span><span>{project.year}</span>{bandLabel(project) && <span>{bandLabel(project)}</span>}</div>
                 <h3>{project.title}</h3>
                 <p>{project.summary}</p>
+                <ul className={styles.storyStack}>
+                  {project.stack.slice(0, 5).map((item) => <li key={item}>{item}</li>)}
+                </ul>
                 <ProjectLinks project={project} />
               </article>
             ))}
-          </div>
-          <div className={styles.storyMarkers} aria-hidden="true">
-            {projects.map((project, index) => <span key={project.slug} data-story-marker>{String(index + 1).padStart(2, "0")}</span>)}
           </div>
           <div className={styles.storyProgress} aria-hidden="true"><span className={styles.storyProgressFill} /></div>
         </div>
@@ -326,7 +340,7 @@ export default function PortfolioExperience() {
         <div className={styles.mobileProjects} aria-label="Selected project list">
           {projects.map((project, index) => (
             <article key={project.slug} className={styles.mobileProject} data-mobile-project>
-              <div className={styles.mobileProjectMeta}><span>{String(index + 1).padStart(2, "0")}</span><span>{project.year}</span><span>{project.band}</span></div>
+              <div className={styles.mobileProjectMeta}><span>{String(index + 1).padStart(2, "0")}</span><span>{project.year}</span>{bandLabel(project) && <span>{bandLabel(project)}</span>}</div>
               <MobileProjectMedia project={project} />
               <h3>{project.title}</h3>
               <p>{project.summary}</p>
@@ -382,42 +396,37 @@ export default function PortfolioExperience() {
         <div className={styles.sectionBar} data-meta><span>05 / CONTACT</span><span>EMAIL / FORM</span></div>
         <div className={styles.contactPanel}>
           <div className={styles.contactIntro}>
-            <span className={styles.contactIndex}>CONTACT</span>
             <h2 id="contact-title" data-lead-scope>
               <span className={styles.reveal}><span data-lead>GET IN TOUCH</span></span>
             </h2>
-            <p data-support>For RF automation, engineering software, or a role where both matter.</p>
-            <ul className={styles.contactLinks}>
+            <p className={styles.contactLede} data-support>
+              For RF automation, engineering software, or a role where both matter.
+            </p>
+
+            <a className={styles.emailLink} href="mailto:abyossi22@gmail.com">
+              <span>abyossi22@gmail.com</span>
+              <span className={styles.emailArrow} aria-hidden="true">↗</span>
+            </a>
+
+            <ul className={styles.socialRow}>
               <li>
-                <a className={styles.contactLinkPrimary} href="mailto:abyossi22@gmail.com">
-                  <span className={styles.contactLinkLabel}>EMAIL</span>
-                  <span className={styles.contactLinkValue}>abyossi22@gmail.com</span>
-                  <span className={styles.contactLinkArrow} aria-hidden="true">↗</span>
+                <a href="https://www.linkedin.com/in/yossi-abutbul-550958199/" target="_blank" rel="noreferrer">
+                  LinkedIn <span aria-hidden="true">↗</span>
                 </a>
               </li>
               <li>
-                <a className={styles.contactLink} href="https://www.linkedin.com/in/yossi-abutbul-550958199/" target="_blank" rel="noreferrer">
-                  <span className={styles.contactLinkLabel}>LINKEDIN</span>
-                  <span className={styles.contactLinkValue}>yossi-abutbul</span>
-                  <span className={styles.contactLinkArrow} aria-hidden="true">↗</span>
+                <a href="https://github.com/YossiAbutbul" target="_blank" rel="noreferrer">
+                  GitHub <span aria-hidden="true">↗</span>
                 </a>
               </li>
               <li>
-                <a className={styles.contactLink} href="https://github.com/YossiAbutbul" target="_blank" rel="noreferrer">
-                  <span className={styles.contactLinkLabel}>GITHUB</span>
-                  <span className={styles.contactLinkValue}>YossiAbutbul</span>
-                  <span className={styles.contactLinkArrow} aria-hidden="true">↗</span>
-                </a>
-              </li>
-              <li>
-                <a className={styles.contactLink} href={withBasePath("/Yossi Abutbul - CV 2026.pdf")} target="_blank" rel="noreferrer">
-                  <span className={styles.contactLinkLabel}>CV</span>
-                  <span className={styles.contactLinkValue}>Download PDF</span>
-                  <span className={styles.contactLinkArrow} aria-hidden="true">↗</span>
+                <a href={withBasePath("/Yossi Abutbul - CV 2026.pdf")} target="_blank" rel="noreferrer">
+                  CV (PDF) <span aria-hidden="true">↗</span>
                 </a>
               </li>
             </ul>
           </div>
+
           <PortfolioContactForm />
         </div>
         <footer className={styles.contactFooter}>
@@ -438,7 +447,7 @@ function ProjectMedia({ project, eager = false, active = false }: { project?: Pr
   if (image) {
     return <img src={withBasePath(image.src)} alt={image.alt} width={image.width} height={image.height} loading={eager ? "eager" : "lazy"} />;
   }
-  return <div className={styles.mediaFallback}><strong>{project.frequency}</strong><span>MHz / {project.band}</span></div>;
+  return <div className={styles.mediaFallback}><strong>{project.frequency}</strong><span>{bandLabel(project) ? `MHz / ${bandLabel(project)}` : "MHz"}</span></div>;
 }
 
 function ProjectVideo({ project, eager, active }: { project: Project; eager: boolean; active: boolean }) {
@@ -470,7 +479,7 @@ function MobileProjectMedia({ project }: { project: Project }) {
   const source = project.video
     ? `/projects/${project.slug}/poster.jpg`
     : project.images?.[0]?.src;
-  if (!source) return <div className={styles.mobileMediaFallback}>{project.band}</div>;
+  if (!source) return <div className={styles.mobileMediaFallback}>{bandLabel(project) ?? project.title}</div>;
   return <img className={styles.mobileProjectMedia} src={withBasePath(source)} alt={`${project.title} interface preview`} loading="lazy" />;
 }
 

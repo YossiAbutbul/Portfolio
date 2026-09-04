@@ -7,6 +7,13 @@ import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import styles from "./page.module.css";
 
+/** Some projects carry a placeholder band ("n/a"); never surface that. */
+function bandLabel(project: Project): string | null {
+  const band = project.band?.trim();
+  if (!band || /^(n\/a|na|tbd|-)$/i.test(band)) return null;
+  return band;
+}
+
 export default function ProjectDetail({ project }: { project: Project }) {
   const liveDemo = project.links.find((l) => /live/i.test(l.label));
   const github = project.links.find((l) => /github/i.test(l.label));
@@ -25,7 +32,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
           <div className={styles.caseMeta}>
             <span>CASE STUDY / {String(currentIdx + 1).padStart(2, "0")}</span>
             <span>{project.year}</span>
-            <span>{project.band}</span>
+            <span>{bandLabel(project)}</span>
           </div>
           <h1 className={styles.title}>{project.title}</h1>
           <p className={styles.headerSummary}>{project.summary}</p>
