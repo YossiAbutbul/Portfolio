@@ -12,8 +12,9 @@ import styles from "./HeroSignalReveal.module.css";
  *  - `view` paints the full colour layer, then keeps only the pixels the mask
  *    covers (`destination-in`).
  *
-  * Nothing is painted unless the pointer actually moves. Holding still adds no
- * new brush, so the trail decays to nothing and the loop shuts itself down.
+ * The mask is rebuilt from scratch every frame with a single brush at the
+ * cursor, so nothing accumulates and there is no trail behind the pointer.
+ * Stop moving and it fades out; the loop then shuts itself down.
  *
  * The colour layer is procedural (a lit signal field). To reveal a photo
  * instead, draw an <img> into `paintColourLayer` and set the base layer under
@@ -22,17 +23,13 @@ import styles from "./HeroSignalReveal.module.css";
 
 const MAX_DPR = 1.75;
 const BRUSH_RADIUS = 125;
-/**
- * How long the trail keeps half its strength. Short enough to read as a brief
- * memory behind the cursor, not a lingering smear. Time-based rather than
- * per-frame, so the fade looks the same on a 60Hz and a 144Hz display.
- */
-const TRAIL_HALF_LIFE_MS = 250;
-/** Longest frame gap the decay will honour, so a stall cannot wipe the trail. */
-const MAX_FRAME_MS = 64;
-const CURSOR_STRENGTH = 0.62;
-/** By this point the trail is at ~0.4% alpha: invisible, safe to clear. */
-const FADE_OUT_MS = 2000;
+/** Single stamp per frame, so this is the patch alpha outright. Kept low:
+ *  the point is to just catch the lines underneath, not spotlight them. */
+const CURSOR_STRENGTH = 0.6;
+/** Grace before a pause counts as stopping, so slow moves do not flicker. */
+const STOP_GRACE_MS = 140;
+/** Quick fade once movement stops. Fades in place - never trails. */
+const FADE_OUT_MS = 220;
 /** Movement below this is jitter, not a move. */
 const MOVE_EPSILON = 0.4;
 
@@ -71,9 +68,7 @@ export default function HeroSignalReveal() {
     let onScreen = false;
     let lastMove = 0;
     let pointer: Point | null = null;
-    let previous: Point | null = null;
-    let moved = false;
-    let lastFrame = 0;
+    let visible = 0;
 
     function resize() {
       const rect = host!.getBoundingClientRect();
@@ -108,76 +103,28 @@ export default function HeroSignalReveal() {
       maskCtx!.fill();
     }
 
-    /** Stamp along the segment travelled so a fast move paints a stroke. */
-    function stampSegment(from: Point | null, to: Point, strength: number, radius: number) {
-      if (from) {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const steps = Math.min(24, Math.floor(Math.hypot(dx, dy) / (radius * 0.22)));
-        for (let i = 1; i <= steps; i += 1) {
-          stamp({ x: from.x + (dx * i) / steps, y: from.y + (dy * i) / steps }, strength, radius);
-        }
-      }
-      stamp(to, strength, radius);
-    }
-
-    function paintTrail(dt: number) {
-      // Exponential decay on wall-clock time: the trail loses half its
-      // strength every TRAIL_HALF_LIFE_MS regardless of frame rate.
-      const fade = 1 - Math.pow(2, -dt / TRAIL_HALF_LIFE_MS);
-      maskCtx!.globalCompositeOperation = "destination-out";
-      maskCtx!.fillStyle = `rgba(0,0,0,${fade})`;
-      maskCtx!.fillRect(0, 0, width, height);
-      maskCtx!.globalCompositeOperation = "source-over";
-
-      // Only paint where the pointer actually travelled this frame. A still
-      // pointer adds nothing, so what is already on the mask just decays.
-      if (pointer && moved) {
-        stampSegment(previous, pointer, CURSOR_STRENGTH, BRUSH_RADIUS);
-        previous = { ...pointer };
-        moved = false;
+    function paintMask() {
+      // Rebuilt every frame rather than accumulated, so the patch sits at the
+      // cursor and leaves nothing behind it.
+      maskCtx!.clearRect(0, 0, width, height);
+      if (pointer && visible > 0) {
+        stamp(pointer, CURSOR_STRENGTH * visible, BRUSH_RADIUS);
       }
     }
 
     /**
-     * The colour hidden under the hero.
-     *
-     * The reference site desaturates a photograph and lets the cursor uncover
-     * the photo's own colour. There is no hero photograph here, so the hidden
-     * layer is a saturated spectrum field instead: hue is mapped to x, so
-     * sweeping the cursor sweeps the band and uncovers a different colour at
-     * each position, the way sweeping their photo does.
+     * What sits under the hero: the same signal field, drawn brighter. The
+     * cursor uncovers the animated traces and grid rather than painting a
+     * colour of its own, so the effect reads as lighting up what is already
+     * there instead of a glow following the mouse.
      */
     function paintColourLayer(time: number) {
       const t = time / 1000;
       ctx!.clearRect(0, 0, width, height);
 
-      // Spectrum wash, low -> high frequency across the width.
-      const band = ctx!.createLinearGradient(0, 0, width, 0);
-      const hueShift = (Math.sin(t * 0.06) + 1) * 0.5 * 0.08;
-      band.addColorStop(0, "rgba(96, 62, 208, 0.85)");
-      band.addColorStop(Math.min(0.99, 0.2 + hueShift), "rgba(42, 116, 232, 0.85)");
-      band.addColorStop(Math.min(0.99, 0.43 + hueShift), "rgba(28, 198, 196, 0.85)");
-      band.addColorStop(Math.min(0.99, 0.66 + hueShift), "rgba(85, 242, 164, 0.9)");
-      band.addColorStop(Math.min(0.99, 0.85 + hueShift), "rgba(206, 232, 92, 0.85)");
-      band.addColorStop(1, "rgba(255, 168, 58, 0.85)");
-      ctx!.fillStyle = band;
-      ctx!.fillRect(0, 0, width, height);
-
-      // Fade the wash top and bottom so the uncovered patch has depth rather
-      // than looking like flat paint.
-      const depth = ctx!.createLinearGradient(0, 0, 0, height);
-      depth.addColorStop(0, "rgba(4, 9, 16, 0.72)");
-      depth.addColorStop(0.45, "rgba(4, 9, 16, 0.12)");
-      depth.addColorStop(1, "rgba(4, 9, 16, 0.82)");
-      ctx!.globalCompositeOperation = "source-atop";
-      ctx!.fillStyle = depth;
-      ctx!.fillRect(0, 0, width, height);
-      ctx!.globalCompositeOperation = "source-over";
-
       // Lit column grid, matching the hero's static 7-column rhythm.
       ctx!.lineWidth = 1;
-      ctx!.strokeStyle = "rgba(255, 255, 255, 0.22)";
+      ctx!.strokeStyle = "rgba(85, 242, 164, 0.34)";
       for (let i = 1; i < 7; i += 1) {
         const x = Math.round((width * i) / 7) + 0.5;
         ctx!.beginPath();
@@ -186,10 +133,20 @@ export default function HeroSignalReveal() {
         ctx!.stroke();
       }
 
+      // Faint horizontal graticule.
+      ctx!.strokeStyle = "rgba(85, 242, 164, 0.1)";
+      for (let i = 1; i < 6; i += 1) {
+        const y = Math.round((height * i) / 6) + 0.5;
+        ctx!.beginPath();
+        ctx!.moveTo(0, y);
+        ctx!.lineTo(width, y);
+        ctx!.stroke();
+      }
+
       const traces = [
-        { amp: 0.13, freq: 2.1, speed: 0.22, colour: "rgba(255, 255, 255, 0.9)", w: 2 },
-        { amp: 0.09, freq: 3.7, speed: -0.31, colour: "rgba(255, 255, 255, 0.4)", w: 1.25 },
-        { amp: 0.055, freq: 6.3, speed: 0.44, colour: "rgba(10, 20, 30, 0.45)", w: 1 },
+        { amp: 0.13, freq: 2.1, speed: 0.22, colour: "rgba(85, 242, 164, 0.95)", w: 2 },
+        { amp: 0.09, freq: 3.7, speed: -0.31, colour: "rgba(85, 242, 164, 0.4)", w: 1.25 },
+        { amp: 0.055, freq: 6.3, speed: 0.44, colour: "rgba(75, 141, 255, 0.5)", w: 1 },
       ];
 
       const mid = height * 0.58;
@@ -210,7 +167,7 @@ export default function HeroSignalReveal() {
       }
 
       // Spectrum ticks along the floor for texture.
-      ctx!.fillStyle = "rgba(255, 255, 255, 0.5)";
+      ctx!.fillStyle = "rgba(85, 242, 164, 0.5)";
       const step = 14;
       for (let x = 0; x < width; x += step) {
         const p = x / width;
@@ -221,19 +178,20 @@ export default function HeroSignalReveal() {
     }
 
     function frame(time: number) {
-      const dt = Math.min(time - lastFrame, MAX_FRAME_MS);
-      lastFrame = time;
-      paintTrail(dt);
+      // Full while moving, then a short fade in place once the cursor stops.
+      const still = time - lastMove - STOP_GRACE_MS;
+      visible = still <= 0 ? 1 : Math.max(0, 1 - still / FADE_OUT_MS);
+
+      paintMask();
       paintColourLayer(time);
 
-      // Keep only what the trail covers.
+      // Keep only what the mask covers.
       ctx!.globalCompositeOperation = "destination-in";
       ctx!.drawImage(mask, 0, 0, width, height);
       ctx!.globalCompositeOperation = "source-over";
 
-      // Pointer has been still long enough for the trail to be gone: clear up
-      // and stop, so a stationary cursor costs nothing at all.
-      if (time - lastMove > FADE_OUT_MS) {
+      // Faded out: nothing to show, so stop rather than spin.
+      if (visible <= 0) {
         stop();
         return;
       }
@@ -243,8 +201,6 @@ export default function HeroSignalReveal() {
     function start() {
       if (running || !onScreen || document.hidden) return;
       running = true;
-      // Seed the clock so the first frame cannot report a huge delta.
-      lastFrame = performance.now();
       raf = requestAnimationFrame(frame);
     }
 
@@ -252,8 +208,7 @@ export default function HeroSignalReveal() {
       if (!running) return;
       running = false;
       cancelAnimationFrame(raf);
-      previous = null;
-      moved = false;
+      visible = 0;
       ctx!.clearRect(0, 0, width, height);
       maskCtx!.clearRect(0, 0, width, height);
     }
@@ -272,8 +227,6 @@ export default function HeroSignalReveal() {
       // Outside the hero: drop the cursor and let the trail decay out.
       if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
         pointer = null;
-        previous = null;
-        moved = false;
         return;
       }
       // Ignore sub-pixel jitter: it would keep the effect alive on a cursor
@@ -281,15 +234,12 @@ export default function HeroSignalReveal() {
       if (pointer && Math.hypot(x - pointer.x, y - pointer.y) < MOVE_EPSILON) return;
 
       pointer = { x, y };
-      moved = true;
       lastMove = performance.now();
       start();
     }
 
     function onPointerLeave() {
       pointer = null;
-      previous = null;
-      moved = false;
     }
 
     resize();

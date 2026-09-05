@@ -9,6 +9,7 @@ import { FEATURED_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import HeroSignalReveal from "./HeroSignalReveal";
+import HeroAvatar from "./HeroAvatar";
 import styles from "./PortfolioExperience.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -25,25 +26,47 @@ const RISE = { support: 20, meta: 8 } as const;
 
 const EXPERIENCE = [
   {
-    years: "2020—NOW",
+    years: "2020-NOW",
     role: "RF & Electronics Integrator",
     kind: "WORK",
     place: "Arad Technologies",
     detail: "I design test systems where radio hardware, automation, data, and usable interfaces meet. One automated platform cut a three-day lab cycle to roughly eight minutes.",
   },
   {
-    years: "2022—NOW",
+    years: "2022-NOW",
     role: "BSc Computer Science",
     kind: "EDUCATION",
     place: "The Open University",
     detail: "Coursework includes systems programming, algorithms, computer architecture, and software engineering.",
   },
   {
-    years: "2017—2019",
+    years: "2017-2019",
     role: "Operational Project Leader",
-    kind: "WORK",
+    kind: "ARMY SERVICE",
     place: "IDF Intelligence · Unit 81",
     detail: "Led multi-disciplinary RF projects, handled field integration, and built Python tools for Spectrum Analyzer data collection.",
+  },
+];
+
+/**
+ * The three strands of the work. Metrics are the ones already claimed
+ * elsewhere on the site, not new numbers.
+ */
+const CAPABILITIES = [
+  {
+    title: "RF integration",
+    detail: "Test systems, antenna measurement and spectrum capture against real hardware.",
+    metric: "3 DAYS → 8 MIN",
+  },
+  {
+    title: "Test automation",
+    detail: "Python tooling that takes a manual lab procedure end to end without a person driving it.",
+    metric: "50%+ LESS REPORTING TIME",
+  },
+  {
+    title: "Engineering software",
+    detail: "Interfaces that make measurement data readable, inspectable and easy to share.",
+    metric: "REACT · TYPESCRIPT · PYTHON",
   },
 ];
 
@@ -60,7 +83,13 @@ function bandLabel(project: Project): string | null {
   return band;
 }
 
-export default function PortfolioExperience() {
+export default function PortfolioExperience({
+  portrait,
+  avatarDefinition,
+}: {
+  portrait?: string | null;
+  avatarDefinition?: unknown | null;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const activeProjectRef = useRef(0);
   const [activeProject, setActiveProject] = useState(0);
@@ -122,16 +151,6 @@ export default function PortfolioExperience() {
           duration: DUR.meta,
           ease: EASE,
           scrollTrigger: { trigger: el, start: "top 92%" },
-        });
-      });
-
-      // Ambient depth only - kept well under the content amplitudes above.
-      gsap.utils.toArray<HTMLElement>("[data-float]").forEach((item, index) => {
-        const dir = index % 2 === 0 ? 1 : -1;
-        gsap.fromTo(item, { yPercent: 7 * dir }, {
-          yPercent: -7 * dir,
-          ease: "none",
-          scrollTrigger: { trigger: `.${styles.statement}`, start: "top bottom", end: "bottom top", scrub: 1 },
         });
       });
 
@@ -243,6 +262,7 @@ export default function PortfolioExperience() {
 
   return (
     <div ref={root} className={styles.page}>
+
       <section id="hero" className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.grid} aria-hidden="true" />
         <div className={styles.heroShade} aria-hidden="true" />
@@ -250,6 +270,7 @@ export default function PortfolioExperience() {
         <svg className={styles.scope} viewBox="0 0 1200 180" preserveAspectRatio="none" aria-hidden="true">
           <path className={styles.scopeLine} pathLength="1000" d="M0 92 C110 92 120 78 210 78 S320 112 410 112 510 34 600 34 700 148 790 148 890 58 980 58 1080 104 1200 104" />
         </svg>
+        <HeroAvatar definition={avatarDefinition} />
         <div className={styles.heroInner}>
           <div className={styles.heroTop} data-hero-meta>
             <span>PORTFOLIO / 2026</span>
@@ -275,14 +296,37 @@ export default function PortfolioExperience() {
 
       <section id="about" className={styles.statement} aria-labelledby="about-title">
         <div className={styles.sectionBar} data-meta><span>01 / ABOUT</span><span>SOFTWARE + RF</span></div>
-        <div className={`${styles.floatShape} ${styles.floatOne}`} data-float><span>RF SYSTEMS</span><i /></div>
-        <div className={`${styles.floatShape} ${styles.floatTwo}`} data-float><span>WEB TOOLS</span><i /></div>
-        <div className={`${styles.floatShape} ${styles.floatThree}`} data-float><span>AUTOMATION</span><i /></div>
         <h2 id="about-title" className={styles.statementTitle} data-lead-scope>
           <span className={styles.reveal}><span data-lead>SOFTWARE FOR ENGINEERS</span></span>
           <span className={styles.reveal}><span data-lead>WORKING WITH <em>RF HARDWARE</em>.</span></span>
         </h2>
-        <p className={styles.statementCopy} data-support>My work combines hands-on RF integration with full-stack development. I focus on reducing manual work and making technical results easier to inspect and share.</p>
+        <div className={styles.statementRow}>
+          <p className={styles.statementCopy} data-support>My work combines hands-on RF integration with full-stack development. I focus on reducing manual work and making technical results easier to inspect and share.</p>
+
+          {portrait && (
+            <figure className={styles.portrait} data-support>
+              <div className={styles.portraitFrame}>
+                <img src={withBasePath(portrait)} alt="Yossi Abutbul" loading="lazy" />
+                <span className={styles.portraitScan} aria-hidden="true" />
+              </div>
+              <figcaption>
+                <span>YOSSI ABUTBUL</span>
+                <span>ARAD TECHNOLOGIES · THE OPEN UNIVERSITY</span>
+              </figcaption>
+            </figure>
+          )}
+        </div>
+
+        <ul className={styles.capabilities}>
+          {CAPABILITIES.map((item, index) => (
+            <li key={item.title} data-meta>
+              <span className={styles.capIndex}>{String(index + 1).padStart(2, "0")}</span>
+              <h3>{item.title}</h3>
+              <p>{item.detail}</p>
+              <span className={styles.capMetric}>{item.metric}</span>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section id="showcase" className={styles.work} aria-labelledby="work-title">
@@ -431,7 +475,6 @@ export default function PortfolioExperience() {
         </div>
         <footer className={styles.contactFooter}>
           <span className={styles.copyright}>© {new Date().getFullYear()} YOSSI ABUTBUL</span>
-          <span className={styles.copyright}>BUILT WITH NEXT.JS</span>
         </footer>
       </section>
     </div>

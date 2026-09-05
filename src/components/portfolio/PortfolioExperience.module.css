@@ -50,8 +50,12 @@
 .reveal {
   display: block;
   overflow: hidden;
-  padding: 0.16em 0.05em 0.14em;
+  /* Padding protects glyph overhang from the clip; the negative inline margin
+     pulls the text back so headlines sit flush on the gutter like everything
+     else, instead of 0.05em inside it. */
+  padding: 0.16em 0.06em 0.14em 0.05em;
   margin-block: -0.15em;
+  margin-inline-start: -0.05em;
 }
 
 .reveal > span {
@@ -232,75 +236,143 @@
   font-weight: 400;
 }
 
-.floatShape {
-  position: absolute;
-  z-index: 4;
-  overflow: hidden;
-  border: 1px solid rgba(239, 239, 232, 0.22);
-  background: rgba(239, 239, 232, 0.025);
-  will-change: transform;
+/* Capability ledger. Same hairline row system as Work & Education, so the
+   two content sections read as one family. */
+.capabilities {
+  position: relative;
+  z-index: 8;
+  margin: clamp(3rem, 6vw, 5.5rem) 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
 }
 
-.floatShape span {
-  position: absolute;
-  top: 0.8rem;
-  left: 0.8rem;
+.capabilities li {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 13rem) minmax(0, 1fr) 12rem;
+  align-items: baseline;
+  gap: clamp(1rem, 2vw, 2rem);
+  padding: clamp(1.4rem, 2.4vw, 2rem) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.capIndex {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(239, 239, 232, 0.3);
+}
+
+.capabilities h3 {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.5vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+
+.capabilities li > p {
+  margin: 0;
+  max-width: 46ch;
+  font-size: clamp(0.88rem, 1vw, 1rem);
+  line-height: 1.55;
+  color: var(--grey);
+}
+
+.capMetric {
+  justify-self: end;
+  text-align: right;
   font-family: var(--font-mono);
   font-size: 0.62rem;
+  font-weight: 700;
   letter-spacing: 0.1em;
+  white-space: nowrap;
   color: var(--green);
 }
 
-.floatShape i {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 72%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(239, 239, 232, 0.22);
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
+/* Copy left, portrait right - the row the empty half of this section was
+   asking for. Collapses to one column before the portrait gets cramped. */
+.statementRow {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 20rem);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 5rem);
 }
 
-.floatShape i::before,
-.floatShape i::after {
+/* Duotone, so a photograph joins the ink-and-accent system instead of
+   sitting on top of it as the one full-colour thing on the page. */
+.portrait {
+  margin: 0;
+  justify-self: end;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.portraitFrame {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--black-soft);
+  aspect-ratio: 4 / 5;
+}
+
+.portraitFrame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1) contrast(1.12) brightness(0.92);
+}
+
+.portraitFrame::after {
   position: absolute;
-  inset: 20% -12%;
-  border: 1px solid rgba(85, 242, 164, 0.5);
-  border-radius: 50%;
+  inset: 0;
   content: "";
+  pointer-events: none;
+  background: var(--green);
+  mix-blend-mode: color;
+  opacity: 0.32;
 }
 
-.floatShape i::after {
-  transform: rotate(90deg);
+/* Fine scanlines: the same editorial-hardware texture as the rest of the page. */
+.portraitScan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(4, 9, 16, 0.28) 0 1px,
+    transparent 1px 3px
+  );
 }
 
-.floatOne {
-  top: 14%;
-  right: 6%;
-  width: clamp(9rem, 18vw, 20rem);
-  aspect-ratio: 1.5;
+.portrait figcaption {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
-.floatTwo {
-  top: 52%;
-  right: 24%;
-  width: clamp(10rem, 20vw, 23rem);
-  aspect-ratio: 0.82;
+.portrait figcaption span:first-child {
+  color: var(--green);
+  font-weight: 700;
 }
 
-.floatThree {
-  bottom: 6%;
-  left: 6%;
-  width: clamp(8rem, 14vw, 16rem);
-  aspect-ratio: 1;
+.portrait figcaption span:last-child {
+  color: var(--grey);
 }
 
 .statementCopy {
   position: relative;
   z-index: 8;
-  justify-self: end;
-  width: min(34rem, 52vw);
+  justify-self: start;
+  width: min(46ch, 100%);
   margin: 0;
   font-size: clamp(1rem, 1.35vw, 1.3rem);
   line-height: 1.5;
@@ -1255,8 +1327,11 @@
   .heroLede { gap: 1.25rem; }
   .heroCta { width: 100%; justify-content: space-between; }
   .statementTitle { font-size: clamp(1.9rem, 9.5vw, 3.6rem); }
-  .floatTwo { right: -8%; }
-  .floatThree { left: 2%; }
+  .statementRow { grid-template-columns: 1fr; }
+  .portrait { justify-self: start; max-width: 15rem; }
+  .capabilities li { grid-template-columns: 2.25rem minmax(0, 1fr); row-gap: 0.5rem; }
+  .capabilities li > p { grid-column: 2; }
+  .capMetric { grid-column: 2; justify-self: start; text-align: left; white-space: normal; }
   .statementCopy { width: 100%; }
   .careerWrap { padding-left: 1.1rem; }
   .careerRow { grid-template-columns: 1fr; gap: 1.25rem; padding-inline: 0.75rem; }
@@ -1271,7 +1346,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .reveal > span,
-  .floatShape,
   .storyLayer,
   .storyCopy,
   .marqueeRow,
