@@ -14,8 +14,16 @@ import HeroDump from "./HeroDump";
  * keyboard-navigable version is always the one in the document.
  */
 export default function Hero({ projects }: { projects: Project[] }) {
+  /* data-cursor="quiet": the dump already brackets the byte under the pointer,
+     so the cursor stands down across the hero rather than drawing a second
+     marker. Links inside set their own mode and the nearest one wins. */
   return (
-    <section id="hero" className={`entrance ${styles.hero}`} aria-labelledby="hero-title">
+    <section
+      id="hero"
+      className={`entrance ${styles.hero}`}
+      aria-labelledby="hero-title"
+      data-cursor="quiet"
+    >
       <HeroDump className={styles.dump} />
       <div className={`bay ${styles.bay}`}>
         <h1 id="hero-title" className={styles.title}>
@@ -32,7 +40,12 @@ export default function Hero({ projects }: { projects: Project[] }) {
           <ol>
             {projects.map((project, i) => (
               <li key={project.slug} style={{ "--i": i } as React.CSSProperties}>
-                <Link href={projectHref(project)} className={styles.record} prefetch={false}>
+                <Link
+                  href={projectHref(project)}
+                  className={styles.record}
+                  prefetch={false}
+                  data-cursor="view"
+                >
                   <span className={`${styles.addr} figures`} aria-hidden="true">
                     {(0x40 + i * 0x10).toString(16).padStart(4, "0")}
                   </span>

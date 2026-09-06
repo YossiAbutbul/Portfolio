@@ -38,7 +38,10 @@ export default function ProjectDetail({ project }: { project: Project }) {
 
       {lead && (
         <div className={`bay ${styles.leadWrap}`}>
-          <figure className={styles.lead}>
+          <figure
+            className={styles.lead}
+            style={{ viewTransitionName: `media-${project.slug}` } as React.CSSProperties}
+          >
             {project.video ? (
               <video
                 src={project.video}

@@ -246,3 +246,47 @@
     font-size: var(--step-2);
   }
 }
+
+/* --------------------------------------------------------------------- */
+/* Copy                                                                   */
+/* --------------------------------------------------------------------- */
+
+/* The button reports the state it is in rather than flashing a toast
+   somewhere else on the page. */
+.copy[data-copied] {
+  background: var(--phosphor-ink);
+  color: var(--accent);
+  border-color: var(--phosphor-ink);
+}
+
+.submit {
+  position: relative;
+  overflow: hidden;
+}
+
+/* A fill sweeps across on submit, so the wait has something in it. */
+.submit[data-sending]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--phosphor-ink);
+  opacity: 0.18;
+  transform-origin: left center;
+  animation: submitSweep 900ms var(--ease-enter) infinite;
+}
+
+@keyframes submitSweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit[data-sending]::after {
+    animation: none;
+    transform: scaleX(1);
+  }
+}

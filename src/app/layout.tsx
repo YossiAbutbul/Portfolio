@@ -6,6 +6,7 @@ import Nav from "@/components/layout/Nav";
 import Gutter from "@/components/layout/Gutter";
 import SkipToContent from "@/components/layout/SkipToContent";
 import ScrollMotion from "@/components/layout/ScrollMotion";
+import Cursor from "@/components/layout/Cursor";
 
 /**
  * Two faces, both variable.
@@ -107,6 +108,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
         </main>
         <ScrollMotion />
+        <Cursor />
       </body>
     </html>
   );

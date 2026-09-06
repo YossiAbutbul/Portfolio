@@ -51,7 +51,12 @@ function ProjectPanel({ project, index }: { project: Project; index: number }) {
       </span>
 
       {still && (
-        <figure className={styles.media} data-scroll="media">
+        <figure
+          className={styles.media}
+          data-scroll="media"
+          data-cursor="view"
+          style={{ viewTransitionName: `media-${project.slug}` } as React.CSSProperties}
+        >
           <img
             src={still.src}
             alt={still.alt}
@@ -79,6 +84,7 @@ function ProjectPanel({ project, index }: { project: Project; index: number }) {
             target={external ? "_blank" : undefined}
             rel={external ? "noreferrer" : undefined}
             prefetch={false}
+            data-cursor="view"
           >
             {project.title}
           </Link>

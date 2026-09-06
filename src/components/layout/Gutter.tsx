@@ -66,7 +66,7 @@ export default function Gutter() {
   }, [onHome, pathname]);
 
   return (
-    <nav className={styles.gutter} aria-label="Sections">
+    <nav className={`vt-rail ${styles.gutter}`} aria-label="Sections">
       <span className={styles.track} aria-hidden="true">
         <span className={styles.fill} data-scroll="progress" />
       </span>

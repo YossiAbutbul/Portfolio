@@ -117,3 +117,74 @@
     color: var(--fg);
   }
 }
+
+/* --------------------------------------------------------------------- */
+/* Menu                                                                   */
+/* --------------------------------------------------------------------- */
+
+/* The toggle says what it does and swaps the word, rather than turning into
+   an abstract shape and back. */
+.toggle {
+  min-width: 4.5rem;
+  text-align: center;
+  transition:
+    color var(--dur-micro) var(--ease-enter),
+    border-color var(--dur-micro) var(--ease-enter),
+    background-color var(--dur-micro) var(--ease-enter);
+}
+
+.toggle:hover,
+.toggle:focus-visible {
+  color: var(--phosphor-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+@media (max-width: 46rem) {
+  /* The panel wipes down from the header rather than fading, so it reads as
+     coming from the control that opened it. */
+  .menu {
+    clip-path: inset(0 0 100% 0);
+    transition:
+      clip-path var(--dur-long) var(--ease-exit),
+      visibility 0s linear var(--dur-long);
+  }
+
+  .menuOpen {
+    clip-path: inset(0 0 0 0);
+    transition:
+      clip-path var(--dur-long) var(--ease-enter),
+      visibility 0s;
+  }
+
+  .menu .link {
+    transform: translateY(12px);
+    opacity: 0;
+    transition:
+      transform var(--dur-short) var(--ease-enter),
+      opacity var(--dur-short) var(--ease-enter);
+  }
+
+  .menuOpen .link {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .menuOpen li:nth-child(1) .link {
+    transition-delay: 90ms;
+  }
+  .menuOpen li:nth-child(2) .link {
+    transition-delay: 150ms;
+  }
+  .menuOpen li:nth-child(3) .link {
+    transition-delay: 210ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .menuOpen,
+  .menu .link {
+    transition: none;
+  }
+}

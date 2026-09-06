@@ -1,0 +1,82 @@
+/*
+ * The native cursor is never hidden. This sits alongside it and brackets what
+ * is underneath, the way the dump brackets a byte. Hiding the real pointer
+ * costs more than it buys: it breaks text selection affordances and it is the
+ * thing that makes custom cursors feel laggy, because there is nothing
+ * truthful left on screen while the replacement catches up.
+ */
+.cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 300;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  will-change: transform;
+}
+
+/* The bracket is drawn from the element's centre, so the marker grows around
+   the point rather than away from it. */
+.bracket {
+  position: relative;
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid var(--accent);
+  border-radius: 1px;
+  transition:
+    width var(--dur-short) var(--ease-enter),
+    height var(--dur-short) var(--ease-enter),
+    margin var(--dur-short) var(--ease-enter),
+    background-color var(--dur-micro) var(--ease-enter),
+    border-color var(--dur-micro) var(--ease-enter),
+    opacity var(--dur-micro) var(--ease-enter);
+}
+
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--phosphor-ink);
+  background: var(--accent);
+  padding: 0.25em 0.5em;
+  border-radius: var(--radius-sm);
+  margin-top: -0.5rem;
+  white-space: nowrap;
+}
+
+/* Over something that opens: a larger, hollow bracket. */
+.cursor[data-mode="open"] .bracket,
+.cursor[data-mode="view"] .bracket,
+.cursor[data-mode="copy"] .bracket {
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+}
+
+/* Over the dump: out of the way, because the canvas is already marking the
+   byte under the pointer and two highlights would be one too many. */
+.cursor[data-mode="quiet"] .bracket {
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+.cursor[data-down] .bracket {
+  background: var(--accent);
+}
+
+/* No transitions on the position itself: that is eased in script against
+   wall-clock time, so it feels the same at any refresh rate. */
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    display: none;
+  }
+}

@@ -64,7 +64,7 @@ export default function Nav() {
   }, [open]);
 
   return (
-    <header className={styles.nav}>
+    <header className={`vt-header ${styles.nav}`}>
       <div className={styles.inner}>
         {/* The visible text is part of the accessible name, so voice control
             can activate it by what it says. */}

@@ -67,7 +67,13 @@ function CopyEmail({ value }: { value: string }) {
   }
 
   return (
-    <button type="button" className={styles.copy} onClick={copy}>
+    <button
+      type="button"
+      className={styles.copy}
+      onClick={copy}
+      data-cursor="copy"
+      data-copied={copied || undefined}
+    >
       {copied ? "Copied" : "Copy"}
       {/* Announced without moving focus, so the state change is not silent. */}
       <span className="sr-only" role="status">
@@ -120,7 +126,12 @@ function ContactForm() {
         />
       </div>
 
-      <button type="submit" className={styles.submit} disabled={state.submitting}>
+      <button
+        type="submit"
+        className={styles.submit}
+        disabled={state.submitting}
+        data-sending={state.submitting || undefined}
+      >
         {state.submitting ? "Sending" : "Send"}
       </button>
 

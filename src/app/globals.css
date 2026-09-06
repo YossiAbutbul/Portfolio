@@ -277,3 +277,90 @@ hr {
     animation: none !important;
   }
 }
+
+/* --------------------------------------------------------------------- */
+/* Route transitions                                                      */
+/* --------------------------------------------------------------------- */
+
+/*
+ * Cross-document, not client side.
+ *
+ * The static export writes its soft-navigation payloads to one path and asks
+ * for them at another, so every internal link is a full document load. Rather
+ * than fight that, the navigation itself is the transition: Chrome morphs the
+ * old document into the new one, the project media travels from the card into
+ * the case-study hero because both carry the same view-transition-name, and
+ * everything else cross-fades.
+ *
+ * Browsers without it get an ordinary load, and because the document ground
+ * is painted on <html> there is no white flash either way.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+/* The chrome does not travel. Naming it keeps it out of the root snapshot so
+   it holds still while the page underneath changes. */
+.vt-rail {
+  view-transition-name: rail;
+}
+
+.vt-header {
+  view-transition-name: header;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: vtFadeOut var(--dur-short) var(--ease-exit) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vtFadeIn var(--dur-long) var(--ease-enter) both;
+  }
+
+  /* The media is the one thing that genuinely moves between the two pages, so
+     every named group gets the long duration and the chrome is pulled back
+     below. Selecting it by name is not possible here: the name carries the
+     project slug, so the rule has to be the general one. */
+  ::view-transition-group(*) {
+    animation-duration: var(--dur-hero);
+    animation-timing-function: var(--ease-enter);
+  }
+
+  ::view-transition-group(root) {
+    animation-duration: var(--dur-long);
+  }
+
+  ::view-transition-group(rail),
+  ::view-transition-group(header) {
+    animation-duration: var(--dur-short);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+@keyframes vtFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vtFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
