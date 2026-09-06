@@ -336,9 +336,7 @@ export default function PortfolioExperience({
             <h2 id="work-title" data-lead-scope>
               <span className={styles.reveal}><span data-lead>SELECTED PROJECTS</span></span>
             </h2>
-            <p data-support>
-              Five builds where the hardware, the data, and the interface all had to work together.
-            </p>
+
           </div>
         </header>
 
