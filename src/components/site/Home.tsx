@@ -296,14 +296,17 @@ export default function Home() {
 
       {/* ------------------------------------------------------------------ */}
       <Section id="contact" title="Contact">
+        <p className={styles.contactLede} data-rise>
+          The fastest way to reach me is email. I read everything.
+        </p>
+
+        <div className={styles.contactPrimary} data-rise>
+          <a className={styles.contactEmail} href={`mailto:${EMAIL}`}>
+            {EMAIL}
+          </a>
+        </div>
 
         <ul className={styles.contactList} data-rise>
-          <li>
-            <span className={`mono ${styles.contactLabel}`}>Email</span>
-            <a className={styles.contactValue} href={`mailto:${EMAIL}`}>
-              {EMAIL}
-            </a>
-          </li>
           <li>
             <span className={`mono ${styles.contactLabel}`}>LinkedIn</span>
             <a className={styles.contactValue} href={LINKEDIN} target="_blank" rel="noreferrer">
