@@ -1,6 +1,24 @@
+/* The page ends on the accent rather than on another dark section. It is the
+   only inverted surface on the site, which is what makes it read as an end
+   rather than as one more block. */
 .contact {
   padding-block: var(--section-pad) var(--space-7);
-  background: var(--bg-raised);
+  background: var(--accent);
+  color: var(--phosphor-ink);
+
+  --local-line: rgba(26, 18, 4, 0.22);
+  --local-line-strong: rgba(26, 18, 4, 0.58);
+  --local-muted: rgba(26, 18, 4, 0.68);
+}
+
+.contact h2 {
+  font-size: var(--step-8);
+  font-stretch: 70%;
+  line-height: 0.78;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  color: var(--phosphor-ink);
+  margin-bottom: var(--space-6);
 }
 
 .bay {
@@ -11,10 +29,10 @@
 }
 
 .line {
-  color: var(--fg-muted);
-  font-size: var(--step-1);
-  margin: var(--space-5) 0 var(--space-7);
-  max-width: 38ch;
+  color: var(--local-muted);
+  font-size: var(--step-2);
+  margin: 0 0 var(--space-8);
+  max-width: 32ch;
 }
 
 .emailRow {
@@ -23,29 +41,29 @@
   align-items: center;
   gap: var(--space-4);
   padding-bottom: var(--space-4);
-  border-bottom: var(--hairline-w) solid var(--accent-line);
+  border-bottom: 2px solid var(--phosphor-ink);
   margin-bottom: var(--space-5);
 }
 
 .email {
   font-family: var(--font-display);
   font-weight: 700;
-  font-stretch: 88%;
-  font-size: var(--step-3);
-  letter-spacing: -0.025em;
-  color: var(--fg);
-  transition: color var(--dur-micro) var(--ease-enter);
+  font-stretch: 82%;
+  font-size: var(--step-4);
+  letter-spacing: -0.03em;
+  color: var(--phosphor-ink);
+  transition: font-stretch var(--dur-short) var(--ease-enter);
 }
 
 .email:hover,
 .email:focus-visible {
-  color: var(--accent);
+  font-stretch: 100%;
 }
 
 .copy,
 .submit {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
@@ -53,18 +71,20 @@
 }
 
 .copy {
-  color: var(--fg-muted);
-  border: var(--hairline-w) solid var(--hairline-strong);
-  padding: var(--space-2) var(--space-3);
+  color: var(--phosphor-ink);
+  border: 2px solid var(--local-line-strong);
+  padding: var(--space-2) var(--space-4);
   transition:
+    background-color var(--dur-micro) var(--ease-enter),
     color var(--dur-micro) var(--ease-enter),
     border-color var(--dur-micro) var(--ease-enter);
 }
 
 .copy:hover,
 .copy:focus-visible {
+  background: var(--phosphor-ink);
   color: var(--accent);
-  border-color: var(--accent-line);
+  border-color: var(--phosphor-ink);
 }
 
 .profiles {
@@ -78,40 +98,48 @@
 
 .profiles a {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: var(--phosphor-ink);
   font-stretch: 100%;
+  box-shadow: inset 0 -2px 0 var(--local-line);
+  padding-bottom: 0.15em;
   transition:
-    color var(--dur-micro) var(--ease-enter),
-    font-stretch var(--dur-micro) var(--ease-enter);
+    font-stretch var(--dur-micro) var(--ease-enter),
+    box-shadow var(--dur-micro) var(--ease-enter);
 }
 
 .profiles a:hover,
 .profiles a:focus-visible {
-  color: var(--fg);
-  font-stretch: 115%;
+  font-stretch: 118%;
+  box-shadow: inset 0 -2px 0 var(--phosphor-ink);
+}
+
+.contact :focus-visible {
+  outline-color: var(--phosphor-ink);
 }
 
 /* --------------------------------------------------------------------- */
 /* Form                                                                   */
 /* --------------------------------------------------------------------- */
 
+/* The form is the one dark object on the amber, so it reads as a panel set
+   into the surface rather than as a fourth column of text. */
 .form {
   display: grid;
   gap: var(--space-4);
   background: var(--bg);
-  border: var(--hairline-w) solid var(--hairline);
+  color: var(--fg);
   border-radius: var(--radius-md);
-  padding: var(--space-5);
+  padding: var(--space-6);
 }
 
 .formTitle,
 .sentTitle {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
@@ -145,6 +173,7 @@
 .field input,
 .field textarea {
   font: inherit;
+  font-family: var(--font-body);
   font-size: var(--step-0);
   color: var(--fg);
   background: var(--bg-sunken);
@@ -165,11 +194,19 @@
 }
 
 .submit {
-  color: var(--bg);
+  color: var(--phosphor-ink);
   background: var(--accent);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   justify-self: start;
-  transition: opacity var(--dur-micro) var(--ease-enter);
+  font-stretch: 100%;
+  transition:
+    font-stretch var(--dur-short) var(--ease-enter),
+    opacity var(--dur-micro) var(--ease-enter);
+}
+
+.submit:hover:not(:disabled),
+.submit:focus-visible:not(:disabled) {
+  font-stretch: 115%;
 }
 
 .submit:disabled {
@@ -186,19 +223,23 @@
 .footer {
   margin-top: var(--space-9);
   padding-top: var(--space-4);
-  border-top: var(--hairline-w) solid var(--hairline);
+  border-top: 2px solid var(--local-line);
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 600;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
-  color: var(--fg-muted);
+  color: var(--local-muted);
   max-width: none;
 }
 
 @media (max-width: 46rem) {
   .bay {
     grid-template-columns: 1fr;
+  }
+
+  .contact h2 {
+    font-size: var(--step-7);
   }
 
   .email {

@@ -1,9 +1,14 @@
+/* The header crosses both the dark page and the amber contact block, so it
+   carries its own ground rather than relying on whatever is behind it. */
 .nav {
   position: fixed;
   top: 0;
   left: var(--gutter-w);
   right: 0;
   z-index: 80;
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: var(--hairline-w) solid var(--hairline);
 }
 
 .inner {

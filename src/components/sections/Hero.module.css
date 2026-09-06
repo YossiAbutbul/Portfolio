@@ -4,10 +4,11 @@
   align-items: center;
   padding-block: calc(var(--space-9) + var(--space-6)) var(--space-8);
   position: relative;
+  overflow: hidden;
 }
 
-/* The column rhythm the dump will resolve on. Faint enough to read as a
-   surface rather than as a grid overlay. */
+/* The column rhythm the dump resolves on when the motion pass lands. Strong
+   enough to be a surface rather than a hint. */
 .hero::before {
   content: "";
   position: absolute;
@@ -15,9 +16,10 @@
   pointer-events: none;
   background-image: repeating-linear-gradient(
     90deg,
-    transparent 0 calc(12.5% - 1px),
-    var(--hairline) calc(12.5% - 1px) 12.5%
+    transparent 0 calc(8.333% - 1px),
+    var(--hairline) calc(8.333% - 1px) 8.333%
   );
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
 }
 
 .bay {
@@ -26,19 +28,33 @@
 
 .title {
   display: grid;
-  margin-bottom: var(--space-5);
+  font-size: var(--step-8);
+  font-stretch: 70%;
+  line-height: 0.78;
+  letter-spacing: -0.045em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-6);
 }
 
 .titleLine {
   display: block;
 }
 
+/* Second line steps out of the column, so the name reads as one object with
+   two weights of emphasis rather than two stacked words. */
+.titleLine:last-child {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--chalk);
+}
+
 .line {
   font-size: var(--step-2);
-  line-height: 1.45;
-  color: var(--fg-muted);
-  max-width: 46ch;
+  line-height: 1.4;
+  color: var(--fg);
+  max-width: 30ch;
   margin-bottom: var(--space-8);
+  padding-left: var(--space-5);
+  border-left: 2px solid var(--accent);
 }
 
 .index ol {
@@ -47,33 +63,55 @@
   padding: 0;
   display: grid;
   max-width: 64rem;
-  border-top: var(--hairline-w) solid var(--hairline);
+  border-top: var(--hairline-w) solid var(--hairline-strong);
 }
 
 .record {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
   align-items: baseline;
   gap: var(--space-4);
-  padding: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
   border-bottom: var(--hairline-w) solid var(--hairline);
+  position: relative;
+  isolation: isolate;
   transition: color var(--dur-micro) var(--ease-enter);
+}
+
+/* A fill sweeps from the address outward, so hovering a row reads as
+   selecting a record rather than as a link changing colour. */
+.record::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent-soft);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-short) var(--ease-enter);
+}
+
+.record:hover::before,
+.record:focus-visible::before {
+  transform: scaleX(1);
 }
 
 .addr {
   font-size: var(--step--1);
-  color: var(--data);
-  letter-spacing: 0.04em;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  padding-left: var(--space-4);
 }
 
 .recordName {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--step-1);
-  font-stretch: 100%;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  font-size: var(--step-2);
+  font-stretch: 88%;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
   color: var(--fg);
-  transition: font-stretch var(--dur-micro) var(--ease-enter);
+  transition: font-stretch var(--dur-short) var(--ease-enter);
 }
 
 .year {
@@ -81,20 +119,9 @@
   color: var(--fg-muted);
 }
 
-.record:hover,
-.record:focus-visible {
-  color: var(--accent);
-}
-
 .record:hover .recordName,
 .record:focus-visible .recordName {
-  color: var(--accent);
-  font-stretch: 112%;
-}
-
-.record:hover .addr,
-.record:focus-visible .addr {
-  color: var(--accent);
+  font-stretch: 105%;
 }
 
 @media (max-width: 46rem) {
@@ -103,13 +130,26 @@
     padding-block: calc(var(--space-9) + var(--space-4)) var(--space-7);
   }
 
+  .title {
+    font-size: var(--step-7);
+  }
+
+  .titleLine:last-child {
+    -webkit-text-stroke-width: 1.5px;
+  }
+
   .line {
+    font-size: var(--step-1);
     margin-bottom: var(--space-6);
   }
 
   .record {
-    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    grid-template-columns: 3.25rem minmax(0, 1fr) auto;
     gap: var(--space-3);
+  }
+
+  .addr {
+    padding-left: var(--space-2);
   }
 
   .recordName {

@@ -1,61 +1,140 @@
-/* The one section that changes ground, because it is the one section that is
-   about looking rather than reading. */
+/* Darker than the page. The media is the brightest thing on the site and it
+   needs a ground to sit against, not a ground it blends into. */
 .work {
-  background: var(--bg-raised);
-  padding-block: var(--section-pad);
+  background: var(--bg-sunken);
+  border-top: 2px solid var(--accent);
+  padding-block: var(--section-pad) var(--space-10);
 }
 
 .head {
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-9);
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 26rem);
+  align-items: end;
+  gap: var(--space-6) var(--space-8);
+}
+
+/* Section titles are the second largest thing on the site, after the name.
+   Anything smaller and a section boundary reads as a paragraph break. */
+.headTitle {
+  font-size: var(--step-7);
+  font-stretch: 70%;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  margin: 0;
 }
 
 .headLine {
   color: var(--fg-muted);
   font-size: var(--step-1);
-  margin-top: var(--space-4);
-  max-width: 52ch;
+  margin: 0 0 var(--space-3);
+  max-width: 34ch;
 }
 
 .list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--space-9);
 }
 
-.row {
+.list > li + li {
+  margin-top: var(--space-10);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Panel                                                                   */
+/* ---------------------------------------------------------------------- */
+
+.panel {
+  position: relative;
   display: grid;
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 27rem) minmax(0, 1fr);
+  align-items: center;
+  min-height: 78svh;
+}
+
+/* Outlined, oversized, behind everything. The scroll needs a beat and this is
+   it; the number is also the only place on the site that counts, and the
+   project list is genuinely ordered. */
+.num {
+  position: absolute;
+  top: 0;
+  left: calc(var(--edge) - 0.06em);
+  z-index: 0;
+  font-size: var(--step-8);
+  font-weight: 700;
+  font-stretch: 70%;
+  line-height: 0.72;
+  letter-spacing: -0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--hairline-strong);
+  pointer-events: none;
+  user-select: none;
+}
+
+.media {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  margin-right: calc(-1 * var(--edge));
+  position: relative;
+  z-index: 1;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9);
+}
+
+.media img {
+  width: 100%;
+  height: auto;
+}
+
+/* The title runs over the media, so its left edge gets a scrim to keep the
+   type off the picture detail. */
+.media::after {
+  content: "";
+  position: absolute;
+  inset: 0 60% 0 0;
+  background: linear-gradient(
+    to right,
+    var(--bg-sunken) 0%,
+    rgba(5, 8, 10, 0.72) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .copy {
-  max-width: 46rem;
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  z-index: 2;
+  /* Pushes the title over the media's left edge. */
+  margin-right: -7rem;
+  padding-top: var(--space-9);
 }
 
 .meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-4);
-  margin-bottom: var(--space-3);
-  font-size: var(--step--1);
-}
-
-.addr {
-  color: var(--data);
-  letter-spacing: 0.04em;
-}
-
-.year {
-  color: var(--fg-muted);
-}
-
-.wip {
+  margin: 0 0 var(--space-3);
+  max-width: none;
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.year {
+  color: var(--accent);
+}
+
+.wip {
   color: var(--accent);
   background: var(--accent-soft);
   padding: 0.1em 0.5em;
@@ -63,36 +142,41 @@
 }
 
 .title {
-  font-size: var(--step-4);
-  font-stretch: 88%;
-  margin-bottom: var(--space-3);
+  font-size: var(--step-6);
+  font-stretch: 70%;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-4);
 }
 
 .titleLink {
   transition:
-    color var(--dur-micro) var(--ease-enter),
-    font-stretch var(--dur-micro) var(--ease-enter);
+    color var(--dur-short) var(--ease-enter),
+    font-stretch var(--dur-short) var(--ease-enter);
 }
 
 .titleLink:hover,
 .titleLink:focus-visible {
   color: var(--accent);
+  font-stretch: 82%;
 }
 
 .summary {
   color: var(--fg-muted);
   font-size: var(--step-1);
-  max-width: 54ch;
-  margin-bottom: var(--space-4);
+  max-width: 30ch;
+  margin-bottom: var(--space-5);
 }
 
 .stack {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-5);
+  gap: var(--space-2) var(--space-4);
   margin: 0 0 var(--space-5);
   padding: 0;
+  max-width: 26rem;
   font-family: var(--font-display);
   font-weight: 500;
   font-size: var(--step--1);
@@ -104,77 +188,125 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-5);
+  align-items: center;
+  gap: var(--space-4);
   margin: 0;
+  max-width: none;
 }
 
-/* A fill sweeps in from the left on hover rather than the link changing
-   colour. It is the same gesture as the rail tick growing. */
+/* Solid amber. One per panel, and it is the thing the eye lands on after the
+   picture. */
 .action {
-  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--phosphor-ink);
+  background: var(--accent);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-sm);
+  font-stretch: 100%;
+  transition: font-stretch var(--dur-short) var(--ease-enter);
+}
+
+.action:hover,
+.action:focus-visible {
+  font-stretch: 115%;
+}
+
+.actionQuiet {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--step--1);
   letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--fg);
-  padding: var(--space-2) var(--space-4);
-  border: var(--hairline-w) solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  isolation: isolate;
-  transition: color var(--dur-short) var(--ease-enter);
+  padding: var(--space-3) var(--space-2);
+  box-shadow: inset 0 -1px 0 var(--accent-line);
+  transition:
+    color var(--dur-micro) var(--ease-enter),
+    box-shadow var(--dur-micro) var(--ease-enter);
 }
 
-.action::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform var(--dur-short) var(--ease-enter);
+.actionQuiet:hover,
+.actionQuiet:focus-visible {
+  color: var(--accent);
+  box-shadow: inset 0 -1px 0 var(--accent);
 }
 
-.action:hover,
-.action:focus-visible {
-  color: var(--bg);
-  border-color: var(--accent);
-}
+/* ---------------------------------------------------------------------- */
 
-.action:hover::before,
-.action:focus-visible::before {
-  transform: scaleX(1);
-}
+/* Narrow: the media goes full bleed at the top and the title sits on its
+   lower edge, so the overlap survives. Everything else moves below it onto
+   the ground, where it is readable. */
+@media (max-width: 62rem) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    min-height: 0;
+    row-gap: var(--space-5);
+  }
 
-/* Media runs to the right edge of the viewport. It is the only element on the
-   site allowed out of the column. */
-.media {
-  margin: 0;
-  margin-right: calc(-1 * var(--edge));
-  background: var(--bg-sunken);
-  border: var(--hairline-w) solid var(--hairline);
-  border-right: 0;
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-  overflow: hidden;
-}
+  .media {
+    grid-column: 1;
+    grid-row: 1;
+    margin-inline: calc(-1 * var(--edge));
+    border-radius: 0;
+  }
 
-.media img {
-  width: 100%;
-  height: auto;
-}
+  .media::after {
+    inset: auto 0 0 0;
+    height: 60%;
+    background: linear-gradient(
+      to top,
+      var(--bg-sunken) 0%,
+      rgba(5, 8, 10, 0.66) 50%,
+      transparent 100%
+    );
+  }
 
-@media (max-width: 46rem) {
-  .title {
-    font-size: var(--step-3);
+  /* Pulled up so the meta and title still sit on the picture's lower edge,
+     with the rest of the copy past it on the ground. */
+  .copy {
+    grid-column: 1;
+    grid-row: 2;
+    margin-right: 0;
+    margin-top: -5.5rem;
+    padding-top: 0;
   }
 
   .summary {
-    font-size: var(--step-0);
+    max-width: 46ch;
   }
 
-  .list {
-    gap: var(--space-8);
+  .num {
+    top: auto;
+    bottom: 0;
+    left: auto;
+    right: var(--edge);
+  }
+}
+
+@media (max-width: 46rem) {
+  .head {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .headTitle {
+    font-size: var(--step-6);
+  }
+
+  .num {
+    font-size: var(--step-7);
+  }
+
+  .title {
+    font-size: var(--step-5);
+  }
+
+  .list > li + li {
+    margin-top: var(--space-9);
   }
 }

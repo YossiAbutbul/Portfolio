@@ -1,5 +1,15 @@
 .about {
   padding-block: var(--section-pad);
+  background: var(--bg);
+  border-top: var(--hairline-w) solid var(--hairline-strong);
+}
+
+.about h2 {
+  font-size: var(--step-7);
+  font-stretch: 70%;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
 }
 
 .bay {
@@ -10,11 +20,13 @@
 }
 
 .teaser {
-  font-size: var(--step-2);
+  font-size: var(--step-3);
   line-height: 1.4;
   color: var(--fg);
-  max-width: 34ch;
-  margin: var(--space-5) 0 var(--space-6);
+  max-width: 30ch;
+  margin: var(--space-6) 0 var(--space-6);
+  padding-left: var(--space-5);
+  border-left: 2px solid var(--accent);
 }
 
 .more {
@@ -43,7 +55,7 @@
 
 .portrait {
   margin: 0;
-  width: min(20rem, 34vw);
+  width: min(26rem, 38vw);
   border: var(--hairline-w) solid var(--hairline);
   border-radius: var(--radius-md);
   overflow: hidden;

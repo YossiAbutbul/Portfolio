@@ -13,8 +13,8 @@
   /* Palette                                                              */
   /* -------------------------------------------------------------------- */
   --graphite: #0c1114;
-  --bench: #171f23;
-  --sunken: #080c0e;
+  --bench: #1b2429;
+  --sunken: #05080a;
 
   --chalk: #e9eae4;
   --pencil: #8a9599;
@@ -23,6 +23,7 @@
 
   --phosphor: #ffb02e;
   --phosphor-soft: rgba(255, 176, 46, 0.14);
+  --phosphor-ink: #1a1204;
   --phosphor-line: rgba(255, 176, 46, 0.32);
   --trace: #5fc6d4;
   --trace-soft: rgba(95, 198, 212, 0.12);
@@ -56,7 +57,7 @@
 
   /* Archivo carries a width axis. These are the only three widths in use:
      compressed for stacked display, normal for UI, wide for emphasis. */
-  --wdth-tight: 82;
+  --wdth-tight: 70;
   --wdth-normal: 100;
   --wdth-wide: 115;
 
@@ -69,6 +70,7 @@
   --step-5: clamp(2.34rem, 1.67rem + 3.36vw, 4.29rem);
   --step-6: clamp(2.81rem, 1.81rem + 4.99vw, 5.72rem);
   --step-7: clamp(3.37rem, 1.9rem + 7.33vw, 7.63rem);
+  --step-8: clamp(4.5rem, 1.6rem + 14.5vw, 13rem);
 
   /* Uppercase labels are set in the display face, not a monospace, and the
      tracking is deliberately short of the usual eyebrow treatment. */

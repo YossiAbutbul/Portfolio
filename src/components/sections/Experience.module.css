@@ -1,6 +1,14 @@
 .experience {
   padding-block: var(--section-pad);
-  background: var(--bg);
+  background: var(--bg-raised);
+}
+
+.experience h2 {
+  font-size: var(--step-7);
+  font-stretch: 70%;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
 }
 
 .bay > h2 {
@@ -29,7 +37,7 @@
 
 .post {
   display: grid;
-  grid-template-columns: 12rem minmax(0, 1fr);
+  grid-template-columns: 15rem minmax(0, 1fr);
   gap: var(--space-6);
   position: relative;
 }
@@ -54,9 +62,10 @@
 .years {
   font-family: var(--font-display);
   font-weight: 700;
-  font-stretch: 88%;
-  font-size: var(--step-2);
-  letter-spacing: -0.02em;
+  font-stretch: 70%;
+  font-size: var(--step-4);
+  line-height: 0.9;
+  letter-spacing: -0.035em;
   color: var(--fg);
 }
 
@@ -70,7 +79,10 @@
 }
 
 .role {
-  font-size: var(--step-2);
+  font-size: var(--step-3);
+  font-stretch: 88%;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
   margin-bottom: var(--space-1);
 }
 
