@@ -1,20 +1,23 @@
-/* Nav, set as sheet furniture: a stamped mark top-left, a plain control
-   top-right, and a full-page index when it opens. */
+/* Masthead: wordmark left, a short index and the full-page menu control right.
+   One rule per selector - the overrides that used to sit at the bottom of this
+   file have been folded in, so source order no longer decides the outcome. */
 
 .nav {
   position: fixed;
   inset: 0 0 auto;
   z-index: 100;
-  padding: 1.25rem var(--gutter);
+  padding: 1.15rem var(--gutter);
   pointer-events: none;
+  background: var(--paper);
+  border-bottom: var(--hairline-w) solid var(--rule);
 }
 
 .inner {
   width: 100%;
-  max-width: none !important;
+  max-width: calc(var(--container-max) - 2 * var(--gutter)) !important;
   padding: 0 !important;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   pointer-events: none;
 }
@@ -30,28 +33,14 @@
 .monogram {
   display: inline-flex;
   align-items: center;
+  gap: 0.8rem;
   color: var(--ink);
 }
 
-.monogramMark {
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--ink);
-  background: var(--paper);
-  border: var(--hairline-w) solid var(--rule-heavy);
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-
-.monogram:hover .monogramMark,
-.monogram:focus-visible .monogramMark {
-  background: var(--ink);
-  color: var(--paper);
+.brandName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .backLink {
@@ -60,13 +49,14 @@
   gap: 0.7rem;
   height: 2.6rem;
   padding: 0 1rem;
+  border: var(--hairline-w) solid var(--rule);
+  border-radius: 4px;
   font-family: var(--font-mono);
   font-size: var(--step--1);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink);
   background: var(--paper);
-  border: var(--hairline-w) solid var(--rule-heavy);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
@@ -85,8 +75,46 @@
 }
 
 .right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   pointer-events: none;
 }
+
+/* --- Inline index --------------------------------------------------------- */
+
+.desktopNav {
+  display: flex;
+  gap: 2rem;
+  pointer-events: auto;
+}
+
+.desktopNav .link {
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 400;
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-muted);
+}
+
+.desktopNav .link:last-child {
+  color: var(--ink);
+}
+
+.desktopNav .link::before,
+.desktopNav .link::after {
+  display: none;
+}
+
+.desktopNav .link:hover .linkText,
+.desktopNav .linkActive .linkText {
+  transform: none;
+  color: var(--mark);
+}
+
+/* --- Menu control --------------------------------------------------------- */
 
 .menuBtn {
   width: 2.6rem;
@@ -97,16 +125,15 @@
   align-items: center;
   justify-content: center;
   gap: 0.34rem;
+  border: 0;
   color: var(--ink);
-  background: var(--paper);
-  border: var(--hairline-w) solid var(--rule-heavy);
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  background: transparent;
+  transition: color var(--dur-fast) var(--ease-out);
 }
 
 .menuBtn:hover,
 .menuBtn:focus-visible {
-  background: var(--ink);
-  color: var(--paper);
+  color: var(--mark);
 }
 
 .menuBar {
@@ -204,7 +231,7 @@
 }
 
 .linkText {
-  transition: transform 240ms var(--ease-out);
+  transition: transform 240ms var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .link:hover .linkText,
@@ -220,7 +247,11 @@
 
 @media (max-width: 40rem) {
   .nav {
-    padding: 1rem;
+    padding: 1rem var(--gutter);
+  }
+
+  .desktopNav {
+    display: none;
   }
 
   .navWrap {
@@ -232,24 +263,3 @@
     padding-block: 0.5rem;
   }
 }
-
-/* The studio masthead stays compact while the full index remains accessible. */
-.nav { padding: 1.15rem var(--gutter); background: var(--paper); border-bottom: 1px solid var(--rule); }
-.inner { align-items: center; max-width: calc(var(--container-max) - 2 * var(--gutter)) !important; }
-.monogram { gap: 0.8rem; }
-.monogramMark { background: var(--mark); color: var(--paper-lift); border: 0; border-radius: 50%; font-size: 0.8rem; letter-spacing: -0.05em; width: 2.5rem; height: 2.5rem; }
-.brandName { display: grid; gap: 0.15rem; font-size: 0.9rem; line-height: 1.2; font-weight: 600; }
-.brandName > span { color: var(--ink-muted); font-size: 0.7rem; font-weight: 400; }
-.right { display: flex; align-items: center; gap: 1.5rem; }
-.desktopNav { display: flex; gap: 2rem; pointer-events: auto; }
-.desktopNav .link { padding: 0.5rem 0; font-size: 0.875rem; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-muted); }
-.desktopNav .link:last-child { color: var(--ink); }
-.desktopNav .link::before, .desktopNav .link::after { display: none; }
-.desktopNav .link:hover .linkText, .desktopNav .linkActive .linkText { transform: none; color: var(--mark); }
-.menuBtn { border-radius: 50%; border-color: var(--rule-strong); background: transparent; }
-.backLink { border-radius: 4px; border-color: var(--rule); }
-@media (max-width: 40rem) { .desktopNav { display: none; } .nav { padding: 1rem var(--gutter); } }
-
-.nav { background: var(--paper); backdrop-filter: none; }
-.menuBtn { border: 0; border-radius: 0; }
-.brandName { font-weight: 500; }

@@ -8,7 +8,10 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
-import SignalCore from "./SignalCore";
+// Hero object. Swap this single import to compare the two:
+//   ./SignalCore  - the torus knot
+//   ./SignalGraph - the graph running a breadth-first search
+import HeroObject from "./SignalGraph";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
@@ -187,7 +190,7 @@ export default function Home() {
           </div>
 
             <div className={styles.heroPlot}>
-              <SignalCore />
+              <HeroObject />
             </div>
           </div>
         </div>
@@ -375,7 +378,7 @@ function WorkRow({ project }: { project: Project }) {
       <div className={styles.rowBody}>
         <div className={styles.rowHead}>
           <h3 className={styles.rowTitle}>{project.title}</h3>
-          {project.slug === "test-console" && project.metric && (
+          {project.metric && (
             <span className={`mono ${styles.metric}`}>
               <s>{project.metric.before}</s>
               <span aria-hidden="true">→</span>

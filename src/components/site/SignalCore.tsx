@@ -177,7 +177,15 @@ export default function SignalCore() {
       reduced.addEventListener("change", sync);
       controller.current = {
         pause(value) { manualPause = value; sync(); },
-        wire(value) { metal.wireframe = value; metal.needsUpdate = true; render(); },
+        wire(value) {
+          // Every material, not just the knot: toggling one left the orbit and
+          // the core solid, so the control looked half applied.
+          for (const material of [metal, orange]) {
+            material.wireframe = value;
+            material.needsUpdate = true;
+          }
+          render();
+        },
       };
       satellite.position.set(2.16, 0, 0);
       updateScroll();

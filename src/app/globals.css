@@ -46,8 +46,8 @@ body::before {
 }
 
 ::selection {
-  background: var(--mark-soft);
-  color: var(--ink);
+  background: var(--mark);
+  color: var(--paper-sunk);
 }
 
 a {
