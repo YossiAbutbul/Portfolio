@@ -249,7 +249,7 @@ export default function GraphSolve() {
     let height = 0;
     let ink = "#15181B";
     let paper = "#ECEBE5";
-    let faint = "#93968F";
+    let faint = "#6B6F74";
 
     let frame = 0;
     let start = 0;
@@ -261,7 +261,9 @@ export default function GraphSolve() {
       const style = getComputedStyle(host!);
       ink = style.getPropertyValue("--ink").trim() || ink;
       paper = style.getPropertyValue("--paper").trim() || paper;
-      faint = style.getPropertyValue("--ink-faint").trim() || faint;
+      // Undiscovered edges take the muted ink, not the faintest one: at the
+      // faintest the whole graph reads as a smudge rather than a drawing.
+      faint = style.getPropertyValue("--ink-muted").trim() || faint;
     }
 
     function resize() {
@@ -289,7 +291,7 @@ export default function GraphSolve() {
         ? graph.depth + 1
         : Math.min(graph.depth + 1, (cyclePosition / SEARCH_SHARE) * (graph.depth + 1));
 
-      const scale = Math.min(width, height) * 0.42;
+      const scale = Math.min(width, height) * 0.5;
       const originX = width / 2;
       const originY = height / 2;
 
