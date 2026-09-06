@@ -141,11 +141,16 @@ export default function Nav() {
               }
             }}
           >
-            <span className={styles.monogramMark} aria-hidden="true">YA</span>
+            <span className={styles.brandName}>Yossi Abutbul</span>
           </Link>
         )}
 
         <div className={styles.right}>
+          <nav className={styles.desktopNav} aria-label="Quick navigation">
+            <NavLink href="/#work" label="Work" active={active === "work"} onNavigate={() => setOpen(false)} />
+            <NavLink href="/#background" label="About" active={active === "background"} onNavigate={() => setOpen(false)} />
+            <NavLink href="/#contact" label="Contact" active={active === "contact"} onNavigate={() => setOpen(false)} />
+          </nav>
           <nav
             ref={menuRef}
             id="primary-nav"

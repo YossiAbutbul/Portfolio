@@ -232,3 +232,24 @@
     padding-block: 0.5rem;
   }
 }
+
+/* The studio masthead stays compact while the full index remains accessible. */
+.nav { padding: 1.15rem var(--gutter); background: var(--paper); border-bottom: 1px solid var(--rule); }
+.inner { align-items: center; max-width: calc(var(--container-max) - 2 * var(--gutter)) !important; }
+.monogram { gap: 0.8rem; }
+.monogramMark { background: var(--mark); color: var(--paper-lift); border: 0; border-radius: 50%; font-size: 0.8rem; letter-spacing: -0.05em; width: 2.5rem; height: 2.5rem; }
+.brandName { display: grid; gap: 0.15rem; font-size: 0.9rem; line-height: 1.2; font-weight: 600; }
+.brandName > span { color: var(--ink-muted); font-size: 0.7rem; font-weight: 400; }
+.right { display: flex; align-items: center; gap: 1.5rem; }
+.desktopNav { display: flex; gap: 2rem; pointer-events: auto; }
+.desktopNav .link { padding: 0.5rem 0; font-size: 0.875rem; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-muted); }
+.desktopNav .link:last-child { color: var(--ink); }
+.desktopNav .link::before, .desktopNav .link::after { display: none; }
+.desktopNav .link:hover .linkText, .desktopNav .linkActive .linkText { transform: none; color: var(--mark); }
+.menuBtn { border-radius: 50%; border-color: var(--rule-strong); background: transparent; }
+.backLink { border-radius: 4px; border-color: var(--rule); }
+@media (max-width: 40rem) { .desktopNav { display: none; } .nav { padding: 1rem var(--gutter); } }
+
+.nav { background: var(--paper); backdrop-filter: none; }
+.menuBtn { border: 0; border-radius: 0; }
+.brandName { font-weight: 500; }

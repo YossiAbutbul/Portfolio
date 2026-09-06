@@ -21,7 +21,7 @@ export const PROJECTS: Project[] = [
     slug: "test-console",
     title: "Test Console",
     summary:
-      "Five instruments, one browser tab. BLE-driven power-amplifier testing, load pull, and RF sweeps that used to be three days of manual bench work.",
+      "Automates power-amplifier tests, load pull, and RF sweeps. Reduced a three-day manual qualification procedure to about eight minutes.",
     friction:
       "Qualifying one unit meant driving five instruments by hand, transcribing readings between them, and losing most of a week.",
     metric: { before: "3 days", after: "~8 min" },
@@ -30,6 +30,12 @@ export const PROJECTS: Project[] = [
     role: "Solo - architecture, backend, frontend",
     stack: ["React 19", "TypeScript", "MUI", "TanStack Query", "FastAPI", "PyVISA", "BLE"],
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/test-console" }],
+    images: [{
+      src: "/projects/test-console/screenshot.png",
+      alt: "Test Console CW workspace with transmit settings and measurement panels, shown with hardware disconnected",
+      width: 1280,
+      height: 720,
+    }],
     featured: true,
     overview: [
       "A test rig that runs itself. The console connects to the device under test over BLE, drives a DC power analyzer, a network analyzer, a spectrum analyzer, a Mini-Circuits power sensor, an Arcus trombone motor and an Arduino RF switch, and walks a full power-amplifier characterisation without anyone standing at the bench writing numbers down.",
@@ -48,7 +54,7 @@ export const PROJECTS: Project[] = [
     slug: "oplanner",
     title: "OPlanner",
     summary:
-      "A semester that builds itself from the calendar file the university already gives you. Courses, deadlines and exams in about thirty seconds.",
+      "A student planner I built to import my university calendar and keep track of courses, deadlines, and exams.",
     friction:
       "My own semester lived across a portal, three spreadsheets and a notes app, and nothing agreed with anything else.",
     metric: { before: "6 tabs", after: "1 dashboard" },
@@ -78,7 +84,7 @@ export const PROJECTS: Project[] = [
     slug: "report-generator",
     title: "RF Report Generator",
     summary:
-      "Chamber measurements in, a finished Word report out. 2D polar plots and a 3D radiation surface you can turn, so pattern defects are visible instead of inferred.",
+      "Generates Word reports from antenna measurements, with 2D polar plots and an interactive 3D radiation-pattern viewer.",
     friction:
       "Every antenna measurement ended the same way: half a day rebuilding the same document by hand from the same spreadsheet.",
     metric: { before: "half a day", after: "minutes" },
@@ -137,7 +143,7 @@ export const PROJECTS: Project[] = [
     slug: "current-logger",
     title: "Current Logger",
     summary:
-      "How long does the battery really last? Arms on a current-level trigger, captures every transmit burst, and stops itself once the peak has dropped 3 dB.",
+      "Records transmit bursts during battery tests. Triggers on current level and stops when the peak drops by a configured amount.",
     friction:
       "Product lifetime was an estimate nobody could show you, because measuring it meant watching an instrument for two days.",
     metric: { before: "estimated", after: "measured" },
@@ -146,6 +152,12 @@ export const PROJECTS: Project[] = [
     role: "Solo",
     stack: ["Python", "Keysight N6781A", "R&S FSC3", "SCPI", "WebSocket", "Canvas"],
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/current-logger" }],
+    images: [{
+      src: "/projects/current-logger/screenshot.png",
+      alt: "Current Logger reference setup with message interval, trigger level, and reference controls, shown with hardware disconnected",
+      width: 1280,
+      height: 720,
+    }],
     featured: true,
     overview: [
       "A battery- or HLC-powered unit transmits on a fixed interval, and the question is how many of those transmits it has left. The logger arms on a current-level trigger so it never has to predict when a burst happens - it waits, captures, records the peak, and repeats until the peak has fallen a configured amount below the first capture.",
@@ -164,7 +176,7 @@ export const PROJECTS: Project[] = [
     slug: "algorithmx",
     title: "AlgorithmX",
     summary:
-      "Nine graph algorithms, one step at a time. Feed Dijkstra a negative edge and watch it lock in the wrong answer instead of being told that it would.",
+      "A Hebrew learning tool for nine graph algorithms, with step-by-step playback, visible data structures, and side-by-side comparisons.",
     friction:
       "I was learning graph algorithms from lecture slides where the interesting part - the order things happen in - is exactly what a static diagram cannot show.",
     metric: { before: "memorised", after: "watched" },
@@ -176,6 +188,12 @@ export const PROJECTS: Project[] = [
       { label: "Live", href: "https://algorithmx.abyossi22.workers.dev/" },
       { label: "GitHub", href: "https://github.com/YossiAbutbul/AlgorithmX" },
     ],
+    images: [{
+      src: "/projects/algorithmx/screenshot.png",
+      alt: "AlgorithmX running breadth-first search with the graph, FIFO queue, distance table, and step controls",
+      width: 1280,
+      height: 720,
+    }],
     featured: true,
     overview: [
       "An interactive Hebrew learning site that turns graph algorithms from something you memorise into something you watch happen. Every step colours the node and the edge that changed and says in one sentence what just happened and why. Step forward, step back, or drag along a timeline where each mark is coloured by what the algorithm did there.",
@@ -194,9 +212,9 @@ export const PROJECTS: Project[] = [
     slug: "toast-turn",
     title: "ToastTurn",
     summary:
-      "Whose turn is it to make toast? The answer fills the screen. Pull the toaster lever to log a turn and every phone in the house agrees within a second.",
+      "A small app for keeping track of whose turn it is to make toast at home. Logs turns and syncs them across the family’s phones.",
     friction:
-      "Not every problem needs an instrument. This one needed a family to stop arguing in the kitchen.",
+      "We needed a shared record of whose turn it was to make toast.",
     metric: { before: "an argument", after: "one screen" },
     tags: ["software"],
     year: 2026,

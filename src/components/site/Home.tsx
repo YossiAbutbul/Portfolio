@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
-import GraphSolve from "./GraphSolve";
+import SignalCore from "./SignalCore";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
@@ -31,34 +32,43 @@ const SIGNATURES: Record<string, SignatureKind> = {
   "toast-turn": "flat",
 };
 
+const PROJECT_PREVIEWS: Record<string, string> = {
+  "test-console": "/projects/test-console/screenshot.png",
+  oplanner: "/projects/oplanner/poster.jpg",
+  "pipeline-cpu": "/projects/pipeline-cpu/poster.jpg",
+  "current-logger": "/projects/current-logger/screenshot.png",
+  algorithmx: "/projects/algorithmx/screenshot.png",
+  "toast-turn": "/projects/toast-turn/cover.png",
+};
+
 /**
  * How the work happens, in the order it happens. Each beat is anchored to a
  * real project so it reads as a description rather than a philosophy.
  */
 const METHOD = [
   {
-    step: "Notice",
-    title: "Something takes too long, and everyone has stopped noticing",
+    step: "Test Console",
+    title: "Start with the manual procedure",
     detail:
-      "Five instruments driven by hand. A report rebuilt from the same spreadsheet every week. A semester spread across six tabs. The friction is usually invisible because it has always been there.",
+      "I worked through the RF test procedure instrument by instrument, then built a console to run the sequence and record the results.",
   },
   {
-    step: "Measure",
-    title: "Make the invisible part visible before touching it",
+    step: "Current Logger",
+    title: "Record what the device actually does",
     detail:
-      "Plot the decay. Colour the graph as the algorithm runs. Draw the radiation pattern as a surface you can turn. You cannot automate a process you cannot yet watch, and half the time watching it is the whole fix.",
+      "The logger captures transmit bursts and saves each measurement. I can inspect a live test or go back through a saved run.",
   },
   {
-    step: "Automate",
-    title: "Then take the person out of the loop",
+    step: "OPlanner",
+    title: "Build around the data already available",
     detail:
-      "Once the procedure is legible it can be driven: a trigger instead of a stopwatch, an import instead of retyping, one console instead of six instrument front panels.",
+      "My university provides a calendar export. I used it to populate courses and deadlines, so I don't have to enter my semester by hand.",
   },
 ];
 
 const BACKGROUND = [
   {
-    years: "2020 — now",
+    years: "2020 to present",
     kind: "Work",
     role: "RF & Electronics Integrator",
     place: "Arad Technologies",
@@ -66,7 +76,7 @@ const BACKGROUND = [
       "Test systems where radio hardware, automation and interface design meet. Built the automation platform that took a three-day qualification cycle to roughly eight minutes.",
   },
   {
-    years: "2022 — now",
+    years: "2022 to present",
     kind: "Education",
     role: "BSc Computer Science",
     place: "The Open University",
@@ -74,7 +84,7 @@ const BACKGROUND = [
       "Systems programming, algorithms, computer architecture, software engineering. Currently writing a seminar on generating user interfaces with LLMs.",
   },
   {
-    years: "2017 — 2019",
+    years: "2017 to 2019",
     kind: "Army service",
     role: "Operational Project Leader",
     place: "IDF Intelligence, Unit 81",
@@ -90,11 +100,7 @@ export default function Home() {
     if (!root.current) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    // Every animation here starts from a hidden state, and browsers pause
-    // requestAnimationFrame in a background tab - so a page opened in an
-    // unfocused tab would otherwise render as a blank sheet and stay that way
-    // until it was looked at. Track the animations and jump them to their end
-    // whenever the document is hidden.
+    // Finish entrance animations when hidden so a background tab stays readable.
     const animations: gsap.core.Animation[] = [];
 
     function settle() {
@@ -103,8 +109,6 @@ export default function Home() {
     }
 
     const context = gsap.context(() => {
-      // The name is the only large move on the page. Everything after it
-      // resolves at a smaller amplitude - a document does not bounce.
       gsap.set("[data-hero-line]", { yPercent: 104 });
       gsap.set("[data-hero-fade]", { opacity: 0, y: 14 });
 
@@ -115,19 +119,25 @@ export default function Home() {
           .to("[data-hero-fade]", { opacity: 1, y: 0, duration: 0.6, stagger: 0.06 }, 0.5),
       );
 
-      // Section content settles into place but is never hidden to do it: a
-      // frozen tween leaves the text eight pixels low, not missing. A sheet of
-      // paper does not fade in, and content that depends on JS to become
-      // legible is content that can fail to arrive.
+      // Scroll entrances never hide the project content.
       gsap.utils.toArray<HTMLElement>("[data-rise]").forEach((element) => {
         animations.push(
           gsap.from(element, {
-            y: 10,
-            duration: 0.5,
+            y: 24,
+            duration: 0.8,
             ease: "expo.out",
             scrollTrigger: { trigger: element, start: "top 92%", once: true },
           }),
         );
+      });
+
+      gsap.utils.toArray<HTMLElement>("[data-project]").forEach((element) => {
+        animations.push(gsap.from(element, {
+          y: 48,
+          duration: 1,
+          ease: "power3.out",
+          scrollTrigger: { trigger: element, start: "top 95%", once: true },
+        }));
       });
 
       ScrollTrigger.refresh();
@@ -147,11 +157,6 @@ export default function Home() {
       {/* ------------------------------------------------------------------ */}
       <section id="hero" className={styles.hero} aria-labelledby="hero-name">
         <div className={`container ${styles.heroInner}`}>
-          <div className={`mono ${styles.heroStamp}`} data-hero-fade>
-            <span>Software · Test automation · RF</span>
-            <span>Rev 2026.09</span>
-          </div>
-
           <div className={styles.heroLayout}>
           <div className={styles.heroBody}>
             <h1 id="hero-name" className={styles.heroName}>
@@ -164,41 +169,36 @@ export default function Home() {
             </h1>
 
             <p className={styles.claim} data-hero-fade>
-              Three days of RF testing. <mark>Now eight minutes.</mark>
+              Software developer. RF & electronics integrator.
             </p>
 
             <p className={styles.claimSub} data-hero-fade>
-              I build test automation, measurement software, and the interfaces that make
-              lab data readable.
+              I build test automation at Arad Technologies and study computer science at the Open University. These are some of the tools I’ve built for work, for my studies, and for home.
             </p>
 
             <div className={styles.heroActions} data-hero-fade>
-              <a className={styles.button} href={withBasePath(CV_HREF)} download>
-                Download CV
+              <a className={styles.button} href="#work">
+                View projects
               </a>
-              <a className={styles.buttonGhost} href={`mailto:${EMAIL}`}>
-                {EMAIL}
+              <a className={styles.buttonGhost} href={withBasePath(CV_HREF)} download>
+                Download CV
               </a>
             </div>
           </div>
 
             <div className={styles.heroPlot}>
-              <GraphSolve />
+              <SignalCore />
             </div>
           </div>
         </div>
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="work" index="01" label="Selected work" title="Selected work">
-        <p className={styles.sectionLede} data-rise>
-          Six of them. Each one started as something that took too long, and each one is
-          still in use by whoever had the problem.
-        </p>
+      <Section id="work" title="Selected projects">
 
         <ol className={styles.workList}>
-          {FEATURED_PROJECTS.map((project, index) => (
-            <WorkRow key={project.slug} project={project} index={index + 1} />
+          {FEATURED_PROJECTS.map((project) => (
+            <WorkRow key={project.slug} project={project} />
           ))}
         </ol>
 
@@ -238,12 +238,12 @@ export default function Home() {
       </Section>
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="method" index="02" label="How I work" title="How I work">
+      <Section id="method" title="How I work">
         <ol className={styles.method}>
-          {METHOD.map((beat, index) => (
+          {METHOD.map((beat) => (
             <li key={beat.step} className={styles.methodItem} data-rise>
               <span className={`mono ${styles.methodStep}`}>
-                {String(index + 1).padStart(2, "0")} {beat.step}
+                {beat.step}
               </span>
               <h3 className={styles.methodTitle}>{beat.title}</h3>
               <p className={styles.methodDetail}>{beat.detail}</p>
@@ -253,24 +253,22 @@ export default function Home() {
       </Section>
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="writing" index="03" label="Writing" title="Writing">
+      <Section id="writing" title="Writing">
         <article className={styles.paper} data-rise>
           <span className={`mono ${styles.paperMeta}`}>
             Seminar · The Open University · In progress
           </span>
           <h3 className={styles.paperTitle}>
-            Creating User Interfaces Using LLMs — From Specification to Code
+            Creating User Interfaces Using LLMs: From Specification to Code
           </h3>
           <p className={styles.paperBody}>
-            How far a written specification can be carried toward a working interface by a
-            language model, where the translation reliably breaks down, and what a
-            specification has to contain before the generated result is worth keeping.
+            My computer science seminar examines how language models turn written specifications into interfaces, the errors they make, and how the specification affects the result.
           </p>
         </article>
       </Section>
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="background" index="04" label="Background" title="Background">
+      <Section id="background" title="Background">
         <ol className={styles.timeline}>
           {BACKGROUND.map((entry) => (
             <li key={entry.role} className={styles.entry} data-rise>
@@ -294,10 +292,7 @@ export default function Home() {
       </Section>
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="contact" index="05" label="Contact" title="Get in touch">
-        <p className={styles.sectionLede} data-rise>
-          The fastest way to reach me is email. I read everything.
-        </p>
+      <Section id="contact" title="Contact">
 
         <ul className={styles.contactList} data-rise>
           <li>
@@ -324,34 +319,26 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={`container mono ${styles.footerInner}`}>
           <span>Yossi Abutbul · 2026</span>
+          <a href="#hero">Back to top</a>
         </div>
       </footer>
     </div>
   );
 }
 
-/** A numbered sheet section: sticky label in the margin, content in the column. */
+/** A chapter in the portfolio, with a consistent navigation anchor. */
 function Section({
   id,
-  index,
-  label,
   title,
   children,
 }: {
   id: string;
-  index: string;
-  label: string;
   title: string;
   children: React.ReactNode;
 }) {
   return (
     <section id={id} className={styles.section} aria-labelledby={`${id}-title`}>
       <div className={`container ${styles.sectionInner}`}>
-        <div className={styles.sectionAside}>
-          <span className={`mono ${styles.sectionIndex}`}>
-            {index} / {label}
-          </span>
-        </div>
         <div className={styles.sectionMain}>
           <h2 id={`${id}-title`} className={styles.sectionTitle} data-rise>
             {title}
@@ -363,21 +350,32 @@ function Section({
   );
 }
 
-function WorkRow({ project, index }: { project: Project; index: number }) {
+function WorkRow({ project }: { project: Project }) {
   const [active, setActive] = useState(false);
   const hasCase = !project.noCase;
   const external = project.links.find((link) => link.label === "Live") ?? project.links[0];
   const href = hasCase ? `/projects/${project.slug}` : external?.href ?? "#";
   const signature = SIGNATURES[project.slug];
+  const preview = PROJECT_PREVIEWS[project.slug];
 
   const inner = (
     <>
-      <span className={`mono ${styles.rowIndex}`}>{String(index).padStart(2, "0")}</span>
-
+      <div className={styles.projectVisual}>
+        {preview ? (
+          <div className={styles.previewFrame}>
+            <Image src={withBasePath(preview)} alt={project.images?.find((image) => image.src === preview)?.alt ?? `${project.title} interface`} width={1280} height={720} sizes="(max-width: 768px) 90vw, 42vw" className={styles.previewImage} />
+          </div>
+        ) : (
+          <div className={styles.plotFrame} aria-hidden="true">
+            <div className={styles.largeSignature}>{signature && <ProjectSignature kind={signature} active={active} />}</div>
+            <span className={styles.plotLabel}>{project.slug === "test-console" ? "Load-pull contours" : project.slug === "current-logger" ? "Transmit current over time" : "Graph traversal"}</span>
+          </div>
+        )}
+      </div>
       <div className={styles.rowBody}>
         <div className={styles.rowHead}>
           <h3 className={styles.rowTitle}>{project.title}</h3>
-          {project.metric && (
+          {project.slug === "test-console" && project.metric && (
             <span className={`mono ${styles.metric}`}>
               <s>{project.metric.before}</s>
               <span aria-hidden="true">→</span>
@@ -386,7 +384,6 @@ function WorkRow({ project, index }: { project: Project; index: number }) {
           )}
         </div>
 
-        {project.friction && <p className={styles.rowFriction}>{project.friction}</p>}
         <p className={styles.rowSummary}>{project.summary}</p>
 
         <ul className={`mono ${styles.stack}`}>
@@ -396,16 +393,6 @@ function WorkRow({ project, index }: { project: Project; index: number }) {
         </ul>
       </div>
 
-      <div className={styles.rowAside}>
-        {signature && (
-          <div className={styles.rowSignature}>
-            <ProjectSignature kind={signature} active={active} />
-          </div>
-        )}
-        <span className={styles.rowGo} aria-hidden="true">
-          {hasCase ? "Case" : "Open"} <span className={styles.rowArrow}>→</span>
-        </span>
-      </div>
     </>
   );
 
@@ -417,7 +404,7 @@ function WorkRow({ project, index }: { project: Project; index: number }) {
   };
 
   return (
-    <li className={styles.row}>
+    <li className={styles.row} data-project>
       {hasCase ? (
         <Link className={styles.rowLink} href={href} {...handlers}>
           {inner}

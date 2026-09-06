@@ -1,41 +1,38 @@
-/* Datasheet.
-   Ink on paper, set the way a component datasheet is set. One colour in the
-   entire system - a highlighter - and it is spent on one phrase per screen.
-   Everything else is paper, ink, and rules. */
+/* Dark surfaces, silver type, and orange accents. */
 
 :root,
-[data-theme="light"] {
-  --paper: #ECEBE5;
-  --paper-lift: #F3F2EE;
-  --paper-sunk: #E3E1D9;
+[data-theme="dark"] {
+  --paper: #101112;
+  --paper-lift: #191b1d;
+  --paper-sunk: #0b0c0d;
 
-  --ink: #15181B;
-  --ink-mid: #4B4E4C;
-  --ink-muted: #6B6F74;
-  --ink-faint: #93968F;
+  --ink: #f2f0e9;
+  --ink-mid: #b7bab9;
+  --ink-muted: #a0a5a5;
+  --ink-faint: #858b8b;
 
-  --rule: rgba(21, 24, 27, 0.16);
-  --rule-strong: rgba(21, 24, 27, 0.42);
-  --rule-heavy: rgba(21, 24, 27, 0.78);
+  --rule: rgba(240, 240, 235, 0.12);
+  --rule-strong: rgba(240, 240, 235, 0.24);
+  --rule-heavy: rgba(240, 240, 235, 0.36);
 
-  --mark: #F2D024;
-  --mark-soft: rgba(242, 208, 36, 0.34);
+  --mark: #ff7a42;
+  --mark-soft: rgba(255, 122, 66, 0.15);
 
   /* Semantic, kept apart from the highlighter: this is a limit being crossed,
      never a brand colour. */
   --limit: #A4352A;
 
-  --grain-opacity: 0.05;
-  --grain-blend: multiply;
+  --grain-opacity: 0.035;
+  --grain-blend: screen;
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 :root {
   /* Type - a datasheet has few sizes and uses them consistently. */
-  --step--2: 0.68rem;
-  --step--1: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
-  --step-0: clamp(0.95rem, 0.92rem + 0.16vw, 1.05rem);
+  --step--2: 0.75rem;
+  --step--1: 0.875rem;
+  --step-0: clamp(1rem, 0.96rem + 0.16vw, 1.08rem);
   --step-1: clamp(1.1rem, 1.03rem + 0.34vw, 1.32rem);
   --step-2: clamp(1.3rem, 1.15rem + 0.72vw, 1.75rem);
   --step-3: clamp(1.6rem, 1.3rem + 1.4vw, 2.5rem);
@@ -58,10 +55,10 @@
   --hairline-w: 1px;
 
   --font-sans: var(--font-archivo, "Archivo"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-mono: var(--font-jetbrains, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Layout - a wide label margin and a measured text column, like a spec page. */
-  --container-max: 82rem;
+  --container-max: 94rem;
   --content-max: 44rem;
   --label-col: 8.5rem;
   --gutter: clamp(1.25rem, 4vw, 3.5rem);

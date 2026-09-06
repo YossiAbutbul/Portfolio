@@ -6,7 +6,6 @@ import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import PageTransition from "@/components/layout/PageTransition";
-import SheetMarks from "@/components/layout/SheetMarks";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -16,7 +15,7 @@ const archivo = Archivo({
 
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-jetbrains",
   display: "swap",
 });
 
@@ -59,7 +58,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ECEBE5",
+  themeColor: "#101112",
 };
 
 export default function RootLayout({
@@ -69,11 +68,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${archivo.variable} ${jetbrains.variable}`}
-      data-theme="light"
+      data-theme="dark"
     >
       <body>
         <SkipToContent />
-        <SheetMarks />
         <SmoothScroll>
           <Nav />
           <main id="main">
