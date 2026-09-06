@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import PatternPlot from "./PatternPlot";
+import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -16,6 +17,19 @@ const CV_HREF = "/Yossi Abutbul - CV 2026.pdf";
 const EMAIL = "abyossi22@gmail.com";
 const LINKEDIN = "https://www.linkedin.com/in/yossi-abutbul-550958199/";
 const GITHUB = "https://github.com/YossiAbutbul";
+
+/**
+ * Each project draws the shape of its own subject rather than showing a
+ * screenshot. Keyed by slug so a row never has to know how it is drawn.
+ */
+const SIGNATURES: Record<string, SignatureKind> = {
+  "test-console": "contours",
+  oplanner: "semester",
+  "pipeline-cpu": "pipeline",
+  "current-logger": "bursts",
+  algorithmx: "graph",
+  "toast-turn": "flat",
+};
 
 /**
  * How the work happens, in the order it happens. Each beat is anchored to a
@@ -350,9 +364,11 @@ function Section({
 }
 
 function WorkRow({ project, index }: { project: Project; index: number }) {
+  const [active, setActive] = useState(false);
   const hasCase = !project.noCase;
   const external = project.links.find((link) => link.label === "Live") ?? project.links[0];
   const href = hasCase ? `/projects/${project.slug}` : external?.href ?? "#";
+  const signature = SIGNATURES[project.slug];
 
   const inner = (
     <>
@@ -380,20 +396,34 @@ function WorkRow({ project, index }: { project: Project; index: number }) {
         </ul>
       </div>
 
-      <span className={styles.rowGo} aria-hidden="true">
-        {hasCase ? "Case" : "Open"} <span className={styles.rowArrow}>→</span>
-      </span>
+      <div className={styles.rowAside}>
+        {signature && (
+          <div className={styles.rowSignature}>
+            <ProjectSignature kind={signature} active={active} />
+          </div>
+        )}
+        <span className={styles.rowGo} aria-hidden="true">
+          {hasCase ? "Case" : "Open"} <span className={styles.rowArrow}>→</span>
+        </span>
+      </div>
     </>
   );
+
+  const handlers = {
+    onPointerEnter: () => setActive(true),
+    onPointerLeave: () => setActive(false),
+    onFocus: () => setActive(true),
+    onBlur: () => setActive(false),
+  };
 
   return (
     <li className={styles.row}>
       {hasCase ? (
-        <Link className={styles.rowLink} href={href}>
+        <Link className={styles.rowLink} href={href} {...handlers}>
           {inner}
         </Link>
       ) : (
-        <a className={styles.rowLink} href={href} target="_blank" rel="noreferrer">
+        <a className={styles.rowLink} href={href} target="_blank" rel="noreferrer" {...handlers}>
           {inner}
         </a>
       )}

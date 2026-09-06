@@ -1,0 +1,11 @@
+/* Plotted signature. Quiet at rest so the row still reads as type first;
+   inks up when the row is hovered. The two ink levels are custom properties
+   so the row, not the canvas, decides how loud it is. */
+
+.signature {
+  display: block;
+  width: 100%;
+  height: 100%;
+  --sig-line: var(--rule);
+  --sig-strong: var(--ink-faint);
+}

@@ -296,8 +296,20 @@
   letter-spacing: 0.1em;
 }
 
-.rowGo {
+/* Signature and affordance share the right-hand column. */
+.rowAside {
   align-self: center;
+  display: grid;
+  justify-items: end;
+  gap: var(--space-3);
+}
+
+.rowSignature {
+  width: 8.5rem;
+  height: 3.4rem;
+}
+
+.rowGo {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -317,6 +329,13 @@
 .rowLink:hover .rowGo,
 .rowLink:focus-visible .rowGo {
   color: var(--ink);
+}
+
+/* The signature inks up with the row rather than being drawn loud. */
+.rowLink:hover .rowSignature,
+.rowLink:focus-visible .rowSignature {
+  --sig-line: var(--rule-strong);
+  --sig-strong: var(--ink);
 }
 
 .rowLink:hover .rowArrow,
@@ -584,8 +603,9 @@
     row-gap: var(--space-3);
   }
 
-  .rowGo {
+  .rowAside {
     grid-column: 2;
+    justify-items: start;
     justify-self: start;
   }
 
