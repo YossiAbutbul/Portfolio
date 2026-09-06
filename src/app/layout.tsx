@@ -6,6 +6,7 @@ import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import PageTransition from "@/components/layout/PageTransition";
+import SheetMarks from "@/components/layout/SheetMarks";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -72,6 +73,7 @@ export default function RootLayout({
     >
       <body>
         <SkipToContent />
+        <SheetMarks />
         <SmoothScroll>
           <Nav />
           <main id="main">

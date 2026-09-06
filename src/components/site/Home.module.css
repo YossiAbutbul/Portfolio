@@ -92,11 +92,25 @@
   letter-spacing: -0.02em;
 }
 
-/* The only colour on the site, spent once. */
+/* The only colour on the site, spent once - and printed a hair out of
+   register, the way a second colour lands on a risograph. The parent takes
+   position without a z-index on purpose: giving it one would open a stacking
+   context and leave the multiply blending against nothing. */
 .claim mark {
-  background: var(--mark);
+  position: relative;
+  background: none;
   color: var(--ink);
   padding: 0 0.12em;
+}
+
+.claim mark::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -0.06em -0.1em -0.02em;
+  background: var(--mark);
+  transform: translate(0.15em, -0.09em);
+  mix-blend-mode: multiply;
 }
 
 .claimSub {
