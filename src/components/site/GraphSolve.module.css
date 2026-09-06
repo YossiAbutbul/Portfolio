@@ -1,5 +1,4 @@
-/* The plotted pattern. Sits in the hero's right half on wide screens and
-   behind the copy on narrow ones, always under the type. */
+/* The graph. Takes the column the hero gives it and scales into it. */
 
 .host {
   position: relative;

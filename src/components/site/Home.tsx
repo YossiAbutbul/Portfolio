@@ -7,7 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
-import PatternPlot from "./PatternPlot";
+import GraphSolve from "./GraphSolve";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
@@ -183,7 +183,7 @@ export default function Home() {
           </div>
 
             <div className={styles.heroPlot}>
-              <PatternPlot />
+              <GraphSolve />
             </div>
           </div>
         </div>
