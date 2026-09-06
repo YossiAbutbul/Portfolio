@@ -1,44 +1,47 @@
-/* Design tokens - deep navy, cool white, cobalt, and mint. */
+/* Datasheet.
+   Ink on paper, set the way a component datasheet is set. One colour in the
+   entire system - a highlighter - and it is spent on one phrase per screen.
+   Everything else is paper, ink, and rules. */
 
 :root,
-[data-theme="dark"] {
-  /* Variant 10 - Ayu Dark. Orange-yellow accent on deep navy. */
-  --bg: #050910;
-  --bg-soft: #08111a;
-  --bg-elevated: #101b27;
-  --bg-sunken: #03070c;
+[data-theme="light"] {
+  --paper: #ECEBE5;
+  --paper-lift: #F3F2EE;
+  --paper-sunk: #E3E1D9;
 
-  --fg: #dce9e7;
-  --fg-muted: #80939b;
-  --fg-dim: #425563;
+  --ink: #15181B;
+  --ink-mid: #4A5057;
+  --ink-muted: #6B6F74;
+  --ink-faint: #93968F;
 
-  --accent: #55f2a4;
-  --accent-soft: rgba(85, 242, 164, 0.16);
-  --accent-strong: #86ffc1;
-  --accent-dim: #20a86b;
+  --rule: rgba(21, 24, 27, 0.16);
+  --rule-strong: rgba(21, 24, 27, 0.42);
+  --rule-heavy: rgba(21, 24, 27, 0.78);
 
-  --hairline: rgba(191, 189, 182, 0.07);
-  --hairline-strong: rgba(191, 189, 182, 0.2);
+  --mark: #F2D024;
+  --mark-soft: rgba(242, 208, 36, 0.34);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-3: 0 24px 64px rgba(0, 0, 0, 0.6);
+  /* Semantic, kept apart from the highlighter: this is a limit being crossed,
+     never a brand colour. */
+  --limit: #A4352A;
 
-  --grain-opacity: 0.06;
-  --grain-blend: overlay;
+  --grain-opacity: 0.05;
+  --grain-blend: multiply;
+
+  color-scheme: light;
 }
 
 :root {
-  /* Type */
-  --step--1: clamp(0.78rem, 0.77rem + 0.06vw, 0.83rem);
-  --step-0: clamp(0.94rem, 0.9rem + 0.2vw, 1.06rem);
-  --step-1: clamp(1.13rem, 1.04rem + 0.43vw, 1.38rem);
-  --step-2: clamp(1.35rem, 1.19rem + 0.78vw, 1.8rem);
-  --step-3: clamp(1.62rem, 1.35rem + 1.36vw, 2.4rem);
-  --step-4: clamp(1.95rem, 1.51rem + 2.22vw, 3.23rem);
-  --step-5: clamp(2.34rem, 1.67rem + 3.36vw, 4.29rem);
-  --step-6: clamp(2.81rem, 1.81rem + 4.99vw, 5.72rem);
-  --step-7: clamp(3.37rem, 1.9rem + 7.33vw, 7.63rem);
+  /* Type - a datasheet has few sizes and uses them consistently. */
+  --step--2: 0.68rem;
+  --step--1: clamp(0.74rem, 0.72rem + 0.08vw, 0.8rem);
+  --step-0: clamp(0.95rem, 0.92rem + 0.16vw, 1.05rem);
+  --step-1: clamp(1.1rem, 1.03rem + 0.34vw, 1.32rem);
+  --step-2: clamp(1.3rem, 1.15rem + 0.72vw, 1.75rem);
+  --step-3: clamp(1.6rem, 1.3rem + 1.4vw, 2.5rem);
+  --step-4: clamp(2rem, 1.4rem + 2.8vw, 3.6rem);
+  --step-5: clamp(2.6rem, 1.5rem + 5vw, 5.5rem);
+  --step-6: clamp(3.2rem, 1.2rem + 9vw, 9rem);
 
   /* Space */
   --space-1: 0.25rem;
@@ -52,28 +55,22 @@
   --space-9: 7rem;
   --space-10: 10rem;
 
-  /* Borders + radii */
   --hairline-w: 1px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
 
-  /* Fonts */
-  --font-sans:
-    var(--font-geist-sans, "Geist"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial,
-    sans-serif;
-  --font-mono: var(--font-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-archivo, "Archivo"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-mono, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Layout */
-  --container-max: 84rem;
-  --content-max: 56rem;
+  /* Layout - a wide label margin and a measured text column, like a spec page. */
+  --container-max: 82rem;
+  --content-max: 44rem;
+  --label-col: 8.5rem;
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
 
-  /* Motion */
+  /* Motion - one easing family. Amplitude stays small on this ground; a
+     document does not bounce. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 180ms;
-  --dur-med: 380ms;
-  --dur-slow: 720ms;
+  --dur-fast: 160ms;
+  --dur-med: 320ms;
+  --dur-slow: 620ms;
 }

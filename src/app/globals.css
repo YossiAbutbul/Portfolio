@@ -7,12 +7,11 @@
 }
 
 html {
-  background: var(--bg);
+  background: var(--paper);
   scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: background-color var(--dur-med) var(--ease-out);
 }
 
 html,
@@ -24,68 +23,36 @@ body {
 
 body {
   font-family: var(--font-sans);
-  color: var(--fg);
-  background: var(--bg);
+  color: var(--ink);
+  background: var(--paper);
   font-size: var(--step-0);
   line-height: 1.55;
   min-height: 100dvh;
   overflow-x: clip;
-  font-feature-settings: "ss01", "ss03", "cv11";
-  transition: color var(--dur-med) var(--ease-out), background-color var(--dur-med) var(--ease-out);
 }
 
-/* Film-grain overlay - keeps it human, anti-AI feel. Theme-aware blend. */
+/* Paper tooth. Multiplied rather than overlaid, so it reads as stock the ink
+   sits on instead of a film over a screen. */
 body::before {
   content: "";
   position: fixed;
-  inset: -50%;
-  width: 200%;
-  height: 200%;
+  inset: 0;
   pointer-events: none;
   z-index: 200;
   opacity: var(--grain-opacity);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  background-size: 240px 240px;
   mix-blend-mode: var(--grain-blend);
-  animation: grainDrift 8s steps(6) infinite;
-}
-
-@keyframes grainDrift {
-  0% { transform: translate(0, 0); }
-  20% { transform: translate(-6%, 4%); }
-  40% { transform: translate(4%, -6%); }
-  60% { transform: translate(-4%, -4%); }
-  80% { transform: translate(6%, 4%); }
-  100% { transform: translate(0, 0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; }
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--bg);
+  background: var(--mark);
+  color: var(--ink);
 }
 
 a {
   color: inherit;
   text-decoration: none;
-  transition: color var(--dur-fast) var(--ease-out);
-}
-
-a.link-inline {
-  color: var(--fg);
-  background-image: linear-gradient(var(--accent), var(--accent));
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  padding-bottom: 2px;
-}
-
-a.link-inline:hover,
-a.link-inline:focus-visible {
-  color: var(--accent);
 }
 
 img,
@@ -96,27 +63,24 @@ video {
   height: auto;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
   font-family: var(--font-sans);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+p {
   margin: 0;
 }
 
-h1 { font-size: var(--step-7); font-weight: 650; letter-spacing: -0.035em; }
-h2 { font-size: var(--step-5); }
-h3 { font-size: var(--step-3); }
-
-p {
-  margin: 0 0 var(--space-4);
-  max-width: 62ch;
-}
-
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--ink);
   outline-offset: 3px;
-  border-radius: var(--radius-sm);
 }
 
 button {
@@ -127,30 +91,22 @@ button {
   cursor: pointer;
 }
 
-
-hr {
-  border: 0;
-  border-top: var(--hairline-w) solid var(--hairline);
-  margin: var(--space-7) 0;
-}
+/* Shared document furniture ------------------------------------------------ */
 
 .container {
   width: 100%;
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 0 var(--space-5);
+  padding: 0 var(--gutter);
 }
 
-.content {
-  max-width: var(--content-max);
-}
-
-.eyebrow {
+/* Mono, uppercase, letterspaced: every label, index and unit on the site. */
+.mono {
   font-family: var(--font-mono);
   font-size: var(--step--1);
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .skip-link {
@@ -158,28 +114,17 @@ hr {
   top: var(--space-3);
   left: var(--space-3);
   z-index: 1000;
-  background: var(--fg);
-  color: var(--bg);
+  background: var(--ink);
+  color: var(--paper);
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-sm);
   transform: translateY(-200%);
   transition: transform var(--dur-fast) var(--ease-out);
   font-family: var(--font-mono);
   font-size: var(--step--1);
 }
 
-.skip-link:focus-visible { transform: translateY(0); }
-
-[data-reveal] {
-  opacity: 1;
-  transform: none;
-  transition: none;
-  will-change: opacity, transform;
-}
-
-[data-reveal].is-in {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -190,9 +135,5 @@ hr {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
-  }
-  [data-reveal] {
-    opacity: 1 !important;
-    transform: none !important;
   }
 }

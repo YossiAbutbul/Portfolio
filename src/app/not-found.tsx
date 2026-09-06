@@ -1,9 +1,8 @@
 import Link from "next/link";
-import FloorNoise from "@/components/ui/FloorNoise";
 import styles from "./not-found.module.css";
 
 export const metadata = {
-  title: "Yossi Abutbul Portfolio - Not Found",
+  title: "Not found - Yossi Abutbul",
   description: "This page doesn't exist.",
 };
 
@@ -11,32 +10,21 @@ export default function NotFound() {
   return (
     <section className={styles.page}>
       <div className={`container ${styles.inner}`}>
-        <p className={styles.eyebrow}>error 404</p>
-
-        <h1 className={styles.code} aria-label="404">
-          4<span className={styles.zero}>0</span>4
-        </h1>
-
-        <p className={styles.headline}>Route not found.</p>
-
+        <span className={`mono ${styles.stamp}`}>Error 404</span>
+        <h1 className={styles.code}>404</h1>
+        <p className={styles.headline}>No page at this address.</p>
         <p className={styles.sub}>
-          This URL compiled but never shipped.<br />
-          No route, no page, no carrier. Head back.
+          The URL resolved, but nothing was ever published here.
         </p>
-
         <div className={styles.actions}>
-          <Link href="/" className={styles.actionPrimary}>
-            <span aria-hidden="true">←</span>
-            Home
+          <Link href="/" className={styles.primary}>
+            Back to start
           </Link>
-          <Link href="/#showcase" className={styles.actionGhost}>
-            Projects
-            <span aria-hidden="true">↗</span>
+          <Link href="/#work" className={styles.ghost}>
+            Selected work
           </Link>
         </div>
       </div>
-
-      <FloorNoise />
     </section>
   );
 }

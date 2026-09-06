@@ -14,10 +14,10 @@ interface NavLink {
 }
 
 const LINKS: NavLink[] = [
-  { href: "/#about", label: "About", id: "about" },
-  { href: "/#showcase", label: "Projects", id: "showcase", aliases: ["projects"] },
-  { href: "/#experience", label: "Experience", id: "experience" },
-  { href: "/#stack", label: "Stack", id: "stack" },
+  { href: "/#work", label: "Work", id: "work" },
+  { href: "/#method", label: "How I work", id: "method" },
+  { href: "/#writing", label: "Writing", id: "writing" },
+  { href: "/#background", label: "Background", id: "background" },
   { href: "/#contact", label: "Contact", id: "contact" },
 ];
 

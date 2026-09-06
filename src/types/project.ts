@@ -27,12 +27,14 @@ export interface Project {
   wip?: boolean;
   /** Whether a /projects/[slug] case study page exists (MDX written). When false, cards link to first external href. */
   noCase?: boolean;
-  /** RF "frequency" in MHz - used as x-position on the spectrum hero peak. Roughly tied to project domain. */
-  frequency: number;
-  /** Peak amplitude in dB (relative). Higher = taller peak in hero. */
-  amplitude: number;
-  /** RF band label for marker chip. */
-  band: string;
+  /** Headline result, set in mono next to the title. Two short halves. */
+  metric?: { before: string; after: string };
+  /** Why this exists: the friction that came before the code. One sentence. */
+  friction?: string;
+  /** Legacy spectrum-hero fields, kept so older entries still typecheck. */
+  frequency?: number;
+  amplitude?: number;
+  band?: string;
   /** Longer-form description paragraphs, rendered on the detail page. */
   overview?: string[];
   /** Bullet-point feature list, rendered on the detail page. */

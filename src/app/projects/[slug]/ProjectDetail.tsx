@@ -1,220 +1,191 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { FEATURED_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import styles from "./page.module.css";
 
-/** Some projects carry a placeholder band ("n/a"); never surface that. */
-function bandLabel(project: Project): string | null {
-  const band = project.band?.trim();
-  if (!band || /^(n\/a|na|tbd|-)$/i.test(band)) return null;
-  return band;
-}
-
+/**
+ * Case study, set as a spec page: a title block, a specifications table, the
+ * prose, then the feature list. The table comes before the prose on purpose -
+ * most people reading a datasheet want the numbers and never read the body.
+ */
 export default function ProjectDetail({ project }: { project: Project }) {
-  const liveDemo = project.links.find((l) => /live/i.test(l.label));
-  const github = project.links.find((l) => /github/i.test(l.label));
-  const otherLinks = project.links.filter((l) => l !== liveDemo && l !== github);
-
-  const featuredList = FEATURED_PROJECTS.filter((p) => !p.noCase);
-  const currentIdx = featuredList.findIndex((p) => p.slug === project.slug);
-  const prevProject = currentIdx > 0 ? featuredList[currentIdx - 1] : null;
-  const nextProject = currentIdx < featuredList.length - 1 ? featuredList[currentIdx + 1] : null;
+  const cases = FEATURED_PROJECTS.filter((entry) => !entry.noCase);
+  const index = cases.findIndex((entry) => entry.slug === project.slug);
+  const previous = index > 0 ? cases[index - 1] : null;
+  const next = index >= 0 && index < cases.length - 1 ? cases[index + 1] : null;
 
   return (
     <article className={styles.page}>
-      <div className="container">
-
+      <div className={`container ${styles.inner}`}>
         <header className={styles.header}>
-          <div className={styles.caseMeta}>
-            <span>CASE STUDY / {String(currentIdx + 1).padStart(2, "0")}</span>
-            <span>{project.year}</span>
-            <span>{bandLabel(project)}</span>
+          <div className={`mono ${styles.stamp}`}>
+            <span>
+              Case {String(index + 1).padStart(2, "0")} / {String(cases.length).padStart(2, "0")}
+            </span>
+            <span>
+              {project.year}
+              {project.wip ? " · In progress" : ""}
+            </span>
           </div>
+
           <h1 className={styles.title}>{project.title}</h1>
-          <p className={styles.headerSummary}>{project.summary}</p>
+          <p className={styles.summary}>{project.summary}</p>
+
+          {project.metric && (
+            <p className={`mono ${styles.metric}`}>
+              <s>{project.metric.before}</s>
+              <span aria-hidden="true">→</span>
+              <b>{project.metric.after}</b>
+            </p>
+          )}
         </header>
 
-        <div className={styles.mediaWide}>
-          <ProjectMedia project={project} />
-        </div>
-
         <div className={styles.body}>
-          <div className={styles.content}>
+          <div className={styles.main}>
+            {project.friction && (
+              <section className={styles.section}>
+                <h2 className={`mono ${styles.sectionHeading}`}>The problem</h2>
+                <p className={styles.lead}>{project.friction}</p>
+              </section>
+            )}
+
             <section className={styles.section}>
-              <h2 className={styles.sectionHeading}>Overview</h2>
-              {(project.overview ?? [project.summary]).map((p, i) => (
-                <p key={i} className={styles.paragraph}>{p}</p>
+              <h2 className={`mono ${styles.sectionHeading}`}>Overview</h2>
+              {(project.overview ?? [project.summary]).map((paragraph) => (
+                <p key={paragraph.slice(0, 32)} className={styles.paragraph}>
+                  {paragraph}
+                </p>
               ))}
             </section>
 
             {project.highlights && project.highlights.length > 0 && (
               <section className={styles.section}>
-                <h2 className={styles.sectionHeading}>Highlights</h2>
-                <ul className={styles.highlightList}>
-                  {project.highlights.map((h, i) => (
-                    <li key={i} className={styles.highlightItem}>
-                      <span className={styles.bullet} aria-hidden="true">▸</span>
-                      <span>{h}</span>
+                <h2 className={`mono ${styles.sectionHeading}`}>What it does</h2>
+                <ol className={styles.highlights}>
+                  {project.highlights.map((item, position) => (
+                    <li key={item}>
+                      <span className={`mono ${styles.highlightIndex}`}>
+                        {String(position + 1).padStart(2, "0")}
+                      </span>
+                      <span>{item}</span>
                     </li>
                   ))}
-                </ul>
+                </ol>
+              </section>
+            )}
+
+            {project.images && project.images.length > 0 && (
+              <section className={styles.section}>
+                <h2 className={`mono ${styles.sectionHeading}`}>Screens</h2>
+                <Plates project={project} />
               </section>
             )}
           </div>
 
-          <aside className={styles.sidebar}>
-            {project.wip && (
-              <div className={styles.wipRow}>
-                <span className={styles.wipDot} aria-hidden="true" />
-                <span className={styles.wipBadge}>Work in progress</span>
+          <aside className={styles.aside}>
+            <h2 className={`mono ${styles.sectionHeading}`}>Specifications</h2>
+            <dl className={styles.spec}>
+              <div>
+                <dt className="mono">Year</dt>
+                <dd>{project.year}</dd>
               </div>
-            )}
-            <div className={styles.stackSection}>
-              <span className={styles.stackLabel}>Stack</span>
-              <div className={styles.stackPills}>
-                {project.stack.map((s) => (
-                  <span key={s} className={styles.pill}>{s}</span>
-                ))}
+              <div>
+                <dt className="mono">Role</dt>
+                <dd>{project.role}</dd>
               </div>
-            </div>
-
-            <div className={styles.linkGroup}>
-              {liveDemo && (
-                <a href={liveDemo.href} className={styles.btnPrimary} target="_blank" rel="noreferrer noopener">
-                  {liveDemo.label} ↗
-                </a>
-              )}
-              {github && (
-                <a href={github.href} className={styles.btnGhost} target="_blank" rel="noreferrer noopener">
-                  {github.label} ↗
-                </a>
-              )}
-              {otherLinks.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  className={styles.btnGhost}
-                  target={l.href.startsWith("http") ? "_blank" : undefined}
-                  rel={l.href.startsWith("http") ? "noreferrer noopener" : undefined}
-                >
-                  {l.label} ↗
-                </a>
-              ))}
-            </div>
+              <div>
+                <dt className="mono">Domain</dt>
+                <dd>{project.tags.join(", ")}</dd>
+              </div>
+              <div>
+                <dt className="mono">Stack</dt>
+                <dd>
+                  <ul className={styles.stack}>
+                    {project.stack.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+              <div>
+                <dt className="mono">Links</dt>
+                <dd>
+                  <ul className={styles.links}>
+                    {project.links.map((link) => (
+                      <li key={link.href}>
+                        <a href={link.href} target="_blank" rel="noreferrer">
+                          {link.label}
+                          <span aria-hidden="true"> ↗</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </dd>
+              </div>
+            </dl>
           </aside>
         </div>
 
-        {(prevProject || nextProject) && (
-          <nav className={styles.projectNav} aria-label="Other featured projects">
-            <div className={styles.navSlot}>
-              {prevProject && (
-                <Link href={`/projects/${prevProject.slug}/`} className={styles.navLink}>
-                  <span className={styles.navDir}>← Previous case</span>
-                  <span className={styles.navTitle}>{prevProject.title}</span>
-                </Link>
-              )}
-            </div>
-            <div className={`${styles.navSlot} ${styles.navSlotRight}`}>
-              {nextProject && (
-                <Link href={`/projects/${nextProject.slug}/`} className={styles.navLink}>
-                  <span className={styles.navDir}>Next case →</span>
-                  <span className={styles.navTitle}>{nextProject.title}</span>
-                </Link>
-              )}
-            </div>
-          </nav>
-        )}
-
+        <nav className={styles.pager} aria-label="Other case studies">
+          {previous ? (
+            <Link className={styles.pagerLink} href={`/projects/${previous.slug}`}>
+              <span className={`mono ${styles.pagerLabel}`}>← Previous</span>
+              <span className={styles.pagerTitle}>{previous.title}</span>
+            </Link>
+          ) : (
+            <span />
+          )}
+          {next && (
+            <Link className={`${styles.pagerLink} ${styles.pagerNext}`} href={`/projects/${next.slug}`}>
+              <span className={`mono ${styles.pagerLabel}`}>Next →</span>
+              <span className={styles.pagerTitle}>{next.title}</span>
+            </Link>
+          )}
+        </nav>
       </div>
     </article>
   );
 }
 
-function ProjectMedia({ project }: { project: Project }) {
+/** Screens, shown as plates with the selected one full width. */
+function Plates({ project }: { project: Project }) {
   const images = project.images ?? [];
+  const [active, setActive] = useState(0);
+  const current = images[active];
 
-  if (project.video) {
-    return (
-      <div className={styles.mediaWrap}>
-        <VideoPlayer
-          src={withBasePath(project.video)}
-          poster={images[0]?.src ? withBasePath(images[0].src) : undefined}
+  return (
+    <div className={styles.plates}>
+      <figure className={styles.plate}>
+        <img
+          src={withBasePath(current.src)}
+          alt={current.alt}
+          width={current.width}
+          height={current.height}
+          loading="lazy"
         />
-      </div>
-    );
-  }
+        <figcaption className={`mono ${styles.plateCaption}`}>{current.alt}</figcaption>
+      </figure>
 
-  if (images.length > 0) {
-    const active = images[0];
-    return (
-      <div className={styles.mediaWrap}>
-        <div className={styles.imageFrame}>
-          <img
-            src={withBasePath(active.src)}
-            alt={active.alt}
-            loading="lazy"
-            className={styles.mainImage}
-          />
+      {images.length > 1 && (
+        <div className={styles.thumbs} role="tablist" aria-label="Screens">
+          {images.map((image, position) => (
+            <button
+              key={image.src}
+              type="button"
+              role="tab"
+              aria-selected={position === active}
+              className={`${styles.thumb} ${position === active ? styles.thumbActive : ""}`}
+              onClick={() => setActive(position)}
+            >
+              <img src={withBasePath(image.src)} alt="" width={image.width} height={image.height} loading="lazy" />
+            </button>
+          ))}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.mediaWrap}>
-      <div className={styles.mediaPlaceholder}>
-        <span className={styles.placeholderLabel}>{project.title}</span>
-      </div>
-    </div>
-  );
-}
-
-function VideoPlayer({ src, poster }: { src: string; poster?: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => { for (const e of entries) setInView(e.isIntersecting); },
-      { threshold: 0.3 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const v = ref.current;
-    if (!v) return;
-    if (inView) {
-      v.play().catch(() => {});
-    } else {
-      v.pause();
-      try { v.currentTime = 0.01; } catch {}
-    }
-  }, [inView]);
-
-  return (
-    <div className={styles.videoFrame}>
-      <video
-        ref={ref}
-        src={src}
-        poster={poster}
-        muted
-        loop
-        playsInline
-        preload="auto"
-        className={styles.video}
-        onLoadedMetadata={() => {
-          const v = ref.current;
-          if (v && !inView) { try { v.currentTime = 0.01; } catch {} }
-        }}
-      />
+      )}
     </div>
   );
 }

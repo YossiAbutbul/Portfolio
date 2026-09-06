@@ -1,0 +1,109 @@
+/* Hero TX current-decay trace.
+   The canvas bleeds edge to edge; every label is HTML pinned to geometry the
+   canvas publishes as custom properties. */
+
+.host {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  --plot-top: 50%;
+  --plot-bottom: 84%;
+  --threshold-y: 70%;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Instrument labels ------------------------------------------------------- */
+
+.legend {
+  position: absolute;
+  left: var(--space-6);
+  top: calc(var(--plot-top) - 2.2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+}
+
+.legendLabel {
+  color: var(--fg-muted);
+}
+
+.legendMeta {
+  color: var(--fg-dim);
+}
+
+.threshold {
+  position: absolute;
+  right: var(--space-6);
+  top: var(--threshold-y);
+  transform: translateY(-50%);
+  padding-left: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  color: var(--fg-dim);
+  background: linear-gradient(90deg, transparent, var(--bg) 40%);
+}
+
+/* Pointer marker readout --------------------------------------------------- */
+
+.marker {
+  position: absolute;
+  left: 0;
+  top: calc(var(--plot-top) - 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding-left: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  line-height: 1.35;
+  letter-spacing: 0.06em;
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.markerRow b {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Right-hand captures would push the readout off screen; flip it. */
+.marker:where(:nth-child(n)) {
+  transform-origin: left center;
+}
+
+.description {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 48rem) {
+  .legend,
+  .threshold {
+    font-size: 0.55rem;
+  }
+
+  .legend {
+    left: var(--space-4);
+  }
+
+  .threshold {
+    right: var(--space-4);
+  }
+}
