@@ -51,8 +51,7 @@
   /* -------------------------------------------------------------------- */
   /* Type                                                                 */
   /* -------------------------------------------------------------------- */
-  --font-display:
-    var(--font-archivo), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-archivo), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-body: var(--font-newsreader), Georgia, "Times New Roman", serif;
 
   /* Archivo carries a width axis. These are the only three widths in use:
