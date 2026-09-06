@@ -5,6 +5,7 @@ import "./globals.css";
 import Nav from "@/components/layout/Nav";
 import Gutter from "@/components/layout/Gutter";
 import SkipToContent from "@/components/layout/SkipToContent";
+import ScrollMotion from "@/components/layout/ScrollMotion";
 
 /**
  * Two faces, both variable.
@@ -29,6 +30,26 @@ const newsreader = Newsreader({
   display: "swap",
   adjustFontFallback: true,
 });
+
+/**
+ * Runs before anything paints. If the entrance has already played in this tab
+ * it injects a stylesheet that switches every entrance animation off, so a
+ * soft navigation back to the home page does not replay it.
+ *
+ * It appends a style rather than stamping an attribute on the root element:
+ * React owns <html>, and an attribute that is on the client but not in the
+ * server HTML is a hydration mismatch, which makes React re-render the whole
+ * tree and leaves effects half applied. This was that bug.
+ */
+const SESSION_GATE = [
+  "try{",
+  "if(sessionStorage.getItem('seen')){",
+  "var s=document.createElement('style');",
+  "s.textContent='.entrance,.entrance *{animation:none!important}';",
+  "document.head.appendChild(s);",
+  "}",
+  "}catch(e){}",
+].join("");
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://yossiabutbul.vercel.app/"),
@@ -78,12 +99,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${archivo.variable} ${newsreader.variable}`}>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: SESSION_GATE }} />
         <SkipToContent />
         <Gutter />
         <Nav />
         <main id="main" className="shell">
           {children}
         </main>
+        <ScrollMotion />
       </body>
     </html>
   );

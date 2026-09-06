@@ -83,7 +83,7 @@ interface Row {
   settled: number;
 }
 
-export default function HeroDump() {
+export default function HeroDump({ className = "" }: { className?: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,7 +125,14 @@ export default function HeroDump() {
     let running = false;
     let onScreen = true;
     let startedAt = 0;
-    let entranceDone = reduced.matches;
+    /* Matches the entrance gate in the layout: same tab, no replay. */
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("seen") === "1";
+    } catch {
+      // No storage, so treat it as a first visit and play the entrance.
+    }
+    let entranceDone = reduced.matches || seen;
     let lastMove = 0;
 
     /* Pointer, in canvas pixels. Target is where it is, current is where the
@@ -487,5 +494,5 @@ export default function HeroDump() {
     };
   }, []);
 
-  return <div ref={hostRef} className={styles.host} aria-hidden="true" />;
+  return <div ref={hostRef} className={`${styles.host} ${className}`} aria-hidden="true" />;
 }

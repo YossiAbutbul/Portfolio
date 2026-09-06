@@ -310,3 +310,75 @@
     margin-top: var(--space-9);
   }
 }
+
+/* --------------------------------------------------------------------- */
+/* Scroll                                                                 */
+/* --------------------------------------------------------------------- */
+
+/*
+ * Scroll-linked, not scroll-triggered: the media settles as the panel crosses
+ * the viewport and the numeral drifts against it, so the two move at
+ * different rates and the panel reads as having depth. Both are transform
+ * only, so they run off the main thread.
+ *
+ * Written natively. Browsers without animation-timeline get the same two
+ * effects from ScrollMotion, driven by the data-scroll attributes.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .media {
+      animation: mediaSettle linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 45%;
+    }
+
+    .num {
+      animation: numDrift linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    .headTitle,
+    .copy {
+      animation: panelLift linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 90%;
+    }
+  }
+}
+
+@keyframes mediaSettle {
+  from {
+    transform: scale(1.06) translateY(-2%);
+  }
+  to {
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes numDrift {
+  from {
+    transform: translateY(-18%);
+  }
+  to {
+    transform: translateY(18%);
+  }
+}
+
+@keyframes panelLift {
+  from {
+    transform: translateY(26px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* The JS fallback drives these instead; two systems writing the same
+   transforms would fight. */
+:global([data-js-scroll]) .media,
+:global([data-js-scroll]) .num,
+:global([data-js-scroll]) .headTitle,
+:global([data-js-scroll]) .copy {
+  animation: none !important;
+}

@@ -29,6 +29,7 @@
 
 .title {
   display: grid;
+  transform-origin: left center;
   font-size: var(--step-8);
   font-stretch: 70%;
   line-height: 0.78;
@@ -55,7 +56,6 @@
   max-width: 30ch;
   margin-bottom: var(--space-8);
   padding-left: var(--space-5);
-  border-left: 2px solid var(--accent);
 }
 
 .index ol {
@@ -156,4 +156,135 @@
   .recordName {
     font-size: var(--step-0);
   }
+}
+
+/* --------------------------------------------------------------------- */
+/* Entrance                                                               */
+/* --------------------------------------------------------------------- */
+
+@keyframes entRise {
+  from {
+    transform: translateY(14px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes entRiseFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entBar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/*
+ * The name settles its width the way the dump settles its bytes. One idea,
+ * applied to the two things the hero is made of.
+ *
+ * Done with a transform rather than the width axis it is imitating. Animating
+ * font-stretch on a headline this size relayouts it on every frame: measured
+ * at 2,533ms of style and layout and 1,460ms of blocking time, against 725ms
+ * and 90ms for the same page with this one line changed. A scale from the
+ * left edge reads the same and stays on the compositor.
+ */
+@keyframes entResolveWidth {
+  from {
+    transform: scaleX(0.93);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/*
+ * One sequence, finished at about 1.6s.
+ *
+ *   0ms     the dump starts resolving its bytes
+ *   120ms   the name settles its width, painted at full opacity throughout
+ *   620ms   the accent bar draws, then the lede rises behind it
+ *   900ms   the index rows arrive, one every 60ms
+ *
+ * The lede is the browser's largest contentful paint, so it moves on
+ * transform only. It is on screen from the first frame; it just is not where
+ * it ends up yet.
+ */
+
+@media (prefers-reduced-motion: no-preference) {
+  .title {
+    animation: entResolveWidth var(--dur-hero) var(--ease-enter) 120ms both;
+  }
+
+  .line {
+    animation: entRise 620ms var(--ease-enter) 620ms both;
+  }
+
+  .line::before {
+    animation: entBar 520ms var(--ease-enter) 560ms both;
+  }
+
+  .index li {
+    animation: entRiseFade var(--dur-long) var(--ease-enter) both;
+    animation-delay: calc(900ms + var(--i) * var(--stagger-row));
+  }
+}
+
+/* The bar is its own element so it can draw itself without the border
+   collapsing the text's layout while it animates. */
+.line {
+  position: relative;
+  border-left: 0;
+}
+
+.line::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--accent);
+  transform-origin: top center;
+}
+
+/* --------------------------------------------------------------------- */
+/* Scroll                                                                 */
+/* --------------------------------------------------------------------- */
+
+/* The field belongs to the hero. It goes as the hero goes, rather than
+   sitting under the next section at half strength. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .dump {
+      animation: heroDumpExit linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 80%;
+    }
+  }
+}
+
+@keyframes heroDumpExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The JS fallback drives these instead; two systems writing the same
+   transforms would fight. */
+:global([data-js-scroll]) .dump {
+  animation: none !important;
 }

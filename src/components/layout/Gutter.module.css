@@ -11,6 +11,8 @@
 }
 
 .stops {
+  position: relative;
+  z-index: 1;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -84,4 +86,79 @@
   .stop:focus-visible .tick {
     width: 0.9rem;
   }
+}
+
+/* --------------------------------------------------------------------- */
+/* Progress                                                               */
+/* --------------------------------------------------------------------- */
+
+/* The rail is the progress indicator, which is why there is no bar across the
+   top of the page. Scroll-linked in CSS, so it costs nothing and does not
+   touch the main thread. */
+.track {
+  position: absolute;
+  inset: var(--space-6) auto var(--space-6) 0;
+  width: 2px;
+  background: var(--hairline);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  transform: scaleY(0);
+  transform-origin: top center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .fill {
+      animation: railFill linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+@keyframes railFill {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+/* With no scroll timeline and no fallback running, a rail that reads empty
+   would be a lie. Fill it. */
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transform: scaleY(1);
+    opacity: 0.35;
+  }
+}
+
+/* --------------------------------------------------------------------- */
+/* Current section                                                        */
+/* --------------------------------------------------------------------- */
+
+.stop[data-active] {
+  color: var(--accent);
+}
+
+.stop[data-active] .tick {
+  width: 1.4rem;
+}
+
+.stop .tick {
+  transition:
+    width var(--dur-short) var(--ease-enter),
+    background-color var(--dur-short) var(--ease-enter);
+}
+
+/* The JS fallback drives these instead; two systems writing the same
+   transforms would fight. */
+:global([data-js-scroll]) .fill {
+  animation: none !important;
 }

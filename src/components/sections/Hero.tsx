@@ -15,8 +15,8 @@ import HeroDump from "./HeroDump";
  */
 export default function Hero({ projects }: { projects: Project[] }) {
   return (
-    <section id="hero" className={styles.hero} aria-labelledby="hero-title">
-      <HeroDump />
+    <section id="hero" className={`entrance ${styles.hero}`} aria-labelledby="hero-title">
+      <HeroDump className={styles.dump} />
       <div className={`bay ${styles.bay}`}>
         <h1 id="hero-title" className={styles.title}>
           {HERO.name.map((part) => (
@@ -31,7 +31,7 @@ export default function Hero({ projects }: { projects: Project[] }) {
         <nav className={styles.index} aria-label="Projects">
           <ol>
             {projects.map((project, i) => (
-              <li key={project.slug}>
+              <li key={project.slug} style={{ "--i": i } as React.CSSProperties}>
                 <Link href={projectHref(project)} className={styles.record} prefetch={false}>
                   <span className={`${styles.addr} figures`} aria-hidden="true">
                     {(0x40 + i * 0x10).toString(16).padStart(4, "0")}

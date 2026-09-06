@@ -247,3 +247,33 @@ hr {
     scroll-behavior: auto !important;
   }
 }
+
+/* --------------------------------------------------------------------- */
+/* Entrance                                                               */
+/* --------------------------------------------------------------------- */
+
+/*
+ * The keyframes themselves live in the stylesheet that uses them, because a
+ * keyframe name referenced from a CSS Module is hashed against that module
+ * and will not find one declared out here.
+ *
+ * Every entrance is a CSS animation, which means the resting style is the
+ * finished style. If the stylesheet loads and nothing else does, the page is
+ * simply there. Nothing on the site is parked at opacity 0 waiting to be
+ * released, which is the mistake that cost the previous build 23 Lighthouse
+ * points on its own.
+ *
+ * The one element the browser picks as the largest contentful paint, the hero
+ * lede, is animated on transform only and never on opacity, so it paints on
+ * the first frame regardless of where the entrance has got to.
+ */
+
+/* A return visit inside the same tab lands on the settled state. The rule
+   that does it is injected before paint by the gate in the layout. */
+
+@media (prefers-reduced-motion: reduce) {
+  .entrance,
+  .entrance * {
+    animation: none !important;
+  }
+}

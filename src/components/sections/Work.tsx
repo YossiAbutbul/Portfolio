@@ -19,7 +19,7 @@ export default function Work({ projects }: { projects: Project[] }) {
   return (
     <section id="work" className={styles.work} aria-labelledby="work-title">
       <header className={`bay ${styles.head}`}>
-        <h2 id="work-title" className={styles.headTitle}>
+        <h2 id="work-title" className={styles.headTitle} data-scroll="lift">
           Selected
           <br />
           work
@@ -46,12 +46,12 @@ function ProjectPanel({ project, index }: { project: Project; index: number }) {
 
   return (
     <article className={`bay ${styles.panel}`}>
-      <span className={`${styles.num} figures`} aria-hidden="true">
+      <span className={`${styles.num} figures`} data-scroll="drift" aria-hidden="true">
         {String(index + 1).padStart(2, "0")}
       </span>
 
       {still && (
-        <figure className={styles.media}>
+        <figure className={styles.media} data-scroll="media">
           <img
             src={still.src}
             alt={still.alt}
@@ -65,7 +65,7 @@ function ProjectPanel({ project, index }: { project: Project; index: number }) {
         </figure>
       )}
 
-      <div className={styles.copy}>
+      <div className={styles.copy} data-scroll="lift">
         <p className={styles.meta}>
           <span className={`${styles.year} figures`}>{project.year}</span>
           <span>{project.role}</span>
@@ -103,12 +103,7 @@ function ProjectPanel({ project, index }: { project: Project; index: number }) {
             {external ? "View on GitHub" : "Open case study"}
           </Link>
           {live && (
-            <a
-              href={live.href}
-              className={styles.actionQuiet}
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a href={live.href} className={styles.actionQuiet} target="_blank" rel="noreferrer">
               Live demo
             </a>
           )}
