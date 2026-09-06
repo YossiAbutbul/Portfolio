@@ -1,42 +1,31 @@
 import Link from "next/link";
-import FloorNoise from "@/components/ui/FloorNoise";
+import { NOT_FOUND } from "@content/copy";
 import styles from "./not-found.module.css";
 
 export const metadata = {
-  title: "Yossi Abutbul Portfolio - Not Found",
-  description: "This page doesn't exist.",
+  title: "Not found - Yossi Abutbul",
+  description: "There is no page at this address.",
 };
 
 export default function NotFound() {
   return (
     <section className={styles.page}>
-      <div className={`container ${styles.inner}`}>
-        <p className={styles.eyebrow}>error 404</p>
-
-        <h1 className={styles.code} aria-label="404">
-          4<span className={styles.zero}>0</span>4
-        </h1>
-
-        <p className={styles.headline}>Route not found.</p>
-
-        <p className={styles.sub}>
-          This URL compiled but never shipped.<br />
-          No route, no page, no carrier. Head back.
+      <div className={`bay ${styles.bay}`}>
+        <p className={`${styles.addr} figures`} aria-hidden="true">
+          ffff
         </p>
+        <h1 className={styles.title}>{NOT_FOUND.heading}</h1>
+        <p className={styles.body}>{NOT_FOUND.body}</p>
 
-        <div className={styles.actions}>
-          <Link href="/" className={styles.actionPrimary}>
-            <span aria-hidden="true">←</span>
-            Home
+        <p className={styles.actions}>
+          <Link href="/" className={styles.action} prefetch={false}>
+            Back to the top
           </Link>
-          <Link href="/#showcase" className={styles.actionGhost}>
-            Projects
-            <span aria-hidden="true">↗</span>
+          <Link href="/#work" className={styles.action} prefetch={false}>
+            See the work
           </Link>
-        </div>
+        </p>
       </div>
-
-      <FloorNoise />
     </section>
   );
 }

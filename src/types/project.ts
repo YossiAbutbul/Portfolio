@@ -10,6 +10,8 @@ export interface ProjectImage {
   alt: string;
   width: number;
   height: number;
+  /** Shown under the image on the case page. */
+  caption?: string;
 }
 
 export interface Project {
@@ -23,18 +25,35 @@ export interface Project {
   links: ProjectLink[];
   images?: ProjectImage[];
   video?: string;
+  /**
+   * Still frame for the video, with intrinsic dimensions so the slot reserves
+   * its space and nothing shifts. Cards render this; the video is attached to
+   * the card that is actually being looked at.
+   */
+  poster?: ProjectImage;
   featured?: boolean;
   wip?: boolean;
-  /** Whether a /projects/[slug] case study page exists (MDX written). When false, cards link to first external href. */
+  /** No case study written. Cards fall through to the first external link. */
   noCase?: boolean;
-  /** RF "frequency" in MHz - used as x-position on the spectrum hero peak. Roughly tied to project domain. */
-  frequency: number;
-  /** Peak amplitude in dB (relative). Higher = taller peak in hero. */
-  amplitude: number;
-  /** RF band label for marker chip. */
-  band: string;
-  /** Longer-form description paragraphs, rendered on the detail page. */
+  /** Longer-form description paragraphs, rendered on the case page. */
   overview?: string[];
-  /** Bullet-point feature list, rendered on the detail page. */
+  /** Bullet-point feature list, rendered on the case page. */
   highlights?: string[];
+  /** Two sentences on what the problem was, rendered above the overview. */
+  problem?: string;
+  /** What came of it. Rendered at the end of the case page. */
+  outcome?: string;
+
+  /**
+   * Left over from a spectrum-analyser hero that no longer exists. Nothing
+   * renders these any more and they carry invented values on the projects
+   * that are not RF, so they are optional and on their way out.
+   *
+   * @deprecated
+   */
+  frequency?: number;
+  /** @deprecated */
+  amplitude?: number;
+  /** @deprecated */
+  band?: string;
 }

@@ -1,0 +1,207 @@
+.contact {
+  padding-block: var(--section-pad) var(--space-7);
+  background: var(--bg-raised);
+}
+
+.bay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 22rem);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.line {
+  color: var(--fg-muted);
+  font-size: var(--step-1);
+  margin: var(--space-5) 0 var(--space-7);
+  max-width: 38ch;
+}
+
+.emailRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--hairline-w) solid var(--accent-line);
+  margin-bottom: var(--space-5);
+}
+
+.email {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-stretch: 88%;
+  font-size: var(--step-3);
+  letter-spacing: -0.025em;
+  color: var(--fg);
+  transition: color var(--dur-micro) var(--ease-enter);
+}
+
+.email:hover,
+.email:focus-visible {
+  color: var(--accent);
+}
+
+.copy,
+.submit {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+}
+
+.copy {
+  color: var(--fg-muted);
+  border: var(--hairline-w) solid var(--hairline-strong);
+  padding: var(--space-2) var(--space-3);
+  transition:
+    color var(--dur-micro) var(--ease-enter),
+    border-color var(--dur-micro) var(--ease-enter);
+}
+
+.copy:hover,
+.copy:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.profiles {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+}
+
+.profiles a {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  font-stretch: 100%;
+  transition:
+    color var(--dur-micro) var(--ease-enter),
+    font-stretch var(--dur-micro) var(--ease-enter);
+}
+
+.profiles a:hover,
+.profiles a:focus-visible {
+  color: var(--fg);
+  font-stretch: 115%;
+}
+
+/* --------------------------------------------------------------------- */
+/* Form                                                                   */
+/* --------------------------------------------------------------------- */
+
+.form {
+  display: grid;
+  gap: var(--space-4);
+  background: var(--bg);
+  border: var(--hairline-w) solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+.formTitle,
+.sentTitle {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin: 0;
+}
+
+.sentTitle {
+  color: var(--accent);
+}
+
+.sentBody {
+  margin: 0;
+  color: var(--fg-muted);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field label {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--fg);
+  background: var(--bg-sunken);
+  border: var(--hairline-w) solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  width: 100%;
+  transition: border-color var(--dur-micro) var(--ease-enter);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--accent);
+}
+
+.submit {
+  color: var(--bg);
+  background: var(--accent);
+  padding: var(--space-3) var(--space-4);
+  justify-self: start;
+  transition: opacity var(--dur-micro) var(--ease-enter);
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.error {
+  color: var(--accent);
+  font-size: var(--step--1);
+  margin: 0;
+}
+
+.footer {
+  margin-top: var(--space-9);
+  padding-top: var(--space-4);
+  border-top: var(--hairline-w) solid var(--hairline);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  max-width: none;
+}
+
+@media (max-width: 46rem) {
+  .bay {
+    grid-template-columns: 1fr;
+  }
+
+  .email {
+    font-size: var(--step-2);
+  }
+}

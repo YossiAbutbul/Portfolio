@@ -1,14 +1,14 @@
 import type { Project } from "@/types/project";
+import { CASE_COPY } from "./case-copy";
 
 /** Featured slugs, in display order on the showcase. */
 export const FEATURED_SLUGS = [
-  "oplanner",
   "report-generator",
-  "haparlamentor",
   "lora-viz",
-  "pipeline-cpu",
-  "trump-jump",
+  "oplanner",
   "toast-turn",
+  "haparlamentor",
+  "pipeline-cpu",
 ] as const;
 
 export const PROJECTS: Project[] = [
@@ -26,9 +26,7 @@ export const PROJECTS: Project[] = [
     frequency: 1000,
     amplitude: 9,
     band: "L-band",
-    links: [
-      { label: "GitHub", href: "https://github.com/YossiAbutbul/rf-instrument-wrappers" },
-    ],
+    links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/rf-instrument-wrappers" }],
   },
   {
     slug: "toast-turn",
@@ -124,6 +122,12 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://trump-jump-hormuz.vercel.app" },
     ],
     video: "/projects/trump-jump/demo.webm",
+    poster: {
+      src: "/projects/trump-jump/poster.jpg",
+      alt: "The game mid-run: the player mid-jump between moving platforms with the score and power-up bar on screen",
+      width: 1280,
+      height: 672,
+    },
     featured: true,
     overview: [
       "Browser-based vertical arcade climber: bounce upward through an endless stack of moving platforms while difficulty scales with altitude. Tap left/right (touch, arrow keys, or A/D) to steer; land on oil tankers and speedboats, stomp drones, and dodge incoming missiles. Loads instantly in the browser, no install.",
@@ -155,6 +159,12 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://yossiabutbul.github.io/ReportGenrator/" },
     ],
     video: "/projects/report-generator/demo.webm",
+    poster: {
+      src: "/projects/report-generator/poster.jpg",
+      alt: "The report setup screen with extracted measurement rows listed by unit ID, frequency and TRP",
+      width: 1280,
+      height: 720,
+    },
     featured: true,
     overview: [
       "Full-stack RF test-automation workspace that turns raw chamber measurements into structured Word reports. Engineers upload Excel workbooks or Howland WTL text exports, scrub through 2D polar plots and 3D radiation surfaces, then export a polished A4 document with embedded graphs and metadata. Work that used to take half a day now takes minutes.",
@@ -187,11 +197,16 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://yossiabutbul.github.io/Haparlamentor/" },
     ],
     video: "/projects/haparlamentor/demo.webm",
+    poster: {
+      src: "/projects/haparlamentor/poster.jpg",
+      alt: "The search screen: a CRT-framed still from the show behind a Hebrew phrase search box",
+      width: 1280,
+      height: 672,
+    },
     featured: true,
     overview: [
       "Hebrew phrase-to-episode search for the cult Israeli sitcom הפרלמנט. Type a quote, see which episode and timestamp it came from, and jump straight to that moment on Mako. Built around a fuzzy index over auto-generated transcripts.",
       "The transcript corpus is built by an agent that scrapes episodes from Mako and runs them through OpenAI's Whisper model for Hebrew speech-to-text - turning hours of raw audio into a searchable, timestamp-aligned index without any manual transcription work.",
-      
     ],
     highlights: [
       "Automated transcript pipeline: scraper agent + Whisper Hebrew speech-to-text",
@@ -220,6 +235,12 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://yossiabutbul.github.io/lora-gateway-log-visualizer/" },
     ],
     video: "/projects/lora-viz/demo.webm",
+    poster: {
+      src: "/projects/lora-viz/poster.jpg",
+      alt: "The visualizer with a decoded LoRa gateway log plotted as RSSI and SNR over time",
+      width: 1280,
+      height: 672,
+    },
     featured: true,
     overview: [
       "Browser-only viewer for LoRa gateway logs: drop in a .log or .txt file and get instant statistics, packet decoding, and time-series charts. Nothing leaves the page; parsing and visualization both happen client-side, which matters when you're staring at production traffic on a customer site.",
@@ -251,6 +272,12 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://yossiabutbul.github.io/Pipeline_CPU/" },
     ],
     video: "/projects/pipeline-cpu/demo.webm",
+    poster: {
+      src: "/projects/pipeline-cpu/poster.jpg",
+      alt: "The simulator showing the datapath diagram, the loaded instructions and the register file",
+      width: 1280,
+      height: 720,
+    },
     featured: true,
     overview: [
       "Educational simulator that makes the classic 5-stage CPU pipeline tangible. Step through instructions one cycle at a time and watch them flow through fetch / decode / execute / memory / writeback, with hazards, forwarding, and stalls drawn directly onto the diagram. Built for computer-architecture students who learned the theory in lecture and need to see it move.",
@@ -297,6 +324,12 @@ export const PROJECTS: Project[] = [
       { label: "Live Demo", href: "https://oplanner-one.vercel.app/" },
     ],
     video: "/projects/oplanner/demo.webm",
+    poster: {
+      src: "/projects/oplanner/poster.jpg",
+      alt: "The semester overview: a completion ring, a month calendar of tasks and the upcoming list",
+      width: 1280,
+      height: 742,
+    },
     featured: true,
     overview: [
       "Student-focused semester planner that pulls course schedules, assignments, and deadlines from a single source instead of scattered spreadsheets. Drop in an .ics file from the university portal and the semester populates itself: courses, due dates, and exams ready in around 30 seconds.",
@@ -326,7 +359,10 @@ export const PROJECTS: Project[] = [
     amplitude: 6,
     band: "C-band",
     links: [
-      { label: "GitHub", href: "https://github.com/YossiAbutbul/Mini-Circuits-Programmable-Attenuator-wrapper" },
+      {
+        label: "GitHub",
+        href: "https://github.com/YossiAbutbul/Mini-Circuits-Programmable-Attenuator-wrapper",
+      },
     ],
   },
   {
@@ -349,19 +385,26 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-export const FEATURED_PROJECTS: Project[] = FEATURED_SLUGS
-  .map((slug) => PROJECTS.find((p) => p.slug === slug))
-  .filter((p): p is Project => Boolean(p));
+export const FEATURED_PROJECTS: Project[] = FEATURED_SLUGS.map((slug) =>
+  PROJECTS.find((p) => p.slug === slug),
+)
+  .filter((p): p is Project => Boolean(p))
+  .map(withCaseCopy);
+
+/**
+ * Draft problem and outcome copy is merged in here rather than inlined above,
+ * so the words waiting to be rewritten stay in one file.
+ */
+function withCaseCopy(project: Project): Project {
+  const copy = CASE_COPY[project.slug];
+  return copy ? { ...project, ...copy } : project;
+}
 
 export function getProjectBySlug(slug: string): Project | undefined {
-  return PROJECTS.find((p) => p.slug === slug);
+  const project = PROJECTS.find((p) => p.slug === slug);
+  return project ? withCaseCopy(project) : undefined;
 }
 
 export function getAllSlugs(): string[] {
   return PROJECTS.filter((p) => !p.noCase).map((p) => p.slug);
 }
-
-/** Projects to render in the post-showcase bento; excludes featured. */
-export const OTHER_PROJECTS: Project[] = PROJECTS.filter(
-  (p) => !(FEATURED_SLUGS as readonly string[]).includes(p.slug),
-);

@@ -1,0 +1,180 @@
+/* The one section that changes ground, because it is the one section that is
+   about looking rather than reading. */
+.work {
+  background: var(--bg-raised);
+  padding-block: var(--section-pad);
+}
+
+.head {
+  margin-bottom: var(--space-8);
+}
+
+.headLine {
+  color: var(--fg-muted);
+  font-size: var(--step-1);
+  margin-top: var(--space-4);
+  max-width: 52ch;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-9);
+}
+
+.row {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.copy {
+  max-width: 46rem;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  font-size: var(--step--1);
+}
+
+.addr {
+  color: var(--data);
+  letter-spacing: 0.04em;
+}
+
+.year {
+  color: var(--fg-muted);
+}
+
+.wip {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0.1em 0.5em;
+  border-radius: var(--radius-sm);
+}
+
+.title {
+  font-size: var(--step-4);
+  font-stretch: 88%;
+  margin-bottom: var(--space-3);
+}
+
+.titleLink {
+  transition:
+    color var(--dur-micro) var(--ease-enter),
+    font-stretch var(--dur-micro) var(--ease-enter);
+}
+
+.titleLink:hover,
+.titleLink:focus-visible {
+  color: var(--accent);
+}
+
+.summary {
+  color: var(--fg-muted);
+  font-size: var(--step-1);
+  max-width: 54ch;
+  margin-bottom: var(--space-4);
+}
+
+.stack {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0 0 var(--space-5);
+  padding: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+/* A fill sweeps in from the left on hover rather than the link changing
+   colour. It is the same gesture as the rail tick growing. */
+.action {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step--1);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--fg);
+  padding: var(--space-2) var(--space-4);
+  border: var(--hairline-w) solid var(--hairline-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  isolation: isolate;
+  transition: color var(--dur-short) var(--ease-enter);
+}
+
+.action::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-short) var(--ease-enter);
+}
+
+.action:hover,
+.action:focus-visible {
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.action:hover::before,
+.action:focus-visible::before {
+  transform: scaleX(1);
+}
+
+/* Media runs to the right edge of the viewport. It is the only element on the
+   site allowed out of the column. */
+.media {
+  margin: 0;
+  margin-right: calc(-1 * var(--edge));
+  background: var(--bg-sunken);
+  border: var(--hairline-w) solid var(--hairline);
+  border-right: 0;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  overflow: hidden;
+}
+
+.media img {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 46rem) {
+  .title {
+    font-size: var(--step-3);
+  }
+
+  .summary {
+    font-size: var(--step-0);
+  }
+
+  .list {
+    gap: var(--space-8);
+  }
+}

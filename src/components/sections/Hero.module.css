@@ -1,0 +1,118 @@
+.hero {
+  min-height: 100svh;
+  display: grid;
+  align-items: center;
+  padding-block: calc(var(--space-9) + var(--space-6)) var(--space-8);
+  position: relative;
+}
+
+/* The column rhythm the dump will resolve on. Faint enough to read as a
+   surface rather than as a grid overlay. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(12.5% - 1px),
+    var(--hairline) calc(12.5% - 1px) 12.5%
+  );
+}
+
+.bay {
+  position: relative;
+}
+
+.title {
+  display: grid;
+  margin-bottom: var(--space-5);
+}
+
+.titleLine {
+  display: block;
+}
+
+.line {
+  font-size: var(--step-2);
+  line-height: 1.45;
+  color: var(--fg-muted);
+  max-width: 46ch;
+  margin-bottom: var(--space-8);
+}
+
+.index ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  max-width: 64rem;
+  border-top: var(--hairline-w) solid var(--hairline);
+}
+
+.record {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: var(--hairline-w) solid var(--hairline);
+  transition: color var(--dur-micro) var(--ease-enter);
+}
+
+.addr {
+  font-size: var(--step--1);
+  color: var(--data);
+  letter-spacing: 0.04em;
+}
+
+.recordName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step-1);
+  font-stretch: 100%;
+  letter-spacing: -0.015em;
+  color: var(--fg);
+  transition: font-stretch var(--dur-micro) var(--ease-enter);
+}
+
+.year {
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+}
+
+.record:hover,
+.record:focus-visible {
+  color: var(--accent);
+}
+
+.record:hover .recordName,
+.record:focus-visible .recordName {
+  color: var(--accent);
+  font-stretch: 112%;
+}
+
+.record:hover .addr,
+.record:focus-visible .addr {
+  color: var(--accent);
+}
+
+@media (max-width: 46rem) {
+  .hero {
+    min-height: auto;
+    padding-block: calc(var(--space-9) + var(--space-4)) var(--space-7);
+  }
+
+  .line {
+    margin-bottom: var(--space-6);
+  }
+
+  .record {
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    gap: var(--space-3);
+  }
+
+  .recordName {
+    font-size: var(--step-0);
+  }
+}

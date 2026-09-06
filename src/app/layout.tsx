@@ -1,17 +1,33 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { JetBrains_Mono } from "next/font/google";
+import { Archivo, Newsreader } from "next/font/google";
 import "./globals.css";
 
 import Nav from "@/components/layout/Nav";
+import Gutter from "@/components/layout/Gutter";
 import SkipToContent from "@/components/layout/SkipToContent";
-import SmoothScroll from "@/components/layout/SmoothScroll";
-import PageTransition from "@/components/layout/PageTransition";
 
-const jetbrains = JetBrains_Mono({
+/**
+ * Two faces, both variable.
+ *
+ * Archivo carries display, navigation, labels and figures. Its width axis is
+ * the site's emphasis mechanism, which is why it is loaded rather than a
+ * second weight file. Newsreader carries anything read at length.
+ */
+const archivo = Archivo({
   subsets: ["latin"],
-  variable: "--font-mono",
+  axes: ["wdth"],
+  variable: "--font-archivo",
   display: "swap",
+  adjustFontFallback: true,
+});
+
+/* Weight axis only. The optical-size axis and the italics were another
+   270 KB of font on a page that uses neither. */
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -23,6 +39,7 @@ export const metadata: Metadata = {
   keywords: [
     "Yossi Abutbul",
     "portfolio",
+    "software engineer",
     "BSc Computer Science student",
     "RF integrator",
     "embedded systems",
@@ -35,14 +52,14 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Yossi Abutbul - Portfolio",
     description:
-      "Portfolio of Yossi Abutbul: BSc Computer Science student + RF integrator. Test-automation, antenna tooling, full-stack engineering.",
+      "Portfolio of Yossi Abutbul: software engineer and RF integrator. Test automation, instrument tooling, full-stack engineering.",
     type: "website",
     images: [
       {
         url: "og.png",
         width: 1200,
         height: 630,
-        alt: "Yossi Abutbul - Software for RF and embedded systems",
+        alt: "Yossi Abutbul - software for hardware",
       },
     ],
   },
@@ -54,26 +71,19 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#050910",
+  themeColor: "#0c1114",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${GeistSans.variable} ${jetbrains.variable}`}
-      data-theme="dark"
-    >
+    <html lang="en" className={`${archivo.variable} ${newsreader.variable}`}>
       <body>
         <SkipToContent />
-        <SmoothScroll>
-          <Nav />
-          <main id="main">
-            <PageTransition>{children}</PageTransition>
-          </main>
-        </SmoothScroll>
+        <Gutter />
+        <Nav />
+        <main id="main" className="shell">
+          {children}
+        </main>
       </body>
     </html>
   );
