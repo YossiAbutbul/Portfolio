@@ -34,11 +34,30 @@
   color: var(--ink-muted);
 }
 
-.heroBody {
+/* Copy left, plotted pattern right. The plot never pushes the type around:
+   it takes the column it is given and scales into it. */
+.heroLayout {
   align-self: center;
   display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: var(--space-7);
+  width: 100%;
+}
+
+.heroBody {
+  display: grid;
   gap: var(--space-5);
-  max-width: 56rem;
+  min-width: 0;
+}
+
+.heroPlot {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  max-height: 30rem;
+  justify-self: end;
+  width: 100%;
 }
 
 /* Line-reveal clip. Headlines run below a 1.0 line-height, so the box is
@@ -533,6 +552,20 @@
 }
 
 /* --- Narrow --------------------------------------------------------------- */
+
+@media (max-width: 64rem) {
+  .heroLayout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+
+  .heroPlot {
+    justify-self: start;
+    max-width: 22rem;
+    max-height: 22rem;
+    order: -1;
+  }
+}
 
 @media (max-width: 60rem) {
   .sectionInner {

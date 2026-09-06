@@ -7,6 +7,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
+import PatternPlot from "./PatternPlot";
 import styles from "./Home.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -137,6 +138,7 @@ export default function Home() {
             <span>Rev 2026.09</span>
           </div>
 
+          <div className={styles.heroLayout}>
           <div className={styles.heroBody}>
             <h1 id="hero-name" className={styles.heroName}>
               <span className={styles.clip}>
@@ -165,6 +167,11 @@ export default function Home() {
               </a>
             </div>
           </div>
+
+            <div className={styles.heroPlot}>
+              <PatternPlot />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -184,19 +191,34 @@ export default function Home() {
         <div className={styles.also} data-rise>
           <h3 className={`mono ${styles.alsoLabel}`}>Also</h3>
           <ul className={styles.alsoList}>
-            {OTHER_PROJECTS.map((project) => (
-              <li key={project.slug}>
-                <a
-                  className={styles.alsoLink}
-                  href={project.links[0]?.href}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+            {OTHER_PROJECTS.map((project) => {
+              const body = (
+                <>
                   <span className={styles.alsoName}>{project.title}</span>
                   <span className={styles.alsoSummary}>{project.summary}</span>
-                </a>
-              </li>
-            ))}
+                </>
+              );
+              // Some of these still have a full case study written; send those
+              // to it rather than straight out to the repo.
+              return (
+                <li key={project.slug}>
+                  {project.noCase ? (
+                    <a
+                      className={styles.alsoLink}
+                      href={project.links[0]?.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {body}
+                    </a>
+                  ) : (
+                    <Link className={styles.alsoLink} href={`/projects/${project.slug}`}>
+                      {body}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </Section>
@@ -288,7 +310,6 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={`container mono ${styles.footerInner}`}>
           <span>Yossi Abutbul · 2026</span>
-          <span>Built with Next.js · Set in Archivo &amp; JetBrains Mono</span>
         </div>
       </footer>
     </div>

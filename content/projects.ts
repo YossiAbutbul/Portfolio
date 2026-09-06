@@ -10,7 +10,7 @@ import type { Project } from "@/types/project";
 export const FEATURED_SLUGS = [
   "test-console",
   "oplanner",
-  "report-generator",
+  "pipeline-cpu",
   "current-logger",
   "algorithmx",
   "toast-turn",
@@ -90,7 +90,6 @@ export const PROJECTS: Project[] = [
       { label: "Live", href: "https://yossiabutbul.github.io/ReportGenrator/" },
       { label: "GitHub", href: "https://github.com/YossiAbutbul/ReportGenrator" },
     ],
-    featured: true,
     overview: [
       "Full-stack workspace that turns raw chamber measurements into structured reports. Engineers upload Excel workbooks or Howland WTL exports, scrub through 2D polar plots and a 3D radiation surface, then export a finished A4 document with the graphs and metadata already in place.",
       "The 3D viewer is custom WebGL: spherical wireframe overlay, orbit controls, vertex-coloured heatmap. It exists because a table of numbers hides a pattern defect that a surface shows in a second.",
@@ -102,6 +101,36 @@ export const PROJECTS: Project[] = [
       "A4 document viewer with direct Word export",
       "Multi-format input: Excel workbooks and Howland WTL text exports",
       "Searchable metadata grid: filter by unit, ID, frequency",
+    ],
+  },
+  {
+    slug: "pipeline-cpu",
+    title: "Pipeline CPU Simulator",
+    summary:
+      "Step through a five-stage pipeline one cycle at a time, with hazards, forwarding and stall bubbles drawn onto the diagram as they happen.",
+    friction:
+      "Architecture lectures draw the pipeline as one static diagram, and everything that is actually hard about it happens between the cycles that diagram never shows.",
+    metric: { before: "a diagram", after: "every cycle" },
+    tags: ["software"],
+    year: 2024,
+    role: "Solo",
+    stack: ["React", "TypeScript", "Vite"],
+    links: [
+      { label: "Live", href: "https://yossiabutbul.github.io/Pipeline_CPU/" },
+      { label: "GitHub", href: "https://github.com/YossiAbutbul/Pipeline_CPU" },
+    ],
+    featured: true,
+    overview: [
+      "Educational simulator that makes the classic five-stage pipeline tangible. Advance one cycle at a time and watch instructions flow through fetch, decode, execute, memory and writeback, with data, structural and control hazards marked on the diagram at the moment they occur.",
+      "The pipeline state is fully observable: every register, every forwarding bypass and every stall bubble is visible at every cycle, so you can stop anywhere and read off exactly what the hardware is doing rather than reconstructing it from a lecture slide.",
+    ],
+    highlights: [
+      "Cycle-accurate view of a five-stage MIPS-style pipeline",
+      "Step forward, pause and inspect any cycle",
+      "Data, structural and control hazards marked as they arise",
+      "Forwarding paths and stall bubbles drawn onto the diagram",
+      "Register file and memory state updated live each cycle",
+      "Loadable instruction sequences for the classic teaching examples",
     ],
   },
   {
@@ -245,21 +274,6 @@ export const PROJECTS: Project[] = [
     links: [
       { label: "Live", href: "https://yossiabutbul.github.io/lora-gateway-log-visualizer/" },
       { label: "GitHub", href: "https://github.com/YossiAbutbul/lora-gateway-log-visualizer" },
-    ],
-  },
-  {
-    slug: "pipeline-cpu",
-    title: "Pipeline CPU Simulator",
-    summary:
-      "Step through a five-stage pipeline one cycle at a time and watch hazards, forwarding and stalls drawn onto the diagram.",
-    tags: ["software"],
-    year: 2024,
-    role: "Solo",
-    stack: ["React", "TypeScript", "Vite"],
-    noCase: true,
-    links: [
-      { label: "Live", href: "https://yossiabutbul.github.io/Pipeline_CPU/" },
-      { label: "GitHub", href: "https://github.com/YossiAbutbul/Pipeline_CPU" },
     ],
   },
   {
