@@ -3,6 +3,7 @@ import { HERO } from "@content/copy";
 import type { Project } from "@/types/project";
 import styles from "./Hero.module.css";
 import { projectHref } from "@/lib/project";
+import HeroDump from "./HeroDump";
 
 /**
  * The hero at rest.
@@ -15,6 +16,7 @@ import { projectHref } from "@/lib/project";
 export default function Hero({ projects }: { projects: Project[] }) {
   return (
     <section id="hero" className={styles.hero} aria-labelledby="hero-title">
+      <HeroDump />
       <div className={`bay ${styles.bay}`}>
         <h1 id="hero-title" className={styles.title}>
           {HERO.name.map((part) => (

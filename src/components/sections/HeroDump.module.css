@@ -1,0 +1,54 @@
+/*
+ * The dump sits behind the hero content, full bleed.
+ *
+ * The mask is the composition. Rather than cutting the field off at the left,
+ * which threw away most of the hex column and left the object lopsided, it
+ * punches a soft hole where the name and the index sit. The field then runs
+ * the whole width and the type has clean ground inside it, which is the
+ * arrangement a real hex editor has anyway: a selection inside a file.
+ */
+.host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+
+  /* Read by the canvas at init, so the object follows the palette. */
+  --dump-offset: var(--fg-muted);
+  --dump-hex: var(--data);
+  --dump-ascii: var(--chalk);
+  --dump-mark: var(--accent);
+
+  /* getComputedStyle(host).fontFamily is what the canvas draws with. */
+  font-family: var(--font-display);
+
+  mask-image:
+    radial-gradient(ellipse 62% 46% at 26% 44%, transparent 0%, transparent 42%, #000 100%),
+    linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    radial-gradient(ellipse 62% 46% at 26% 44%, transparent 0%, transparent 42%, #000 100%),
+    linear-gradient(to bottom, transparent 0%, #000 9%, #000 88%, transparent 100%);
+  -webkit-mask-composite: source-in;
+}
+
+.canvas {
+  display: block;
+}
+
+/* Narrow: there is no spare width, so the field drops behind everything at
+   low strength and stops competing with the type. */
+@media (max-width: 62rem) {
+  .host {
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 68%, transparent 100%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      #000 22%,
+      #000 68%,
+      transparent 100%
+    );
+    opacity: 0.4;
+  }
+}
