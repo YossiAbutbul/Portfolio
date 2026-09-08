@@ -14,8 +14,10 @@ const MIN_HOLD = 900;
 const NO_SCENE_GRACE = 400;
 /** A hero that never reports back must not be able to hold the site hostage. */
 const MAX_HOLD = 5000;
-/** Long enough for the name to land; matches the transition in the stylesheet. */
-const EXIT = 660;
+/** How long the name takes to fly onto the hero's heading. */
+const MORPH = 700;
+/** Long enough for that flight to land before the overlay goes. */
+const EXIT = 740;
 
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
@@ -60,11 +62,24 @@ export default function AppLoader() {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       const from = source.getBoundingClientRect();
       const to = target.getBoundingClientRect();
-      source.style.setProperty("--dx", `${Math.round(to.left - from.left)}px`);
-      source.style.setProperty("--dy", `${Math.round(to.top - from.top)}px`);
       // Two copies of the same name in flight would read as a double
       // exposure. The real one waits until this one lands on top of it.
       document.documentElement.setAttribute("data-intro-morph", "");
+      // The entrance animates `transform` too, and a CSS animation outranks a
+      // scripted one, so while it is still running it simply overwrites the
+      // flight and the name lands without ever crossing the gap. Retiring it
+      // first drops the element back to the settled style this animates from.
+      for (const running of source.getAnimations()) running.cancel();
+      source.animate?.(
+        [
+          { transform: "none" },
+          { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` },
+        ],
+        // The site's expo-out is 76% travelled in its first quarter, which on a
+        // journey this long still reads as a jump. This is the token set's
+        // other curve, which spends its time in the middle of the move.
+        { duration: MORPH, easing: "cubic-bezier(0.65, 0, 0.35, 1)", fill: "forwards" },
+      );
     }
 
     function leave() {

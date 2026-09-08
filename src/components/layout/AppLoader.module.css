@@ -41,13 +41,12 @@
   line-height: 0.9;
   letter-spacing: -0.075em;
   color: var(--ink);
-  opacity: 0;
-  animation: name-in 700ms var(--ease-out) 40ms forwards;
-}
-
-.overlay[data-phase="leaving"] .name {
-  transform: translate(var(--dx, 0px), var(--dy, 0px));
-  transition: transform 620ms var(--ease-out);
+  /* The entrance fills backwards, not forwards, so it stops contributing to
+     the cascade the moment it ends and leaves the handover's own animation a
+     clear field. The flight itself is scripted rather than declared here —
+     see the component. */
+  opacity: 1;
+  animation: name-in 700ms var(--ease-out) 40ms backwards;
 }
 
 .scope {
@@ -121,9 +120,10 @@
   animation: tick-in 700ms var(--ease-out) 80ms forwards;
 }
 
+/* No `to`: the animation ends on the element's own settled style, so it
+   stops contributing to the cascade the moment it finishes. */
 @keyframes name-in {
   from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: none; }
 }
 
 @keyframes reveal {
@@ -144,10 +144,6 @@
   .overlay[data-phase="leaving"] {
     background-color: var(--paper);
     opacity: 0;
-  }
-  .overlay[data-phase="leaving"] .name {
-    transform: none;
-    transition: none;
   }
   .name,
   .ticks line,
