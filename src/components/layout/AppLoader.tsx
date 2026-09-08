@@ -1,30 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { readScene, watchScene } from "@/lib/appReady";
 import styles from "./AppLoader.module.css";
 
-/** Held long enough to read as a deliberate opening rather than a stall. */
+/**
+ * Held long enough to read as a deliberate opening rather than a stall, and
+ * long enough for the sweep to land: every animation in the intro finishes by
+ * this mark, so a wait past it holds on a completed drawing.
+ */
 const MIN_HOLD = 900;
 /** If no hero has announced itself by now, this page has none to wait for. */
 const NO_SCENE_GRACE = 400;
 /** A hero that never reports back must not be able to hold the site hostage. */
 const MAX_HOLD = 5000;
-/** Matches the overlay's opacity transition in the stylesheet. */
-const EXIT = 560;
+/** Long enough for the name to land; matches the transition in the stylesheet. */
+const EXIT = 660;
 
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
+/** The heading the intro's name flies into. */
+const HERO_NAME = "hero-name";
+
 /**
  * A damped capture: it arrives, rings through the middle of the frame, and
- * settles back to the baseline. Normalised with pathLength so the sweep is one
- * unit of dash regardless of how the geometry is edited later.
+ * settles back to the baseline.
  */
 const TRACE =
   "M0 80H175C222 80 226 26 272 26S320 134 366 134S414 38 460 38S508 122 554 122S602 56 648 56S696 104 742 104S790 70 836 70S884 90 930 90S978 78 1024 78S1072 82 1118 82H1200";
 
 export default function AppLoader() {
   const [phase, setPhase] = useState<"playing" | "leaving" | "gone">("playing");
+  const name = useRef<HTMLParagraphElement>(null);
+
+  // Wear the hero heading's own type, so the flight into place is a straight
+  // translation and every breakpoint stays in step without duplicating its
+  // font-size rules here.
+  useLayoutEffect(() => {
+    const source = name.current;
+    const target = document.getElementById(HERO_NAME);
+    if (!source || !target) return;
+    const type = getComputedStyle(target);
+    source.style.fontSize = type.fontSize;
+    source.style.fontWeight = type.fontWeight;
+    source.style.letterSpacing = type.letterSpacing;
+    source.style.lineHeight = type.lineHeight;
+  }, []);
 
   useEffect(() => {
     const start = performance.now();
@@ -32,9 +53,24 @@ export default function AppLoader() {
     let exiting: ReturnType<typeof setTimeout> | undefined;
     let left = false;
 
+    function morph() {
+      const source = name.current;
+      const target = document.getElementById(HERO_NAME);
+      if (!source || !target) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const from = source.getBoundingClientRect();
+      const to = target.getBoundingClientRect();
+      source.style.setProperty("--dx", `${Math.round(to.left - from.left)}px`);
+      source.style.setProperty("--dy", `${Math.round(to.top - from.top)}px`);
+      // Two copies of the same name in flight would read as a double
+      // exposure. The real one waits until this one lands on top of it.
+      document.documentElement.setAttribute("data-intro-morph", "");
+    }
+
     function leave() {
       if (left) return;
       left = true;
+      morph();
       setPhase("leaving");
       exiting = setTimeout(() => setPhase("gone"), EXIT);
     }
@@ -67,6 +103,7 @@ export default function AppLoader() {
       clearTimeout(pending);
       clearTimeout(cap);
       clearTimeout(exiting);
+      document.documentElement.removeAttribute("data-intro-morph");
     };
   }, []);
 
@@ -89,33 +126,49 @@ export default function AppLoader() {
     };
   }, [phase]);
 
+  // The hero's own heading is uncovered in the same commit that removes this
+  // one, with both sitting in the same place.
+  useEffect(() => {
+    if (phase !== "gone") return;
+    document.documentElement.removeAttribute("data-intro-morph");
+  }, [phase]);
+
   if (phase === "gone") return null;
 
   return (
     <div className={styles.overlay} data-app-loader data-phase={phase} aria-hidden="true">
       <div className={styles.stack}>
-        <p className={styles.name}>Yossi Abutbul</p>
-        <svg className={styles.trace} viewBox="0 0 1200 190" fill="none">
-          <path className={styles.glow} d={TRACE} pathLength={1} />
-          <path className={styles.line} d={TRACE} pathLength={1} />
-          <line className={styles.baseline} x1="0" x2="1200" y1="168" y2="168" />
-          <g className={styles.ticks}>
-            {Array.from({ length: 41 }, (_, index) => {
-              const x = index * 30;
-              const major = index % 5 === 0;
-              return (
-                <line
-                  key={x}
-                  x1={x}
-                  x2={x}
-                  y1={major ? 150 : 158}
-                  y2="168"
-                  style={{ animationDelay: `${180 + index * 18}ms` }}
-                />
-              );
-            })}
-          </g>
-        </svg>
+        <p ref={name} className={styles.name}>
+          Yossi
+          <br />
+          Abutbul
+        </p>
+        <div className={styles.scope}>
+          <svg className={styles.grid} viewBox="0 0 1200 190" fill="none">
+            <line className={styles.baseline} x1="0" x2="1200" y1="168" y2="168" />
+            <g className={styles.ticks}>
+              {Array.from({ length: 41 }, (_, index) => {
+                const x = index * 30;
+                const major = index % 5 === 0;
+                return (
+                  <line
+                    key={x}
+                    x1={x}
+                    x2={x}
+                    y1={major ? 150 : 158}
+                    y2="168"
+                    style={{ animationDelay: `${100 + index * 10}ms` }}
+                  />
+                );
+              })}
+            </g>
+          </svg>
+          <svg className={styles.trace} viewBox="0 0 1200 190" fill="none">
+            <path className={styles.glow} d={TRACE} />
+            <path className={styles.line} d={TRACE} />
+          </svg>
+          <div className={styles.curtain} />
+        </div>
       </div>
     </div>
   );

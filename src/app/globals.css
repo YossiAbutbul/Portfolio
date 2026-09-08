@@ -45,6 +45,13 @@ body::before {
   background-size: 200px 200px;
 }
 
+/* The intro's name flies into this heading's place. Two copies of it in the
+   air at once would read as a double exposure, so the real one stays down
+   until the flight lands on top of it. */
+html[data-intro-morph] #hero-name {
+  opacity: 0;
+}
+
 ::selection {
   background: var(--mark);
   color: var(--paper-sunk);

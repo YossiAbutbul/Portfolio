@@ -1,6 +1,11 @@
 /* A held black frame with the name and one oscilloscope sweep. It covers the
    hero's first WebGL frame, which arrives with the camera still at its default
-   aspect and reads as a mistake. */
+   aspect and reads as a mistake.
+
+   Everything here animates `transform` or `opacity` only. Those run on the
+   compositor, so the intro keeps playing through the long main-thread block
+   of parsing three.js and compiling its shaders. A `stroke-dashoffset` sweep
+   is main-thread work and froze mid-draw against exactly that block. */
 
 .overlay {
   position: fixed;
@@ -8,14 +13,14 @@
   z-index: 2000;
   display: grid;
   place-items: center;
-  background: var(--paper);
+  background-color: var(--paper);
   /* The scene underneath is initialising; nothing here should take a click. */
   pointer-events: none;
-  transition: opacity 560ms var(--ease-out);
+  transition: background-color 420ms var(--ease-out);
 }
 
 .overlay[data-phase="leaving"] {
-  opacity: 0;
+  background-color: transparent;
 }
 
 .stack {
@@ -25,24 +30,63 @@
   width: min(100% - (2 * var(--gutter)), 68rem);
 }
 
+/* The type metrics are copied off the hero's own heading at mount, so the
+   flight into place is a pure translation with nothing to rescale. These are
+   the fallback for a page that has no hero to copy. */
 .name {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: clamp(2.6rem, min(9vw, 12svh), 7rem);
+  font-size: clamp(4rem, min(10vw, 14svh), 10rem);
   font-weight: 500;
   line-height: 0.9;
   letter-spacing: -0.075em;
-  text-align: center;
   color: var(--ink);
   opacity: 0;
-  animation: name-in 820ms var(--ease-out) 60ms forwards;
+  animation: name-in 700ms var(--ease-out) 40ms forwards;
 }
 
-/* The trace keeps its own band so the name never shifts as the line draws. */
+.overlay[data-phase="leaving"] .name {
+  transform: translate(var(--dx, 0px), var(--dy, 0px));
+  transition: transform 620ms var(--ease-out);
+}
+
+.scope {
+  position: relative;
+  width: 100%;
+  transition: opacity 320ms var(--ease-out);
+}
+
+.overlay[data-phase="leaving"] .scope {
+  opacity: 0;
+}
+
+.grid,
 .trace {
+  display: block;
   width: 100%;
   height: auto;
   overflow: visible;
+}
+
+.trace {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+/* The trace is drawn in full from the first frame and uncovered by a slab of
+   the page's own background collapsing to the right. Stopping short of the
+   tick row leaves the measurement rule to fade in on its own. */
+.curtain {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 22%;
+  background: var(--paper);
+  transform-origin: 100% 50%;
+  will-change: transform;
+  animation: reveal 780ms var(--ease-out) 120ms forwards;
 }
 
 .line {
@@ -50,10 +94,6 @@
   stroke: var(--mark);
   stroke-width: 1.6;
   stroke-linecap: round;
-  /* The path carries pathLength="1", so one unit is the whole sweep. */
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: sweep 1500ms var(--ease-out) 220ms forwards;
 }
 
 /* A second copy of the same path, blurred, doing the work a glow filter would
@@ -65,23 +105,20 @@
   stroke-linecap: round;
   opacity: 0.28;
   filter: blur(6px);
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: sweep 1500ms var(--ease-out) 220ms forwards;
 }
 
 .ticks line {
   stroke: var(--rule-strong);
   stroke-width: 1;
   opacity: 0;
-  animation: tick-in 620ms var(--ease-out) forwards;
+  animation: tick-in 380ms var(--ease-out) forwards;
 }
 
 .baseline {
   stroke: var(--rule);
   stroke-width: 1;
   opacity: 0;
-  animation: tick-in 900ms var(--ease-out) 120ms forwards;
+  animation: tick-in 700ms var(--ease-out) 80ms forwards;
 }
 
 @keyframes name-in {
@@ -89,28 +126,37 @@
   to { opacity: 1; transform: none; }
 }
 
-@keyframes sweep {
-  to { stroke-dashoffset: 0; }
+@keyframes reveal {
+  to { transform: scaleX(0); }
 }
 
 @keyframes tick-in {
   to { opacity: 1; }
 }
 
-/* Reduced motion still gets the held frame, just without anything sweeping —
-   the loader's job is to cover the hero, and that does not depend on movement. */
+/* Reduced motion still gets the held frame, just without anything sweeping or
+   flying. The intro's job is to cover the hero, which does not depend on
+   movement, so it simply fades out where it stands. */
 @media (prefers-reduced-motion: reduce) {
-  .overlay { transition-duration: 200ms; }
+  .overlay {
+    transition: opacity 200ms linear;
+  }
+  .overlay[data-phase="leaving"] {
+    background-color: var(--paper);
+    opacity: 0;
+  }
+  .overlay[data-phase="leaving"] .name {
+    transform: none;
+    transition: none;
+  }
   .name,
-  .line,
-  .glow,
   .ticks line,
   .baseline {
     animation: none;
     opacity: 1;
   }
-  .line,
-  .glow { stroke-dashoffset: 0; }
-  .ticks line { opacity: 1; }
-  .baseline { opacity: 1; }
+  .curtain {
+    animation: none;
+    transform: scaleX(0);
+  }
 }
