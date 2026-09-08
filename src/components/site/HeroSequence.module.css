@@ -5,7 +5,7 @@
 .intro, .chapter { max-width: 40rem; }
 .name { font-size: clamp(4rem, min(10vw, 14svh), 10rem); font-weight: 500; line-height: .9; letter-spacing: -.075em; margin: 0 0 2.3rem; }
 .role { font-size: clamp(1.1rem, 1.4vw, 1.45rem); line-height: 1.5; }
-.bio { max-width: 35ch; color: var(--ink-muted); font-size: clamp(1rem, .85rem + .25vw, 1.15rem); line-height: 1.75; margin-top: 1.4rem; }
+.bio { max-width: 52ch; color: var(--ink-muted); font-size: clamp(1rem, .85rem + .25vw, 1.15rem); line-height: 1.75; margin-top: 1.4rem; }
 .projectLink { display: inline-flex; align-items: center; min-height: 44px; font-size: .95rem; text-decoration: underline; text-underline-offset: 8px; text-decoration-color: var(--mark); }
 .chapter { padding-top: 4rem; }
 .chapter h2 { font-size: clamp(2.5rem, 4.5vw, 5rem); font-weight: 400; line-height: 1.06; letter-spacing: -.055em; }

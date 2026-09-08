@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://yossiabutbul.vercel.app/"),
   title: "Yossi Abutbul",
   description:
-    "I build test automation, measurement software, and the interfaces that make lab data readable. One platform took a three-day RF test cycle down to about eight minutes.",
+    "Test automation and measurement software for RF hardware. One platform took a three-day qualification cycle down to about eight minutes.",
   authors: [{ name: "Yossi Abutbul" }],
   keywords: [
     "Yossi Abutbul",
@@ -31,6 +31,8 @@ export const metadata: Metadata = {
     "test automation",
     "measurement software",
     "RF integration",
+    "LLM",
+    "AI tooling",
     "React",
     "TypeScript",
     "Python",
@@ -39,7 +41,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Yossi Abutbul",
     description:
-      "Test automation, measurement software, and the interfaces that make lab data readable.",
+      "Test automation and measurement software for RF hardware.",
     type: "website",
     images: [
       {

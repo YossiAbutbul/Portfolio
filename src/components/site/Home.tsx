@@ -48,21 +48,21 @@ const PROJECT_PREVIEWS: Record<string, string> = {
 const METHOD = [
   {
     step: "Test Console",
-    title: "Start with the manual procedure",
+    title: "Do it by hand first",
     detail:
-      "I worked through the RF test procedure instrument by instrument, then built a console to run the sequence and record the results.",
+      "I ran the RF test procedure instrument by instrument until I knew every step, then wrote a console that runs the sequence and records the results.",
   },
   {
     step: "Current Logger",
-    title: "Record what the device actually does",
+    title: "Measure, don't assume",
     detail:
-      "The logger captures transmit bursts and saves each measurement. I can inspect a live test or go back through a saved run.",
+      "The logger captures transmit bursts and stores every sample, so a live test and a run from last month get looked at the same way.",
   },
   {
     step: "OPlanner",
-    title: "Build around the data already available",
+    title: "Use the data that already exists",
     detail:
-      "My university provides a calendar export. I used it to populate courses and deadlines, so I don't have to enter my semester by hand.",
+      "The university publishes a calendar export, so OPlanner reads it for courses and deadlines instead of asking me to type in a semester.",
   },
 ];
 
@@ -71,9 +71,9 @@ const BACKGROUND = [
     years: "2020 to present",
     kind: "Work",
     role: "RF & Electronics Integrator",
-    place: "Arad Technologies",
+    place: "Smart metering industry",
     detail:
-      "Test systems where radio hardware, automation and interface design meet. Built the automation platform that took a three-day qualification cycle to roughly eight minutes.",
+      "Bring-up and qualification of RF hardware, and the test software around it. Built the automation platform that took a three-day qualification cycle down to about eight minutes.",
   },
   {
     years: "2022 to present",
@@ -89,7 +89,7 @@ const BACKGROUND = [
     role: "Operational Project Leader",
     place: "IDF Intelligence, Unit 81",
     detail:
-      "Led multi-disciplinary RF projects, ran field integration, and wrote the Python tooling for spectrum analyzer data collection.",
+      "Ran RF projects end to end — spec, integration, field trials — and wrote the Python tooling for spectrum analyzer data collection.",
   },
 ];
 
@@ -216,7 +216,7 @@ export default function Home() {
             Creating User Interfaces Using LLMs: From Specification to Code
           </h3>
           <p className={styles.paperBody}>
-            My computer science seminar examines how language models turn written specifications into interfaces, the errors they make, and how the specification affects the result.
+            A seminar on how language models turn a written spec into a working interface — where they get it wrong, and how much the wording of the spec changes what comes out.
           </p>
         </article>
       </Section>
@@ -248,7 +248,7 @@ export default function Home() {
       {/* ------------------------------------------------------------------ */}
       <Section id="contact" title="Contact">
         <p className={styles.contactLede} data-rise>
-          The fastest way to reach me is email. I read everything.
+          Email is the surest way to reach me.
         </p>
 
         <div className={styles.contactPrimary} data-rise>

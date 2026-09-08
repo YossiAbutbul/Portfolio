@@ -97,19 +97,19 @@ export default function HeroSequence() {
           <div className={styles.copy}>
             <div ref={intro} className={styles.intro}>
               <h1 id="hero-name" className={styles.name}>Yossi<br />Abutbul</h1>
-              <p className={styles.role}>Software developer.<br />RF &amp; electronics integrator.</p>
-              <p className={styles.bio}>I build test automation at Arad Technologies and study computer science at the Open University.</p>
+              <p className={styles.role}>Building software where signals meet code.</p>
+              <p className={styles.bio}>BSc Computer Science. RF automation and AI.</p>
               {!animated && <StageDrawing stage="signal" />}
             </div>
             <div ref={chipCopy} className={styles.chapter}>
-              <h2>Inside the<br />measurement.</h2>
-              <p>I build software that controls and measures hardware.</p>
+              <h2>Software that<br />touches hardware.</h2>
+              <p>Instrument drivers, test sequencers, and the plumbing that keeps a measurement repeatable.</p>
               {!animated && <StageDrawing stage="chip" />}
             </div>
             <div ref={graphCopy} className={styles.chapter}>
-              <h2>A signal you<br />can read.</h2>
-              <p>Turning measurements into tools people can use.</p>
-              <a className={styles.projectLink} href="#work">Explore the projects</a>
+              <h2>Data someone<br />can act on.</h2>
+              <p>Raw captures become plots, reports, and tools the next person can run without me.</p>
+              <a className={styles.projectLink} href="#work">See the projects</a>
               {!animated && <StageDrawing stage="graph" />}
             </div>
           </div>
