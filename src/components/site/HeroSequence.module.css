@@ -23,14 +23,6 @@
 .sequence[data-animated="true"] .chapter p { font-size: clamp(1rem, 1.2vw, 1.2rem); }
 .visual { position: absolute; inset: 4.5rem 0 0; min-width: 0; pointer-events: none; }
 .visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 60% 48%, rgba(156, 180, 203, .075), transparent 55%), radial-gradient(ellipse at 74% 64%, rgba(255, 113, 55, .035), transparent 40%); opacity: var(--scene-focus, 0); pointer-events: none; }
-.signalLoader { position: absolute; inset: 0; display: grid; place-items: center; opacity: 1; transition: opacity 520ms cubic-bezier(.22, 1, .36, 1); }
-.visual[data-scene-ready="true"] .signalLoader { opacity: 0; }
-.loaderSvg { width: min(62rem, 78vw); height: auto; overflow: visible; transform: translate(16vw, 2vh); filter: drop-shadow(0 0 18px rgba(255, 122, 66, .18)); }
-.loaderWave { fill: none; stroke: url("#loaderSignal"); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 180 760; animation: loaderSignal 1.65s linear infinite; }
-.loaderChip rect:first-child { fill: rgba(36, 41, 47, .48); stroke: rgba(154, 169, 180, .55); stroke-width: 2; }
-.loaderChip rect:nth-child(2) { fill: rgba(12, 15, 18, .72); stroke: rgba(255, 122, 66, .75); stroke-width: 2; }
-.loaderChip path { fill: none; stroke: rgba(201, 171, 115, .65); stroke-width: 7; stroke-linecap: round; }
-@keyframes loaderSignal { to { stroke-dashoffset: -940; } }
 @media (max-height: 46rem) and (min-width: 49rem) {
   .name { margin-bottom: 1.4rem; }
   .bio { display: none; }
@@ -49,7 +41,6 @@
   .chapter h2 { font-size: clamp(2.4rem, 9vw, 4rem); }
   .chapter p { font-size: 1rem; margin-top: 1rem; }
   .visual { min-height: 0; }
-  .loaderSvg { width: 44rem; max-width: 140vw; transform: translate(24vw, 16vh); }
 }
 @media (max-width: 48rem) and (max-height: 36rem) {
   .sequence[data-animated="true"] .copy { top: 4.5rem; grid-template-columns: 46% 54%; align-items: center; }
@@ -68,5 +59,4 @@
   .sequence[data-animated="true"] .intro, .sequence[data-animated="true"] .chapter { position: relative; inset: auto; max-width: 40rem; visibility: visible !important; opacity: 1 !important; transform: none !important; }
   .sequence[data-animated="true"] .chapter { padding-top: 4rem; }
   .sequence[data-animated="true"] .visual { display: none; }
-  .signalLoader { display: none; }
 }

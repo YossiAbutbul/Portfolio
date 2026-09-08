@@ -2,6 +2,7 @@
 
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { signalStory } from "./signal-story";
+import { declareScene, settleScene } from "@/lib/appReady";
 import styles from "./HeroSequence.module.css";
 
 const loadSignalCore = () => import("./SignalCore");
@@ -18,9 +19,14 @@ export default function HeroSequence() {
   // static three-stage illustration while the WebGL bundle is loading.
   const [animated, setAnimated] = useState(true);
   const [sceneEnabled, setSceneEnabled] = useState(false);
-  const [sceneReady, setSceneReady] = useState(false);
   const showStatic = useCallback(() => setAnimated(false), []);
-  const showScene = useCallback(() => setSceneReady(true), []);
+
+  // The intro loader holds the site until this hero says it is ready, so it
+  // has to know the hero is coming before its grace period runs out.
+  useLayoutEffect(() => { declareScene(); }, []);
+
+  // The static drawing needs no warm-up, so it releases the loader at once.
+  useLayoutEffect(() => { if (!animated) settleScene(); }, [animated]);
 
   useLayoutEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -33,10 +39,8 @@ export default function HeroSequence() {
   useEffect(() => {
     if (!animated) {
       setSceneEnabled(false);
-      setSceneReady(false);
       return;
     }
-    setSceneReady(false);
     let cancelled = false;
     let timeout = 0;
     let idle = 0;
@@ -162,11 +166,10 @@ export default function HeroSequence() {
             </div>
           </div>
           {animated && (
-            <div className={styles.visual} data-scene-ready={sceneReady}>
-              <SignalLoader />
+            <div className={styles.visual}>
               {sceneEnabled && (
                 <Suspense fallback={null}>
-                  <SignalCore progress={progress} seek={seek} onUnavailable={showStatic} onReady={showScene} />
+                  <SignalCore progress={progress} seek={seek} onUnavailable={showStatic} onReady={settleScene} />
                 </Suspense>
               )}
             </div>
@@ -174,28 +177,6 @@ export default function HeroSequence() {
         </div>
       </div>
     </section>
-  );
-}
-
-function SignalLoader() {
-  return (
-    <div className={styles.signalLoader} aria-hidden="true">
-      <svg viewBox="0 0 900 420" className={styles.loaderSvg}>
-        <defs>
-          <linearGradient id="loaderSignal" x1="0" x2="1">
-            <stop offset="0" stopColor="#ff9a62" stopOpacity=".15" />
-            <stop offset=".5" stopColor="#ff7a42" />
-            <stop offset="1" stopColor="#ffc1a1" stopOpacity=".55" />
-          </linearGradient>
-        </defs>
-        <path className={styles.loaderWave} d="M70 218C120 218 126 136 176 136S232 300 282 300 338 136 388 136 444 300 494 300 550 136 600 136 656 218 830 218" />
-        <g className={styles.loaderChip} transform="translate(600 210) rotate(-10)">
-          <rect x="-72" y="-72" width="144" height="144" rx="10" />
-          <rect x="-42" y="-42" width="84" height="84" rx="5" />
-          <path d="M-95 -48H-72M-95 -24H-72M-95 0H-72M-95 24H-72M-95 48H-72M72 -48H95M72 -24H95M72 0H95M72 24H95M72 48H95" />
-        </g>
-      </svg>
-    </div>
   );
 }
 

@@ -1,0 +1,116 @@
+/* A held black frame with the name and one oscilloscope sweep. It covers the
+   hero's first WebGL frame, which arrives with the camera still at its default
+   aspect and reads as a mistake. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  /* The scene underneath is initialising; nothing here should take a click. */
+  pointer-events: none;
+  transition: opacity 560ms var(--ease-out);
+}
+
+.overlay[data-phase="leaving"] {
+  opacity: 0;
+}
+
+.stack {
+  display: grid;
+  justify-items: center;
+  gap: clamp(2rem, 5vh, 3.5rem);
+  width: min(100% - (2 * var(--gutter)), 68rem);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(2.6rem, min(9vw, 12svh), 7rem);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.075em;
+  text-align: center;
+  color: var(--ink);
+  opacity: 0;
+  animation: name-in 820ms var(--ease-out) 60ms forwards;
+}
+
+/* The trace keeps its own band so the name never shifts as the line draws. */
+.trace {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.line {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  /* The path carries pathLength="1", so one unit is the whole sweep. */
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sweep 1500ms var(--ease-out) 220ms forwards;
+}
+
+/* A second copy of the same path, blurred, doing the work a glow filter would
+   without the cost of an SVG filter on a first paint. */
+.glow {
+  fill: none;
+  stroke: var(--mark);
+  stroke-width: 4;
+  stroke-linecap: round;
+  opacity: 0.28;
+  filter: blur(6px);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: sweep 1500ms var(--ease-out) 220ms forwards;
+}
+
+.ticks line {
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+  opacity: 0;
+  animation: tick-in 620ms var(--ease-out) forwards;
+}
+
+.baseline {
+  stroke: var(--rule);
+  stroke-width: 1;
+  opacity: 0;
+  animation: tick-in 900ms var(--ease-out) 120ms forwards;
+}
+
+@keyframes name-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes sweep {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes tick-in {
+  to { opacity: 1; }
+}
+
+/* Reduced motion still gets the held frame, just without anything sweeping —
+   the loader's job is to cover the hero, and that does not depend on movement. */
+@media (prefers-reduced-motion: reduce) {
+  .overlay { transition-duration: 200ms; }
+  .name,
+  .line,
+  .glow,
+  .ticks line,
+  .baseline {
+    animation: none;
+    opacity: 1;
+  }
+  .line,
+  .glow { stroke-dashoffset: 0; }
+  .ticks line { opacity: 1; }
+  .baseline { opacity: 1; }
+}

@@ -6,6 +6,7 @@ import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import PageTransition from "@/components/layout/PageTransition";
+import AppLoader from "@/components/layout/AppLoader";
 
 const archivo = Archivo({
   subsets: ["latin"],
@@ -73,6 +74,13 @@ export default function RootLayout({
       data-theme="dark"
     >
       <body>
+        {/* Without scripting the overlay could never be dismissed, so it must
+            not exist at all. It ships inside the markup otherwise, to cover
+            the first paint rather than arrive after it. */}
+        <noscript>
+          <style>{`[data-app-loader] { display: none !important; }`}</style>
+        </noscript>
+        <AppLoader />
         <SkipToContent />
         <SmoothScroll>
           <Nav />
