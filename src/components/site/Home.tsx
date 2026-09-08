@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useLayoutEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useRef, useState } from "react";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import HeroSequence from "./HeroSequence";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const CV_HREF = "/Yossi Abutbul - CV 2026.pdf";
 const EMAIL = "abyossi22@gmail.com";
@@ -96,49 +92,68 @@ const BACKGROUND = [
 export default function Home() {
   const root = useRef<HTMLDivElement>(null);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!root.current) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    // Finish entrance animations when hidden so a background tab stays readable.
-    const animations: gsap.core.Animation[] = [];
+    let disposed = false;
+    let cleanup = () => {};
 
-    function settle() {
-      if (!document.hidden) return;
-      for (const animation of animations) animation.progress(1);
+    async function startMotion() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+      if (disposed || !root.current) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Finish entrance animations when hidden so a background tab stays readable.
+      const animations: { progress: (value: number) => unknown }[] = [];
+
+      function settle() {
+        if (!document.hidden) return;
+        for (const animation of animations) animation.progress(1);
+      }
+
+      const context = gsap.context(() => {
+        // Scroll entrances never hide the project content.
+        gsap.utils.toArray<HTMLElement>("[data-rise]").forEach((element) => {
+          animations.push(
+            gsap.from(element, {
+              y: 24,
+              duration: 0.8,
+              ease: "expo.out",
+              scrollTrigger: { trigger: element, start: "top 92%", once: true },
+            }),
+          );
+        });
+
+        gsap.utils.toArray<HTMLElement>("[data-project]").forEach((element) => {
+          animations.push(gsap.from(element, {
+            y: 48,
+            duration: 1,
+            ease: "power3.out",
+            scrollTrigger: { trigger: element, start: "top 95%", once: true },
+          }));
+        });
+
+        ScrollTrigger.refresh();
+        settle();
+      }, root);
+
+      document.addEventListener("visibilitychange", settle);
+      cleanup = () => {
+        document.removeEventListener("visibilitychange", settle);
+        context.revert();
+      };
     }
 
-    const context = gsap.context(() => {
-      // Scroll entrances never hide the project content.
-      gsap.utils.toArray<HTMLElement>("[data-rise]").forEach((element) => {
-        animations.push(
-          gsap.from(element, {
-            y: 24,
-            duration: 0.8,
-            ease: "expo.out",
-            scrollTrigger: { trigger: element, start: "top 92%", once: true },
-          }),
-        );
-      });
-
-      gsap.utils.toArray<HTMLElement>("[data-project]").forEach((element) => {
-        animations.push(gsap.from(element, {
-          y: 48,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: { trigger: element, start: "top 95%", once: true },
-        }));
-      });
-
-      ScrollTrigger.refresh();
-      settle();
-    }, root);
-
-    document.addEventListener("visibilitychange", settle);
+    const frame = requestAnimationFrame(() => { void startMotion(); });
 
     return () => {
-      document.removeEventListener("visibilitychange", settle);
-      context.revert();
+      disposed = true;
+      cancelAnimationFrame(frame);
+      cleanup();
     };
   }, []);
 

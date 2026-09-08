@@ -10,10 +10,11 @@ const SIGNAL_RADIUS = 0.018;
 const SIGNAL_PLANE_Z = 0.46;
 
 /** An analog signal passes through a processor and becomes sampled data. */
-export default function SignalCore({ progress, seek, onUnavailable }: {
+export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
   progress: RefObject<number>;
   seek: RefObject<((progress: number) => void) | null>;
   onUnavailable: () => void;
+  onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
@@ -25,15 +26,11 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
     let cleanup = () => {};
 
     async function initialize() {
-      const [THREE, { RoomEnvironment }, { RoundedBoxGeometry }, { RectAreaLightUniformsLib }, { EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }, { mergeGeometries }] = await Promise.all([
+      const [THREE, { RoomEnvironment }, { RoundedBoxGeometry }, { RectAreaLightUniformsLib }, { mergeGeometries }] = await Promise.all([
         import("three"),
         import("three/addons/environments/RoomEnvironment.js"),
         import("three/addons/geometries/RoundedBoxGeometry.js"),
         import("three/addons/lights/RectAreaLightUniformsLib.js"),
-        import("three/addons/postprocessing/EffectComposer.js"),
-        import("three/addons/postprocessing/RenderPass.js"),
-        import("three/addons/postprocessing/UnrealBloomPass.js"),
-        import("three/addons/postprocessing/OutputPass.js"),
         import("three/addons/utils/BufferGeometryUtils.js"),
       ]);
       if (disposed) return;
@@ -74,15 +71,27 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 50);
       camera.position.set(0, 0, 10);
-      const composer = new EffectComposer(renderer);
-      const renderPass = new RenderPass(scene, camera);
-      const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.55, 1.45);
-      bloom.enabled = !liteRender;
-      const outputPass = new OutputPass();
-      composer.addPass(renderPass);
-      composer.addPass(bloom);
-      composer.addPass(outputPass);
-      detach.push(() => { renderPass.dispose(); bloom.dispose(); outputPass.dispose(); composer.dispose(); });
+      let composer: { render: () => void; setSize: (width: number, height: number) => void; dispose: () => void } | null = null;
+      let bloom: { strength: number; dispose: () => void } | null = null;
+      if (!liteRender) {
+        const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
+          import("three/addons/postprocessing/EffectComposer.js"),
+          import("three/addons/postprocessing/RenderPass.js"),
+          import("three/addons/postprocessing/UnrealBloomPass.js"),
+          import("three/addons/postprocessing/OutputPass.js"),
+        ]);
+        if (disposed) { cleanup(); return; }
+        const composed = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.55, 1.45);
+        bloom = bloomPass;
+        const outputPass = new OutputPass();
+        composed.addPass(renderPass);
+        composed.addPass(bloomPass);
+        composed.addPass(outputPass);
+        composer = composed;
+        detach.push(() => { renderPass.dispose(); bloomPass.dispose(); outputPass.dispose(); composed.dispose(); });
+      }
       const room = new RoomEnvironment();
       const pmrem = new THREE.PMREMGenerator(renderer);
       try {
@@ -449,7 +458,13 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
       let waveClock = 0;
       let lastWaveClockFrame = 0;
       let lastIdleFrame = 0;
+      let prewarmed = false;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+      function markReady() {
+        if (disposed) return;
+        setReady(true);
+        onReady?.();
+      }
       function pose(value: number) {
         const s = signalStory(value);
         const mix = THREE.MathUtils.lerp;
@@ -475,7 +490,7 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         key.position.x = mix(-3, 1.8, s.open);
         key.lookAt(centerX, 0, 0);
         rim.intensity = 2.7 + s.closeup * 0.7;
-        bloom.strength = liteRender ? 0 : 0.17 + Math.sin(s.process * Math.PI) * 0.1;
+        if (bloom) bloom.strength = 0.17 + Math.sin(s.process * Math.PI) * 0.1;
         const release = transition(value, 0.84, 0.89);
         processor.visible = s.approach > 0.001 && release < 0.999;
         processor.scale.setScalar(mix(0.7, 2.08, s.approach) * mix(1, 0.17, s.handoff) * (1 - release));
@@ -570,7 +585,26 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
           graphCurve.getPointAt(s.graph, signalPulse.position).applyMatrix4(output.matrix);
         }
       }
-      function render() { if (!contextLost) composer.render(); }
+      function render() {
+        if (contextLost) return;
+        if (composer) composer.render();
+        else renderer.render(scene, camera);
+      }
+      function prewarmRenderer() {
+        if (prewarmed || contextLost) return;
+        prewarmed = true;
+        const states = [processor, output, bridge, input, signalPulse].map((object) => [object, object.visible] as const);
+        const circuitRange = { start: circuitGeometry.drawRange.start, count: circuitGeometry.drawRange.count };
+        const graphRange = { start: graphGeometry.drawRange.start, count: graphGeometry.drawRange.count };
+        states.forEach(([object]) => { object.visible = true; });
+        circuitGeometry.setDrawRange(0, Infinity);
+        graphGeometry.setDrawRange(0, Infinity);
+        renderer.compile(scene, camera);
+        render();
+        circuitGeometry.setDrawRange(circuitRange.start, circuitRange.count);
+        graphGeometry.setDrawRange(graphRange.start, graphRange.count);
+        states.forEach(([object, wasVisible]) => { object.visible = wasVisible; });
+      }
       function canAnimateWave() {
         return progress.current < 0.18 && visible && !document.hidden && !contextLost && !reduced.matches;
       }
@@ -598,11 +632,12 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
-        composer.setSize(width, height);
+        composer?.setSize(width, height);
+        prewarmRenderer();
         sync();
       }
       function lost(event: Event) { event.preventDefault(); contextLost = true; cancelAnimationFrame(frame); onUnavailable(); }
-      function restored() { contextLost = false; setReady(true); resize(); sync(); }
+      function restored() { contextLost = false; markReady(); resize(); sync(); }
       const observer = new ResizeObserver(resize);
       observer.observe(element!);
       const intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); });
@@ -619,11 +654,11 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         document.removeEventListener("visibilitychange", sync);
         reduced.removeEventListener("change", sync);
       });
-      resize(); sync(); setReady(true);
+      resize(); sync(); markReady();
     }
     initialize().catch(() => { cleanup(); cleanup = () => {}; if (!disposed) onUnavailable(); });
     return () => { disposed = true; cleanup(); };
-  }, [progress, seek, onUnavailable]);
+  }, [progress, seek, onUnavailable, onReady]);
 
   return (
     <div className={styles.stage} role="img" aria-label="An orange analog waveform flows through a silver processor and emerges as a sampled data graph.">

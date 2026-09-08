@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import Lenis from "lenis";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import type Lenis from "lenis";
 import { prefersReducedMotion } from "@/hooks/useReducedMotion";
-
-gsap.registerPlugin(ScrollTrigger);
 
 declare global {
   interface Window {
@@ -18,58 +14,88 @@ declare global {
 export default function SmoothScroll({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
+  useLayoutEffect(() => {
+    const previousRestoration = history.scrollRestoration;
+    history.scrollRestoration = "manual";
+    if (isPageReload()) {
+      try { sessionStorage.removeItem(`scroll:${pathname}`); } catch {}
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      history.scrollRestoration = previousRestoration;
+    };
+  }, [pathname]);
+
   useEffect(() => {
     if (prefersReducedMotion()) return;
 
-    const previousRestoration = history.scrollRestoration;
-    history.scrollRestoration = "manual";
+    let disposed = false;
+    let cleanup = () => {};
 
-    const lenis = new Lenis({
-      duration: 0.78,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      touchMultiplier: 1.15,
-    });
-    window.__lenis = lenis;
-    lenis.on("scroll", ScrollTrigger.update);
+    async function startSmoothScroll() {
+      const [{ default: Lenis }, { default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("lenis"),
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+      if (disposed) return;
+      gsap.registerPlugin(ScrollTrigger);
 
-    let raf = 0;
-    function loop(time: number) {
-      lenis.raf(time);
+      const lenis = new Lenis({
+        duration: 0.78,
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        touchMultiplier: 1.15,
+      });
+      window.__lenis = lenis;
+      lenis.on("scroll", ScrollTrigger.update);
+
+      let raf = 0;
+      function loop(time: number) {
+        lenis.raf(time);
+        raf = requestAnimationFrame(loop);
+      }
       raf = requestAnimationFrame(loop);
-    }
-    raf = requestAnimationFrame(loop);
 
-    function handleAnchorClick(event: MouseEvent) {
-      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
-      const href = anchor?.getAttribute("href");
-      if (!href) return;
-      const hash = href.startsWith("/#") ? href.slice(1) : href.startsWith("#") ? href : null;
-      if (!hash) return;
-      const target = document.querySelector<HTMLElement>(hash);
-      if (!target) return;
-      event.preventDefault();
-      lenis.scrollTo(target, { offset: -16, duration: 1.05 });
+      function handleAnchorClick(event: MouseEvent) {
+        const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
+        const href = anchor?.getAttribute("href");
+        if (!href) return;
+        const hash = href.startsWith("/#") ? href.slice(1) : href.startsWith("#") ? href : null;
+        if (!hash) return;
+        const target = document.querySelector<HTMLElement>(hash);
+        if (!target) return;
+        event.preventDefault();
+        lenis.scrollTo(target, { offset: -16, duration: 1.05 });
+      }
+      document.addEventListener("click", handleAnchorClick);
+
+      cleanup = () => {
+        cancelAnimationFrame(raf);
+        document.removeEventListener("click", handleAnchorClick);
+        lenis.off("scroll", ScrollTrigger.update);
+        lenis.destroy();
+        delete window.__lenis;
+      };
     }
-    document.addEventListener("click", handleAnchorClick);
+
+    const frame = requestAnimationFrame(() => { void startSmoothScroll(); });
 
     return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener("click", handleAnchorClick);
-      lenis.off("scroll", ScrollTrigger.update);
-      lenis.destroy();
-      delete window.__lenis;
-      history.scrollRestoration = previousRestoration;
+      disposed = true;
+      cancelAnimationFrame(frame);
+      cleanup();
     };
   }, []);
 
   useEffect(() => {
     const isProject = pathname.startsWith("/projects/");
+    const reloaded = isPageReload();
     const hash = window.location.hash;
     let targetId: string | null = null;
 
-    try { targetId = sessionStorage.getItem("__navTarget"); } catch {}
-    if (!targetId && hash && !isProject) targetId = hash.slice(1);
+    try { targetId = reloaded ? null : sessionStorage.getItem("__navTarget"); } catch {}
+    if (!targetId && hash && !isProject && !reloaded) targetId = hash.slice(1);
     if (hash) history.replaceState(null, "", window.location.pathname);
 
     if (targetId && !isProject) {
@@ -100,7 +126,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     }
 
     let saved: string | null = null;
-    try { saved = isProject ? null : sessionStorage.getItem(`scroll:${pathname}`); } catch {}
+    try { saved = isProject || reloaded ? null : sessionStorage.getItem(`scroll:${pathname}`); } catch {}
     const top = saved ? Number.parseInt(saved, 10) : 0;
     const raf = requestAnimationFrame(() => {
       if (window.__lenis) window.__lenis.scrollTo(top, { immediate: true, force: true });
@@ -128,4 +154,9 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   return <>{children}</>;
+}
+
+function isPageReload() {
+  const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+  return navigation?.type === "reload";
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import SignalCore from "./SignalCore";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { signalStory } from "./signal-story";
 import styles from "./HeroSequence.module.css";
+
+const loadSignalCore = () => import("./SignalCore");
+const SignalCore = lazy(loadSignalCore);
 
 export default function HeroSequence() {
   const section = useRef<HTMLElement>(null);
@@ -16,7 +17,10 @@ export default function HeroSequence() {
   // The server and first client frame use the same layout. Never flash the
   // static three-stage illustration while the WebGL bundle is loading.
   const [animated, setAnimated] = useState(true);
+  const [sceneEnabled, setSceneEnabled] = useState(false);
+  const [sceneReady, setSceneReady] = useState(false);
   const showStatic = useCallback(() => setAnimated(false), []);
+  const showScene = useCallback(() => setSceneReady(true), []);
 
   useLayoutEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -25,6 +29,50 @@ export default function HeroSequence() {
     reduced.addEventListener("change", change);
     return () => reduced.removeEventListener("change", change);
   }, []);
+
+  useEffect(() => {
+    if (!animated) {
+      setSceneEnabled(false);
+      setSceneReady(false);
+      return;
+    }
+    setSceneReady(false);
+    let cancelled = false;
+    let timeout = 0;
+    let idle = 0;
+    const win = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const enable = () => {
+      if (!cancelled) setSceneEnabled(true);
+    };
+    const warmUp = () => {
+      if (win.requestIdleCallback) idle = win.requestIdleCallback(enable, { timeout: 650 });
+      else timeout = window.setTimeout(enable, 350);
+    };
+    const start = () => {
+      if (cancelled) return;
+      void loadSignalCore();
+      timeout = window.setTimeout(warmUp, 40);
+    };
+    const hurry = () => {
+      window.clearTimeout(timeout);
+      if (idle) win.cancelIdleCallback?.(idle);
+      enable();
+    };
+    const frame = requestAnimationFrame(start);
+    window.addEventListener("scroll", hurry, { passive: true, once: true });
+    window.addEventListener("pointerdown", hurry, { passive: true, once: true });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      if (idle) win.cancelIdleCallback?.(idle);
+      window.removeEventListener("scroll", hurry);
+      window.removeEventListener("pointerdown", hurry);
+    };
+  }, [animated]);
 
   useLayoutEffect(() => {
     if (!animated || !section.current) return;
@@ -74,7 +122,7 @@ export default function HeroSequence() {
     window.addEventListener("resize", schedule);
     window.addEventListener("pageshow", schedule);
     update();
-    ScrollTrigger.refresh();
+    void import("gsap/ScrollTrigger").then(({ ScrollTrigger }) => ScrollTrigger.refresh());
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -113,10 +161,41 @@ export default function HeroSequence() {
               {!animated && <StageDrawing stage="graph" />}
             </div>
           </div>
-          {animated && <div className={styles.visual}><SignalCore progress={progress} seek={seek} onUnavailable={showStatic} /></div>}
+          {animated && (
+            <div className={styles.visual} data-scene-ready={sceneReady}>
+              <SignalLoader />
+              {sceneEnabled && (
+                <Suspense fallback={null}>
+                  <SignalCore progress={progress} seek={seek} onUnavailable={showStatic} onReady={showScene} />
+                </Suspense>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>
+  );
+}
+
+function SignalLoader() {
+  return (
+    <div className={styles.signalLoader} aria-hidden="true">
+      <svg viewBox="0 0 900 420" className={styles.loaderSvg}>
+        <defs>
+          <linearGradient id="loaderSignal" x1="0" x2="1">
+            <stop offset="0" stopColor="#ff9a62" stopOpacity=".15" />
+            <stop offset=".5" stopColor="#ff7a42" />
+            <stop offset="1" stopColor="#ffc1a1" stopOpacity=".55" />
+          </linearGradient>
+        </defs>
+        <path className={styles.loaderWave} d="M70 218C120 218 126 136 176 136S232 300 282 300 338 136 388 136 444 300 494 300 550 136 600 136 656 218 830 218" />
+        <g className={styles.loaderChip} transform="translate(600 210) rotate(-10)">
+          <rect x="-72" y="-72" width="144" height="144" rx="10" />
+          <rect x="-42" y="-42" width="84" height="84" rx="5" />
+          <path d="M-95 -48H-72M-95 -24H-72M-95 0H-72M-95 24H-72M-95 48H-72M72 -48H95M72 -24H95M72 0H95M72 24H95M72 48H95" />
+        </g>
+      </svg>
+    </div>
   );
 }
 
