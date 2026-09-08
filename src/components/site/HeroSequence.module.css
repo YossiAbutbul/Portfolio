@@ -1,0 +1,62 @@
+.sequence { position: relative; background: var(--paper); --hero-gutter: max(var(--gutter), calc((100vw - var(--container-max)) / 2 + var(--gutter))); }
+.viewport { width: 100%; }
+.layout { position: relative; max-width: var(--container-max); margin: 0 auto; padding: 7rem var(--gutter) 4rem; }
+.copy { position: relative; z-index: 2; }
+.intro, .chapter { max-width: 40rem; }
+.name { font-size: clamp(4rem, min(10vw, 14svh), 10rem); font-weight: 500; line-height: .9; letter-spacing: -.075em; margin: 0 0 2.3rem; }
+.role { font-size: clamp(1.1rem, 1.4vw, 1.45rem); line-height: 1.5; }
+.bio { max-width: 35ch; color: var(--ink-muted); font-size: clamp(1rem, .85rem + .25vw, 1.15rem); line-height: 1.75; margin-top: 1.4rem; }
+.projectLink { display: inline-flex; align-items: center; min-height: 44px; font-size: .95rem; text-decoration: underline; text-underline-offset: 8px; text-decoration-color: var(--mark); }
+.chapter { padding-top: 4rem; }
+.chapter h2 { font-size: clamp(2.5rem, 4.5vw, 5rem); font-weight: 400; line-height: 1.06; letter-spacing: -.055em; }
+.chapter p { max-width: 29ch; font-size: clamp(1.05rem, 1.6vw, 1.35rem); line-height: 1.6; color: var(--ink-muted); margin-top: 1.5rem; }
+.projectLink { margin-top: 1.5rem; }
+.drawing { width: 100%; max-width: 34rem; height: auto; margin: 2.5rem 0; }
+.sequence[data-animated="true"] { height: 520svh; }
+.sequence[data-animated="true"] .viewport { position: sticky; top: 0; height: 100svh; overflow: clip; }
+.sequence[data-animated="true"] .layout { height: 100%; max-width: none; padding: 0; }
+.sequence[data-animated="true"] .copy { position: absolute; inset: 5.5rem var(--hero-gutter) 3rem; display: grid; grid-template-columns: 43% 57%; align-items: center; pointer-events: none; }
+.sequence[data-animated="true"] .projectLink { pointer-events: auto; }
+.sequence[data-animated="true"] .intro, .sequence[data-animated="true"] .chapter { grid-area: 1 / 1; will-change: opacity, transform; }
+.sequence[data-animated="true"] .chapter { position: absolute; bottom: 1rem; left: 0; max-width: min(28%, 26rem); visibility: hidden; opacity: 0; padding: 0; }
+.sequence[data-animated="true"] .chapter h2 { font-size: clamp(2rem, 3.15vw, 3.8rem); }
+.sequence[data-animated="true"] .chapter p { font-size: clamp(1rem, 1.2vw, 1.2rem); }
+.visual { position: absolute; inset: 4.5rem 0 0; min-width: 0; pointer-events: none; }
+.visual::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 60% 48%, rgba(156, 180, 203, .075), transparent 55%), radial-gradient(ellipse at 74% 64%, rgba(255, 113, 55, .035), transparent 40%); opacity: var(--scene-focus, 0); pointer-events: none; }
+@media (max-height: 46rem) and (min-width: 49rem) {
+  .name { margin-bottom: 1.4rem; }
+  .bio { display: none; }
+}
+@media (max-width: 48rem) {
+  .sequence[data-animated="true"] { height: 380svh; }
+  .layout { padding-top: 7rem; }
+  .sequence[data-animated="true"] .layout { padding: 0; }
+  .sequence[data-animated="true"] .copy { inset: 6.2rem var(--gutter) 1rem; grid-template-columns: 1fr; align-items: start; }
+  .sequence[data-animated="true"] .chapter { top: 0; bottom: auto; width: 100%; max-width: 30rem; }
+  .sequence[data-animated="true"] .chapter h2 { font-size: clamp(2rem, 7.5vw, 3rem); }
+  .sequence[data-animated="true"] .chapter p { font-size: 1rem; max-width: 30ch; }
+  .name { font-size: clamp(3.3rem, 12vw, 5rem); margin-bottom: 1rem; }
+  .bio { display: none; }
+  .role { font-size: 1rem; }
+  .chapter h2 { font-size: clamp(2.4rem, 9vw, 4rem); }
+  .chapter p { font-size: 1rem; margin-top: 1rem; }
+  .visual { min-height: 0; }
+}
+@media (max-width: 48rem) and (max-height: 36rem) {
+  .sequence[data-animated="true"] .copy { top: 4.5rem; grid-template-columns: 46% 54%; align-items: center; }
+  .sequence[data-animated="true"] .chapter { top: auto; bottom: 0; max-width: 32%; }
+  .sequence[data-animated="true"] .chapter h2 { font-size: 1.65rem; }
+  .name { font-size: 2.5rem; }
+  .role { font-size: .9rem; }
+  .chapter h2 { font-size: 2rem; }
+}
+/* Match the accessible static layout even before the media-query hook runs. */
+@media (prefers-reduced-motion: reduce) {
+  .sequence[data-animated="true"] { height: auto; }
+  .sequence[data-animated="true"] .viewport { position: relative; height: auto; overflow: visible; }
+  .sequence[data-animated="true"] .layout { padding: 7rem var(--gutter) 4rem; max-width: var(--container-max); }
+  .sequence[data-animated="true"] .copy { position: relative; inset: auto; display: block; pointer-events: auto; }
+  .sequence[data-animated="true"] .intro, .sequence[data-animated="true"] .chapter { position: relative; inset: auto; max-width: 40rem; visibility: visible !important; opacity: 1 !important; transform: none !important; }
+  .sequence[data-animated="true"] .chapter { padding-top: 4rem; }
+  .sequence[data-animated="true"] .visual { display: none; }
+}

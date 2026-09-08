@@ -8,10 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
-// Hero object. Swap this single import to compare the two:
-//   ./SignalCore  - the torus knot
-//   ./SignalGraph - the graph running a breadth-first search
-import HeroObject from "./SignalGraph";
+import HeroSequence from "./HeroSequence";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
@@ -112,16 +109,6 @@ export default function Home() {
     }
 
     const context = gsap.context(() => {
-      gsap.set("[data-hero-line]", { yPercent: 104 });
-      gsap.set("[data-hero-fade]", { opacity: 0, y: 14 });
-
-      animations.push(
-        gsap
-          .timeline({ defaults: { ease: "expo.out" } })
-          .to("[data-hero-line]", { yPercent: 0, duration: 1, stagger: 0.08 }, 0.1)
-          .to("[data-hero-fade]", { opacity: 1, y: 0, duration: 0.6, stagger: 0.06 }, 0.5),
-      );
-
       // Scroll entrances never hide the project content.
       gsap.utils.toArray<HTMLElement>("[data-rise]").forEach((element) => {
         animations.push(
@@ -158,47 +145,10 @@ export default function Home() {
   return (
     <div ref={root} className={styles.page}>
       {/* ------------------------------------------------------------------ */}
-      <section id="hero" className={styles.hero} aria-labelledby="hero-name">
-        <div className={`container ${styles.heroInner}`}>
-          <div className={styles.heroLayout}>
-          <div className={styles.heroBody}>
-            <h1 id="hero-name" className={styles.heroName}>
-              <span className={styles.clip}>
-                <span data-hero-line>Yossi</span>
-              </span>
-              <span className={styles.clip}>
-                <span data-hero-line>Abutbul</span>
-              </span>
-            </h1>
-
-            <p className={styles.claim} data-hero-fade>
-              <span>Software developer.</span>
-              <span>RF &amp; electronics integrator.</span>
-            </p>
-
-            <p className={styles.claimSub} data-hero-fade>
-              I build test automation at Arad Technologies and study computer science at the Open University. These are some of the tools I’ve built for work, for my studies, and for home.
-            </p>
-
-            <div className={styles.heroActions} data-hero-fade>
-              <a className={styles.button} href="#work">
-                View projects
-              </a>
-              <a className={styles.buttonGhost} href={withBasePath(CV_HREF)} download>
-                Download CV
-              </a>
-            </div>
-          </div>
-
-            <div className={styles.heroPlot}>
-              <HeroObject />
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSequence />
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="work" title="Selected projects">
+      <Section id="work" title="Projects">
 
         <ol className={styles.workList}>
           {FEATURED_PROJECTS.map((project) => (
