@@ -442,7 +442,8 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
 
       let visible = true;
       let contextLost = false;
-      let idleTime = 0;
+      let waveClock = 0;
+      let lastWaveClockFrame = 0;
       let lastIdleFrame = 0;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
       function pose(value: number) {
@@ -495,8 +496,14 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         waveLength = mix(2.43 * initialWaveScale, 2.43, s.approach) * (1 - s.feed);
         waveAmplitude = mix(0.86, 0.46, s.approach) * (1 - s.feed);
         input.visible = s.feed < 1;
-        const idleWeight = 1 - transition(value, 0.04, 0.18);
-        const time = value * 18 + idleTime * idleWeight;
+        const now = performance.now();
+        const dt = lastWaveClockFrame ? Math.min((now - lastWaveClockFrame) / 1000, 0.05) : 0;
+        lastWaveClockFrame = now;
+        if (input.visible && !reduced.matches) {
+          const approachDrift = transition(value, 0.18, 0.43) * (1 - s.feed) * 0.28;
+          waveClock += dt * (1 + approachDrift);
+        }
+        const time = waveClock;
         if (input.visible) updateWave(time);
 
         output.visible = s.handoff > 0.001;
@@ -566,7 +573,6 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         if (!canAnimateWave()) { lastIdleFrame = 0; return; }
         const dt = lastIdleFrame ? Math.min((now - lastIdleFrame) / 1000, 0.05) : 0;
         lastIdleFrame = now;
-        idleTime += dt;
         pose(progress.current);
         render();
         frame = requestAnimationFrame(animateWave);
