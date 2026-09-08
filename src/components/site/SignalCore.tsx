@@ -38,8 +38,12 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
       ]);
       if (disposed) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onUnavailable(); return; }
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      const compactViewport = window.matchMedia("(max-width: 720px)").matches;
+      const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
+      const limitedHardware = deviceMemory <= 4 || navigator.hardwareConcurrency <= 4;
+      const liteRender = compactViewport || limitedHardware;
+      const renderer = new THREE.WebGLRenderer({ antialias: !liteRender, alpha: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, liteRender ? 1 : 1.25));
       renderer.setClearColor(0x000000, 0);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 0.95;
@@ -73,6 +77,7 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
       const composer = new EffectComposer(renderer);
       const renderPass = new RenderPass(scene, camera);
       const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.55, 1.45);
+      bloom.enabled = !liteRender;
       const outputPass = new OutputPass();
       composer.addPass(renderPass);
       composer.addPass(bloom);
@@ -123,9 +128,9 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
       const coverHardware = material(metal.clone());
       coverHardware.transparent = true;
       const orange = material(new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff7a42).multiplyScalar(1.8), toneMapped: false }));
-      const signalFinish = material(new THREE.MeshPhysicalMaterial({
-        color: 0xff8547, emissive: 0xff481c, emissiveIntensity: 0.65,
-        metalness: 0.4, roughness: 0.26, clearcoat: 0.6,
+      const signalFinish = material(new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0xff8547).multiplyScalar(liteRender ? 1.55 : 1.8),
+        toneMapped: false,
       }));
       const white = material(new THREE.MeshBasicMaterial({ color: 0xcbd5dd }));
       const trace = material(new THREE.LineBasicMaterial({ color: 0x9aa9b4, transparent: true, opacity: 0.5 }));
@@ -319,8 +324,8 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         const phase = u * Math.PI * 4 - time * 1.35;
         return target.set(waveEnd.x - (1 - u) * waveLength, waveEnd.y + Math.sin(phase) * envelope, waveEnd.z + Math.cos(phase) * envelope * 0.7);
       }
-      const segments = 144;
-      const sides = 8;
+      const segments = liteRender ? 96 : 120;
+      const sides = liteRender ? 6 : 8;
       const vertices = new Float32Array((segments + 1) * sides * 3);
       const indices: number[] = [];
       for (let i = 0; i < segments; i++) {
@@ -363,7 +368,6 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
           }
         }
         wavePosition.needsUpdate = true;
-        waveGeometry.computeVertexNormals();
       }
 
       const graphPoints = Array.from({ length: 17 }, (_, i) => {
@@ -471,7 +475,7 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         key.position.x = mix(-3, 1.8, s.open);
         key.lookAt(centerX, 0, 0);
         rim.intensity = 2.7 + s.closeup * 0.7;
-        bloom.strength = 0.17 + Math.sin(s.process * Math.PI) * 0.1;
+        bloom.strength = liteRender ? 0 : 0.17 + Math.sin(s.process * Math.PI) * 0.1;
         const release = transition(value, 0.84, 0.89);
         processor.visible = s.approach > 0.001 && release < 0.999;
         processor.scale.setScalar(mix(0.7, 2.08, s.approach) * mix(1, 0.17, s.handoff) * (1 - release));
@@ -532,25 +536,27 @@ export default function SignalCore({ progress, seek, onUnavailable }: {
         bridgeCurve.v2.copy(bridgeCurve.v3);
         bridgeCurve.v2.x -= reach;
         bridge.visible = s.handoff > 0 && release < 0.999;
-        for (let i = 0; i <= bridgeSegments; i++) {
-          const u = i / bridgeSegments;
-          bridgeCurve.getPoint(u, point);
-          bridgeCurve.getTangent(u, tangent);
-          normal.crossVectors(tangent, up).normalize();
-          binormal.crossVectors(tangent, normal).normalize();
-          // Match both transformed tube radii as the chip shrinks and graph grows.
-          const blend = mix(release, 1, transition(u, 0, 1));
-          const radius = SIGNAL_RADIUS * mix(processor.scale.x, output.scale.x, blend);
-          for (let j = 0; j < sides; j++) {
-            const angle = j / sides * Math.PI * 2;
-            const a = Math.cos(angle) * radius, b = Math.sin(angle) * radius;
-            const offset = (i * sides + j) * 3;
-            bridgePositions[offset] = point.x + normal.x * a + binormal.x * b;
-            bridgePositions[offset + 1] = point.y + normal.y * a + binormal.y * b;
-            bridgePositions[offset + 2] = point.z + normal.z * a + binormal.z * b;
+        if (bridge.visible) {
+          for (let i = 0; i <= bridgeSegments; i++) {
+            const u = i / bridgeSegments;
+            bridgeCurve.getPoint(u, point);
+            bridgeCurve.getTangent(u, tangent);
+            normal.crossVectors(tangent, up).normalize();
+            binormal.crossVectors(tangent, normal).normalize();
+            // Match both transformed tube radii as the chip shrinks and graph grows.
+            const blend = mix(release, 1, transition(u, 0, 1));
+            const radius = SIGNAL_RADIUS * mix(processor.scale.x, output.scale.x, blend);
+            for (let j = 0; j < sides; j++) {
+              const angle = j / sides * Math.PI * 2;
+              const a = Math.cos(angle) * radius, b = Math.sin(angle) * radius;
+              const offset = (i * sides + j) * 3;
+              bridgePositions[offset] = point.x + normal.x * a + binormal.x * b;
+              bridgePositions[offset + 1] = point.y + normal.y * a + binormal.y * b;
+              bridgePositions[offset + 2] = point.z + normal.z * a + binormal.z * b;
+            }
           }
+          bridgeGeometry.attributes.position.needsUpdate = true;
         }
-        bridgeGeometry.attributes.position.needsUpdate = true;
         signalPulse.visible = value >= 0.29;
         signalPulse.scale.setScalar(1 - s.exit);
         if (value < 0.43) {
