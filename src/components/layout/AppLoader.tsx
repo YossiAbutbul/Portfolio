@@ -9,7 +9,7 @@ import styles from "./AppLoader.module.css";
  * long enough for the sweep to land: every animation in the intro finishes by
  * this mark, so a wait past it holds on a completed drawing.
  */
-const MIN_HOLD = 900;
+const MIN_HOLD = 1400;
 /** If no hero has announced itself by now, this page has none to wait for. */
 const NO_SCENE_GRACE = 400;
 /** A hero that never reports back must not be able to hold the site hostage. */
@@ -18,6 +18,25 @@ const MAX_HOLD = 5000;
 const MORPH = 700;
 /** Long enough for that flight to land before the overlay goes. */
 const EXIT = 740;
+
+/** Roughly how long the readout takes to climb when nothing overtakes it. */
+const CLIMB = 2600;
+/**
+ * Points per second once the scene is ready. A steady count rather than an
+ * eased one: easing puts most of the distance in its first fifth, which from
+ * a number the compile has left sitting at 48 just reads as a jump to 100.
+ */
+const RATE = 70;
+/** However far behind the count is, it may not delay the page beyond this. */
+const COUNT_OUT = 0.9;
+/**
+ * What the readout may claim before each milestone lands: hero mounted, WebGL
+ * module arrived, first frame drawn. The climb between them is a clock, since
+ * nothing downstream reports real progress — a shader compile has no
+ * percentage to give. The ceilings are the honest part: the number cannot
+ * claim a milestone that has not actually happened.
+ */
+const CEIL = [22, 62, 96];
 
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
@@ -34,6 +53,9 @@ const TRACE =
 export default function AppLoader() {
   const [phase, setPhase] = useState<"playing" | "leaving" | "gone">("playing");
   const name = useRef<HTMLParagraphElement>(null);
+  const readout = useRef<HTMLSpanElement>(null);
+  const release = useRef<() => void>(() => {});
+  const counted = useRef(false);
 
   // Wear the hero heading's own type, so the flight into place is a straight
   // translation and every breakpoint stays in step without duplicating its
@@ -92,7 +114,8 @@ export default function AppLoader() {
 
     function check() {
       if (left) return;
-      const elapsed = performance.now() - start;
+      const now = performance.now();
+      const elapsed = now - start;
       const { declared, settled } = readScene();
       const heroDone = settled || (!declared && elapsed >= NO_SCENE_GRACE);
 
@@ -100,7 +123,14 @@ export default function AppLoader() {
       // polling and let it wake us through the subscription instead.
       if (!heroDone && declared) return;
 
-      const wait = heroDone ? MIN_HOLD - elapsed : NO_SCENE_GRACE - elapsed;
+      // Leaving mid-count would undo the point of counting, so the readout
+      // gets to finish. It is the readout that decides when, since only it
+      // knows how far it still has to travel.
+      const wait = heroDone
+        ? counted.current
+          ? MIN_HOLD - elapsed
+          : 80
+        : NO_SCENE_GRACE - elapsed;
       if (wait <= 0) {
         leave();
         return;
@@ -122,9 +152,27 @@ export default function AppLoader() {
     };
   }, []);
 
-  // Scrolling under the overlay would advance the hero's scroll story out of
-  // sight, so the page would come back mid-sequence. Blocking the input keeps
-  // the scrollbar in place, which locking `overflow` would not.
+  // Take the scrollbar away for the duration, and give its width back as
+  // padding. Without that the page widens the moment the bar goes and narrows
+  // again when it returns — a shift of some fifteen pixels landing in the
+  // middle of the name's flight, which is measured against these positions.
+  useEffect(() => {
+    const root = document.documentElement;
+    const bar = window.innerWidth - root.clientWidth;
+    const overflowWas = root.style.overflow;
+    const padWas = root.style.paddingRight;
+    root.style.overflow = "hidden";
+    if (bar > 0) root.style.paddingRight = `${bar}px`;
+    release.current = () => {
+      root.style.overflow = overflowWas;
+      root.style.paddingRight = padWas;
+    };
+    return () => release.current();
+  }, []);
+
+  // Keys and touch can still reach a locked document on some platforms, and
+  // scrolling under the overlay would advance the hero's scroll story out of
+  // sight, so the page would come back mid-sequence.
   useEffect(() => {
     if (phase === "gone") return;
     const swallow = (event: Event) => event.preventDefault();
@@ -141,11 +189,53 @@ export default function AppLoader() {
     };
   }, [phase]);
 
+  // Counted per frame and written straight to the DOM. This runs while the
+  // main thread is busy fetching and compiling the scene, and a state update
+  // per frame would put React's work in that same queue.
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const start = performance.now();
+    let frame = 0;
+    let last = start;
+    let shown = 0;
+    let rate = 0;
+
+    const tick = () => {
+      const now = performance.now();
+      const step = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      const scene = readScene();
+      const done = scene.settled || (!scene.declared && now - start >= NO_SCENE_GRACE);
+
+      if (done) {
+        // Counts the rest of the way at a steady pace, so however far behind
+        // the compile left it, the gap is visibly travelled rather than cut —
+        // quickened only if that would otherwise hold the page too long.
+        if (!rate) rate = Math.max(RATE, (100 - shown) / COUNT_OUT);
+        shown = Math.min(100, shown + rate * step);
+        if (shown >= 99.5) counted.current = true;
+      } else {
+        // Approaches the current ceiling without arriving, so the number is
+        // always moving even when the milestone it is waiting on is not.
+        const climb = 99 * (1 - Math.exp((-(now - start) / CLIMB) * 2.6));
+        const ceiling = CEIL[scene.mounting ? 2 : scene.declared ? 1 : 0];
+        shown = Math.max(shown, Math.min(climb, ceiling));
+      }
+
+      if (readout.current) readout.current.textContent = `${Math.min(100, Math.round(shown))}%`;
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
+
   // The hero's own heading is uncovered in the same commit that removes this
   // one, with both sitting in the same place.
   useEffect(() => {
     if (phase !== "gone") return;
     document.documentElement.removeAttribute("data-intro-morph");
+    release.current();
   }, [phase]);
 
   if (phase === "gone") return null;
@@ -172,7 +262,7 @@ export default function AppLoader() {
                     x2={x}
                     y1={major ? 150 : 158}
                     y2="168"
-                    style={{ animationDelay: `${100 + index * 10}ms` }}
+                    style={{ animationDelay: `${120 + index * 14}ms` }}
                   />
                 );
               })}
@@ -184,6 +274,7 @@ export default function AppLoader() {
           </svg>
           <div className={styles.curtain} />
         </div>
+        <span ref={readout} className={`mono ${styles.readout}`}>0%</span>
       </div>
     </div>
   );

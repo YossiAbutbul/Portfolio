@@ -8,6 +8,7 @@
  */
 
 let declared = false;
+let mounting = false;
 let settled = false;
 const listeners = new Set<() => void>();
 
@@ -19,6 +20,13 @@ function announce() {
 export function declareScene() {
   if (declared) return;
   declared = true;
+  announce();
+}
+
+/** The hero's WebGL module has arrived and is being mounted. */
+export function mountingScene() {
+  if (mounting) return;
+  mounting = true;
   announce();
 }
 
@@ -34,7 +42,7 @@ export function settleScene() {
 }
 
 export function readScene() {
-  return { declared, settled };
+  return { declared, mounting, settled };
 }
 
 export function watchScene(listener: () => void) {

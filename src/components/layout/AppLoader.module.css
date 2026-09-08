@@ -46,7 +46,7 @@
      clear field. The flight itself is scripted rather than declared here —
      see the component. */
   opacity: 1;
-  animation: name-in 700ms var(--ease-out) 40ms backwards;
+  animation: name-in 820ms var(--ease-out) 60ms backwards;
 }
 
 .scope {
@@ -55,8 +55,21 @@
   transition: opacity 320ms var(--ease-out);
 }
 
-.overlay[data-phase="leaving"] .scope {
+.overlay[data-phase="leaving"] .scope,
+.overlay[data-phase="leaving"] .readout {
   opacity: 0;
+}
+
+/* Sits under the right end of the rule, where an instrument would put its
+   readout. Tabular figures so the number does not shuffle as it counts. */
+.readout {
+  justify-self: end;
+  margin-top: -0.75rem;
+  font-size: var(--step--1);
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  transition: opacity 320ms var(--ease-out);
 }
 
 .grid,
@@ -85,7 +98,7 @@
   background: var(--paper);
   transform-origin: 100% 50%;
   will-change: transform;
-  animation: reveal 780ms var(--ease-out) 120ms forwards;
+  animation: reveal 1250ms var(--ease-out) 150ms forwards;
 }
 
 .line {
@@ -110,7 +123,7 @@
   stroke: var(--rule-strong);
   stroke-width: 1;
   opacity: 0;
-  animation: tick-in 380ms var(--ease-out) forwards;
+  animation: tick-in 420ms var(--ease-out) forwards;
 }
 
 .baseline {

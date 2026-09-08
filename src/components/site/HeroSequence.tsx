@@ -2,7 +2,7 @@
 
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { signalStory } from "./signal-story";
-import { declareScene, settleScene } from "@/lib/appReady";
+import { declareScene, mountingScene, settleScene } from "@/lib/appReady";
 import styles from "./HeroSequence.module.css";
 
 const loadSignalCore = () => import("./SignalCore");
@@ -27,6 +27,9 @@ export default function HeroSequence() {
 
   // The static drawing needs no warm-up, so it releases the loader at once.
   useLayoutEffect(() => { if (!animated) settleScene(); }, [animated]);
+
+  // The intro reads this as the point the WebGL module landed.
+  useLayoutEffect(() => { if (sceneEnabled) mountingScene(); }, [sceneEnabled]);
 
   useLayoutEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
