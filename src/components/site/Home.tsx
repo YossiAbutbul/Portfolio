@@ -172,7 +172,8 @@ export default function Home() {
             </h1>
 
             <p className={styles.claim} data-hero-fade>
-              Software developer. RF & electronics integrator.
+              <span>Software developer.</span>
+              <span>RF &amp; electronics integrator.</span>
             </p>
 
             <p className={styles.claimSub} data-hero-fade>

@@ -27,7 +27,6 @@ const HOLD_SECONDS = 2.5;
 export default function SignalGraph() {
   const host = useRef<HTMLDivElement>(null);
   const controller = useRef<{ pause: (value: boolean) => void; replay: () => void } | null>(null);
-  const [paused, setPaused] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "fallback">("loading");
 
   useEffect(() => {
@@ -46,7 +45,7 @@ export default function SignalGraph() {
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 50);
-      camera.position.set(0, 0, 8.1);
+      camera.position.set(0, 0, 7.0);
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
       renderer.setClearColor(0x000000, 0);
@@ -202,7 +201,7 @@ export default function SignalGraph() {
         const { width, height } = element!.getBoundingClientRect();
         if (!width || !height) return;
         camera.aspect = width / height;
-        camera.position.z = camera.aspect < 0.9 ? 8.8 : 8.1;
+        camera.position.z = camera.aspect < 0.9 ? 7.6 : 7.0;
         camera.updateProjectionMatrix();
         renderer.setSize(width, height);
         render();
@@ -329,27 +328,6 @@ export default function SignalGraph() {
           <p>{status === "loading" ? "Loading 3D view" : "3D view unavailable"}</p>
         </div>
       )}
-      <div className={styles.bottomline}>
-        <span>{status === "ready" ? "Breadth-first search · drag to rotate" : ""}</span>
-        {status === "ready" && (
-          <div className={styles.controls}>
-            <button type="button" onClick={() => controller.current?.replay()}>
-              Replay
-            </button>
-            <button
-              type="button"
-              aria-label={paused ? "Resume rotation" : "Pause rotation"}
-              aria-pressed={paused}
-              onClick={() => {
-                setPaused(!paused);
-                controller.current?.pause(!paused);
-              }}
-            >
-              {paused ? "Play" : "Pause"}
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

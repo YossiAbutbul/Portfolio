@@ -1,14 +1,14 @@
 .page { position: relative; }
 .hero { display: flex; min-height: 96svh; overflow: clip; }
-.heroInner { display: grid; align-content: center; padding-top: 9rem; padding-bottom: 5rem; }
-.heroLayout { position: relative; display: grid; grid-template-columns: 0.95fr 1.05fr; align-items: center; gap: 0; }
+.heroInner { display: grid; align-content: center; padding-top: clamp(6rem, 13svh, 9rem); padding-bottom: clamp(2.5rem, 7svh, 5rem); }
+.heroLayout { position: relative; display: grid; grid-template-columns: 0.85fr 1.15fr; align-items: center; gap: 0; }
 .heroBody { position: relative; z-index: 2; display: grid; gap: 1.6rem; min-width: 0; pointer-events: none; }
-.heroName { width: max-content; max-width: 125%; font-size: clamp(6rem, 13.2vw, 12.5rem); line-height: 0.85; font-weight: 500; letter-spacing: -0.075em; margin-bottom: 1.6rem; }
+.heroName { width: max-content; max-width: 100%; font-size: clamp(3.25rem, min(13.2vw, 15svh), 12.5rem); line-height: 0.85; font-weight: 500; letter-spacing: -0.075em; margin-bottom: 1.6rem; }
 .clip { display: block; overflow: hidden; padding: 0.14em 0.05em 0.12em; margin-block: -0.13em; margin-left: -0.05em; }
 .clip > span { display: block; }
-.claim { max-width: 30ch; font-size: clamp(1.05rem, 1.5vw, 1.3rem); line-height: 1.5; }
+.claim { display: grid; gap: 0.15em; max-width: none; font-size: clamp(1.05rem, 1.5vw, 1.3rem); line-height: 1.5; }
 .claimSub { max-width: 40ch; font-size: 1rem; color: var(--ink-muted); line-height: 1.7; }
-.heroPlot { position: relative; z-index: 1; min-width: 0; width: 125%; margin-left: -7%; aspect-ratio: 0.95; align-self: stretch; }
+.heroPlot { position: relative; z-index: 1; min-width: 0; width: 148%; margin-left: -20%; aspect-ratio: 0.95; max-height: 82svh; align-self: center; }
 .heroActions { display: flex; flex-wrap: wrap; align-items: center; gap: 2rem; pointer-events: auto; margin-top: 0.4rem; }
 .button, .buttonGhost { display: inline-flex; align-items: center; min-height: 44px; font-size: 0.95rem; text-decoration: underline; text-underline-offset: 8px; text-decoration-color: var(--rule-strong); transition: text-decoration-color 180ms; }
 .heroActions .button { text-decoration-color: var(--mark); }
@@ -77,10 +77,16 @@
 .contactValue { justify-self: start; font-size: 1.05rem; overflow-wrap: break-word; border-bottom: 1px solid transparent; transition: color 180ms, border-color 180ms; }
 .contactValue:hover, .contactValue:focus-visible { color: var(--mark); border-color: var(--mark); }
 .footer { border-top: 1px solid var(--rule); }
-.footerInner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-top: 1.5rem; padding-bottom: 1.5rem; font-size: 0.75rem; text-transform: none; letter-spacing: 0; color: var(--ink-muted); }
+.footerInner { max-width: none !important; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-top: 1.5rem; padding-bottom: 1.5rem; font-size: 0.75rem; text-transform: none; letter-spacing: 0; color: var(--ink-muted); }
+@media (max-height: 46rem) {
+  .heroName { margin-bottom: 0.9rem; }
+  .heroBody { gap: 1.1rem; }
+  .claimSub { display: none; }
+}
+
 @media (max-width: 64rem) {
-  .heroName { font-size: clamp(5rem, 12.5vw, 8rem); }
-  .heroPlot { width: 120%; margin-left: -8%; }
+  .heroName { font-size: clamp(3rem, min(12.5vw, 14svh), 8rem); }
+  .heroPlot { width: 138%; margin-left: -18%; }
 }
 @media (max-width: 48rem) {
   .hero { min-height: auto; }
