@@ -19,16 +19,21 @@ const MORPH = 700;
 /** Long enough for that flight to land before the overlay goes. */
 const EXIT = 740;
 
-/** Roughly how long the readout takes to climb when nothing overtakes it. */
-const CLIMB = 2600;
+/**
+ * The climb is deliberately quick. Fetching and parsing the WebGL module
+ * blocks the main thread from around 400ms, and text can only be repainted on
+ * that thread, so wherever the count has got to by then is where it sits until
+ * the thread comes back. A slower climb simply parks it at a lower number.
+ */
+const CLIMB = 900;
 /**
  * Points per second once the scene is ready. A steady count rather than an
  * eased one: easing puts most of the distance in its first fifth, which from
  * a number the compile has left sitting at 48 just reads as a jump to 100.
  */
-const RATE = 70;
+const RATE = 55;
 /** However far behind the count is, it may not delay the page beyond this. */
-const COUNT_OUT = 0.9;
+const COUNT_OUT = 1;
 /**
  * What the readout may claim before each milestone lands: hero mounted, WebGL
  * module arrived, first frame drawn. The climb between them is a clock, since
@@ -36,7 +41,7 @@ const COUNT_OUT = 0.9;
  * percentage to give. The ceilings are the honest part: the number cannot
  * claim a milestone that has not actually happened.
  */
-const CEIL = [22, 62, 96];
+const CEIL = [22, 60, 96];
 
 const SCROLL_KEYS = new Set([" ", "PageDown", "PageUp", "ArrowDown", "ArrowUp", "Home", "End"]);
 
