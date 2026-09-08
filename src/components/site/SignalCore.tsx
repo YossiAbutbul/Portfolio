@@ -136,11 +136,16 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
       coverDetails.transparent = true;
       const coverHardware = material(metal.clone());
       coverHardware.transparent = true;
-      const orange = material(new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff7a42).multiplyScalar(1.8), toneMapped: false }));
-      const signalFinish = material(new THREE.MeshBasicMaterial({
-        color: new THREE.Color(0xff8547).multiplyScalar(liteRender ? 1.55 : 1.8),
-        toneMapped: false,
-      }));
+      // Tuned so the signal comes out of the pipeline on the page's accent
+      // rather than going into it on the accent. OutputPass tone maps the whole
+      // composite, so `toneMapped: false` on the material buys nothing, and ACES
+      // rolls the highlights off: fed #ff7a42 the wave arrives at #d36530, and
+      // fed anything brighter it bleaches towards apricot, which is where the
+      // old 1.8x multiplier had left it. This lands on #f17747 — the closest to
+      // the accent the tone curve allows, its red a shade short of the token's.
+      const signal = new THREE.Color(0xff6642);
+      const orange = material(new THREE.MeshBasicMaterial({ color: signal, toneMapped: false }));
+      const signalFinish = material(new THREE.MeshBasicMaterial({ color: signal, toneMapped: false }));
       const white = material(new THREE.MeshBasicMaterial({ color: 0xcbd5dd }));
       const trace = material(new THREE.LineBasicMaterial({ color: 0x9aa9b4, transparent: true, opacity: 0.5 }));
       const grid = material(new THREE.LineBasicMaterial({ color: 0x687985, transparent: true, opacity: 0.22 }));

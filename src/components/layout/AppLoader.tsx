@@ -161,6 +161,11 @@ export default function AppLoader() {
   // padding. Without that the page widens the moment the bar goes and narrows
   // again when it returns — a shift of some fifteen pixels landing in the
   // middle of the name's flight, which is measured against these positions.
+  //
+  // `overflow: hidden` only stops the user's own scrolling; the position can
+  // still be set from script, which is exactly what Lenis does with every
+  // wheel event it sees. So it has to be stopped by name, and it is built
+  // asynchronously — hence the wait for it to turn up.
   useEffect(() => {
     const root = document.documentElement;
     const bar = window.innerWidth - root.clientWidth;
@@ -168,9 +173,20 @@ export default function AppLoader() {
     const padWas = root.style.paddingRight;
     root.style.overflow = "hidden";
     if (bar > 0) root.style.paddingRight = `${bar}px`;
+
+    const muzzle = setInterval(() => window.__lenis?.stop(), 60);
+    window.__lenis?.stop();
+
     release.current = () => {
+      clearInterval(muzzle);
       root.style.overflow = overflowWas;
       root.style.paddingRight = padWas;
+      // Whatever the page did while it was covered, it is handed over at the
+      // top. Anything else drops the reader into the middle of the hero's
+      // scroll story with no idea how they got there.
+      window.scrollTo(0, 0);
+      window.__lenis?.start();
+      window.__lenis?.scrollTo(0, { immediate: true, force: true });
     };
     return () => release.current();
   }, []);
