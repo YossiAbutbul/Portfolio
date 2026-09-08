@@ -149,8 +149,8 @@ export default function HeroSequence() {
           <div className={styles.copy}>
             <div ref={intro} className={styles.intro}>
               <h1 id="hero-name" className={styles.name}>Yossi<br />Abutbul</h1>
-              <p className={styles.role}>Building software where signals meet code.</p>
-              <p className={styles.bio}>BSc Computer Science. RF automation and AI.</p>
+              <p className={styles.role} data-hero-line="role">Building software where signals meet code.</p>
+              <p className={styles.bio} data-hero-line="bio">BSc Computer Science. RF automation and AI.</p>
               {!animated && <StageDrawing stage="signal" />}
             </div>
             <div ref={chipCopy} className={styles.chapter}>

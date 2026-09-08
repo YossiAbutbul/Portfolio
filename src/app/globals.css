@@ -52,6 +52,24 @@ html[data-intro-morph] #hero-name {
   opacity: 0;
 }
 
+/* The lines under it wait for the name to land and then come up behind it,
+   rather than sitting there finished while it is still travelling. */
+[data-hero-line] {
+  transition: opacity 520ms var(--ease-out), transform 520ms var(--ease-out);
+}
+
+[data-hero-line="bio"] {
+  transition-delay: 130ms;
+}
+
+/* No transition on the way down: this is set while the intro still covers the
+   page, so they should already be out of sight when it clears, not fading. */
+html[data-intro-morph] [data-hero-line] {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: none;
+}
+
 ::selection {
   background: var(--mark);
   color: var(--paper-sunk);
