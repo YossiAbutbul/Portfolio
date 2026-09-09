@@ -43,7 +43,7 @@
   color: var(--ink);
   /* The entrance fills backwards, not forwards, so it stops contributing to
      the cascade the moment it ends and leaves the handover's own animation a
-     clear field. The flight itself is scripted rather than declared here —
+     clear field. The flight itself is scripted rather than declared here:
      see the component. */
   opacity: 1;
   animation: name-in 1000ms var(--ease-out) 80ms backwards;

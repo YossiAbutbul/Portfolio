@@ -161,13 +161,13 @@ export default function AppLoader() {
 
   // Take the scrollbar away for the duration, and give its width back as
   // padding. Without that the page widens the moment the bar goes and narrows
-  // again when it returns — a shift of some fifteen pixels landing in the
-  // middle of the name's flight, which is measured against these positions.
+  // again when it returns. That is a shift of some fifteen pixels landing in
+  // the middle of the name's flight, which is measured against these positions.
   //
   // `overflow: hidden` only stops the user's own scrolling; the position can
   // still be set from script, which is exactly what Lenis does with every
   // wheel event it sees. So it has to be stopped by name, and it is built
-  // asynchronously — hence the wait for it to turn up.
+  // asynchronously, hence the wait for it to turn up.
   useEffect(() => {
     const root = document.documentElement;
     const bar = window.innerWidth - root.clientWidth;
@@ -232,8 +232,8 @@ export default function AppLoader() {
 
       if (done) {
         // Counts the rest of the way at a steady pace, so however far behind
-        // the compile left it, the gap is visibly travelled rather than cut —
-        // quickened only if that would otherwise hold the page too long.
+        // the compile left it, the gap is visibly travelled rather than cut.
+        // It is quickened only if that would otherwise hold the page too long.
         if (!rate) rate = Math.max(RATE, (100 - shown) / COUNT_OUT);
         shown = Math.min(100, shown + rate * step);
         if (shown >= 99.5) counted.current = true;

@@ -53,7 +53,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
         // height only slows the hero, but this slows everything, which is what
         // keeps the sections below reading at the same pace as the story above.
         wheelMultiplier: 0.8,
-        // Touch keeps its full travel — a thumb has to cross the screen to earn
+        // Touch keeps its full travel. A thumb has to cross the screen to earn
         // its distance, and taking any of it away just makes the page heavy.
         touchMultiplier: 1,
       });
