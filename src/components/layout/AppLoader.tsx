@@ -7,17 +7,18 @@ import styles from "./AppLoader.module.css";
 /**
  * Held long enough to read as a deliberate opening rather than a stall, and
  * long enough for the sweep to land: every animation in the intro finishes by
- * this mark, so a wait past it holds on a completed drawing.
+ * this mark (the curtain, the last of them, at 1850), so a wait past it holds
+ * on a completed drawing rather than cutting one short.
  */
-const MIN_HOLD = 1400;
+const MIN_HOLD = 1950;
 /** If no hero has announced itself by now, this page has none to wait for. */
 const NO_SCENE_GRACE = 400;
 /** A hero that never reports back must not be able to hold the site hostage. */
 const MAX_HOLD = 5000;
 /** How long the name takes to fly onto the hero's heading. */
-const MORPH = 700;
+const MORPH = 1000;
 /** Long enough for that flight to land before the overlay goes. */
-const EXIT = 740;
+const EXIT = 1040;
 
 /**
  * The climb is deliberately quick. Fetching and parsing the WebGL module
@@ -30,10 +31,11 @@ const CLIMB = 900;
  * Points per second once the scene is ready. A steady count rather than an
  * eased one: easing puts most of the distance in its first fifth, which from
  * a number the compile has left sitting at 48 just reads as a jump to 100.
+ * Slow enough that the last stretch is read rather than glimpsed.
  */
-const RATE = 55;
+const RATE = 42;
 /** However far behind the count is, it may not delay the page beyond this. */
-const COUNT_OUT = 1;
+const COUNT_OUT = 1.3;
 /**
  * What the readout may claim before each milestone lands: hero mounted, WebGL
  * module arrived, first frame drawn. The climb between the first two is a
@@ -287,7 +289,7 @@ export default function AppLoader() {
                     x2={x}
                     y1={major ? 150 : 158}
                     y2="168"
-                    style={{ animationDelay: `${120 + index * 14}ms` }}
+                    style={{ animationDelay: `${140 + index * 18}ms` }}
                   />
                 );
               })}

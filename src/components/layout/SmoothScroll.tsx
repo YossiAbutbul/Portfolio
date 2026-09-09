@@ -42,10 +42,20 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       gsap.registerPlugin(ScrollTrigger);
 
       const lenis = new Lenis({
-        duration: 0.78,
+        // Longer than the library's own default. The hero is a story told over
+        // several screens, and a glide that settles in under a second makes
+        // every wheel notch a step rather than a movement.
+        duration: 1.3,
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
-        touchMultiplier: 1.15,
+        // A notch carries about four fifths of the distance the browser would
+        // give it. This is the dial for how fast the page reads: the hero's
+        // height only slows the hero, but this slows everything, which is what
+        // keeps the sections below reading at the same pace as the story above.
+        wheelMultiplier: 0.8,
+        // Touch keeps its full travel — a thumb has to cross the screen to earn
+        // its distance, and taking any of it away just makes the page heavy.
+        touchMultiplier: 1,
       });
       window.__lenis = lenis;
       lenis.on("scroll", ScrollTrigger.update);

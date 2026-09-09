@@ -97,10 +97,12 @@ export default function HeroSequence() {
       const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.05) : 1 / 60;
       lastFrame = now;
       // Ease wheel/trackpad steps without delaying anchor jumps or restoration.
+      // The scene trails the page by about a tenth of a second, which is what
+      // gives the sculpture its weight; much tighter and it snaps between poses.
       if (!initialized || Math.abs(target - progress.current) > 0.35 || target === 0 || target === 1) {
         progress.current = target;
       } else {
-        progress.current += (target - progress.current) * (1 - Math.exp(-dt * 15));
+        progress.current += (target - progress.current) * (1 - Math.exp(-dt * 11));
       }
       initialized = true;
       const state = signalStory(progress.current);
