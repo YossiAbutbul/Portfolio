@@ -2,7 +2,7 @@
 
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { signalStory } from "./signal-story";
-import { declareScene, mountingScene, settleScene } from "@/lib/appReady";
+import { declareScene, mountingScene, settleScene, warmingScene } from "@/lib/appReady";
 import styles from "./HeroSequence.module.css";
 
 const loadSignalCore = () => import("./SignalCore");
@@ -12,6 +12,7 @@ export default function HeroSequence() {
   const section = useRef<HTMLElement>(null);
   const intro = useRef<HTMLDivElement>(null);
   const chipCopy = useRef<HTMLDivElement>(null);
+  const codeCopy = useRef<HTMLDivElement>(null);
   const graphCopy = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const seek = useRef<((progress: number) => void) | null>(null);
@@ -107,6 +108,7 @@ export default function HeroSequence() {
       const panels = [
         [intro.current, state.introOpacity],
         [chipCopy.current, state.chipOpacity],
+        [codeCopy.current, state.codeOpacity],
         [graphCopy.current, state.graphOpacity],
       ] as const;
       for (const [panel, opacity] of panels) {
@@ -137,7 +139,7 @@ export default function HeroSequence() {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("pageshow", schedule);
       root.style.removeProperty("--scene-focus");
-      for (const panel of [intro.current, chipCopy.current, graphCopy.current]) {
+      for (const panel of [intro.current, chipCopy.current, codeCopy.current, graphCopy.current]) {
         panel?.removeAttribute("style");
         panel?.removeAttribute("aria-hidden");
         if (panel) panel.inert = false;
@@ -161,6 +163,11 @@ export default function HeroSequence() {
               <p>Instrument drivers, test sequencers, and the plumbing that keeps a measurement repeatable.</p>
               {!animated && <StageDrawing stage="chip" />}
             </div>
+            <div ref={codeCopy} className={styles.chapter}>
+              <h2>Signal in,<br />code out.</h2>
+              <p>A capture lands on the bench machine, and handling it becomes a routine that runs the same way tomorrow.</p>
+              {!animated && <StageDrawing stage="code" />}
+            </div>
             <div ref={graphCopy} className={styles.chapter}>
               <h2>Data someone<br />can act on.</h2>
               <p>Raw captures become plots, reports, and tools the next person can run without me.</p>
@@ -172,7 +179,7 @@ export default function HeroSequence() {
             <div className={styles.visual}>
               {sceneEnabled && (
                 <Suspense fallback={null}>
-                  <SignalCore progress={progress} seek={seek} onUnavailable={showStatic} onReady={settleScene} />
+                  <SignalCore progress={progress} seek={seek} onUnavailable={showStatic} onWarming={warmingScene} onReady={settleScene} />
                 </Suspense>
               )}
             </div>
@@ -183,10 +190,28 @@ export default function HeroSequence() {
   );
 }
 
-function StageDrawing({ stage }: { stage: "signal" | "chip" | "graph" }) {
+/** Indent, then the tokens on that line: 0 plain, 1 keyword, 2 string, 3 comment. */
+const CODE_LINES: [indent: number, tokens: [width: number, kind: number][]][] = [
+  [0, [[150, 3]]],
+  [0, [[36, 1], [70, 0], [26, 0]]],
+  [1, [[56, 0], [44, 1], [32, 0]]],
+  [1, [[80, 0], [30, 2]]],
+  [2, [[46, 1], [64, 0]]],
+  [2, [[56, 0], [34, 2], [48, 0]]],
+  [1, [[40, 1], [74, 0]]],
+  [0, [[32, 1], [54, 0], [56, 2]]],
+  [1, [[62, 0], [46, 1]]],
+];
+
+const CODE_INKS = ["#93a3af", "#ff7a42", "#c0a173", "#4b5862"];
+
+function StageDrawing({ stage }: { stage: "signal" | "chip" | "code" | "graph" }) {
   return (
     <svg className={styles.drawing} viewBox="0 0 500 250" fill="none" role="img" aria-label={
-      stage === "signal" ? "An analog sine wave" : stage === "chip" ? "The layers and circuitry inside a processor" : "A waveform plotted as individual measurements"
+      stage === "signal" ? "An analog sine wave"
+        : stage === "chip" ? "The layers and circuitry inside a processor"
+          : stage === "code" ? "A screen with the signal handling written out line by line"
+            : "A waveform plotted as individual measurements"
     }>
       {stage === "signal" && <path d="M30 125C52 125 52 60 74 60S96 190 118 190S140 60 162 60S184 190 206 190S228 60 250 60S272 190 294 190S316 60 338 60S360 190 382 190S404 125 470 125" stroke="#ff7a42" strokeWidth="3" />}
       {stage === "chip" && <g transform="translate(250 125) rotate(-18)">
@@ -194,6 +219,31 @@ function StageDrawing({ stage }: { stage: "signal" | "chip" | "graph" }) {
         <rect x="-74" y="-90" width="148" height="132" rx="5" fill="#a9b7c3" fillOpacity=".4" stroke="#cbd5dd" />
         <rect x="-42" y="-27" width="84" height="70" fill="#15191d" stroke="#ff7a42" />
         <path d="M-90 10H-42M42 10H90M0 43V85" stroke="#ff7a42" strokeWidth="2" />
+      </g>}
+      {stage === "code" && <g>
+        <rect x="62" y="18" width="376" height="186" rx="7" fill="#24292f" stroke="#687985" />
+        <rect x="72" y="28" width="356" height="160" fill="#10161a" />
+        <path d="M82 44H418M104 52V180" stroke="#687985" strokeOpacity=".5" />
+        <rect x="82" y="34" width="30" height="4" fill="#ff7a42" />
+        <rect x="118" y="34" width="22" height="4" fill="#4b5862" />
+        <rect x="416" y="52" width="4" height="42" fill="#4b5862" />
+        {CODE_LINES.map(([indent, runs], row) => {
+          let x = 112 + indent * 14;
+          return (
+            <g key={row}>
+              <rect x="86" y={57 + row * 15} width="9" height="3" fill="#4b5862" />
+              {runs.map(([width, kind], index) => {
+                const bar = <rect key={index} x={x} y={54 + row * 15} width={width} height="6" rx="2" fill={CODE_INKS[kind]} />;
+                x += width + 8;
+                return bar;
+              })}
+              {row === CODE_LINES.length - 1 && <rect x={x - 4} y={52 + row * 15} width="3" height="10" fill="#ff7a42" />}
+            </g>
+          );
+        })}
+        <circle cx="418" cy="196" r="3" fill="#ff7a42" />
+        <rect x="234" y="204" width="32" height="22" fill="#24292f" stroke="#687985" />
+        <ellipse cx="250" cy="231" rx="60" ry="8" fill="#24292f" stroke="#687985" />
       </g>}
       {stage === "graph" && <>
         <path d="M45 35V210H460M45 125H460" stroke="#687985" />

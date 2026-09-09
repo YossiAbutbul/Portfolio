@@ -9,11 +9,27 @@ const SCULPTURE_SCALE = 0.85;
 const SIGNAL_RADIUS = 0.018;
 const SIGNAL_PLANE_Z = 0.46;
 
-/** An analog signal passes through a processor and becomes sampled data. */
-export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
+/** How sharp the scene may draw, as a count of pixels in the drawing buffer.
+ *  Screen size is a poor guide to what a machine can push — a phone at three
+ *  times density and a laptop at two land in the same place under a budget,
+ *  and both end up sharper than a flat cap on either would allow. */
+const PIXEL_BUDGET = 4.5e6;
+/** A frame this expensive during warm-up costs more than the sharpness is worth. */
+const SLOW_FRAME = 14;
+/** Bloom roughly doubles what a frame costs, so it needs this much headroom. */
+const BLOOM_HEADROOM = 6.5;
+/** Warm-up buys a smooth first scroll; it must not become the wait itself.
+ *  Past this the remaining poses are skipped rather than held for. */
+const WARM_BUDGET = 1200;
+/** Every beat of the story, drawn once before the reader can reach any of them. */
+const WARM_POSES = [0, 0.2, 0.32, 0.45, 0.58, 0.66, 0.72, 0.83, 0.95];
+
+/** An analog signal passes through a processor, is written into code, and becomes sampled data. */
+export default function SignalCore({ progress, seek, onUnavailable, onWarming, onReady }: {
   progress: RefObject<number>;
   seek: RefObject<((progress: number) => void) | null>;
   onUnavailable: () => void;
+  onWarming?: (fraction: number) => void;
   onReady?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -35,12 +51,14 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
       ]);
       if (disposed) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { onUnavailable(); return; }
-      const compactViewport = window.matchMedia("(max-width: 720px)").matches;
       const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
-      const limitedHardware = deviceMemory <= 4 || navigator.hardwareConcurrency <= 4;
-      const liteRender = compactViewport || limitedHardware;
-      const renderer = new THREE.WebGLRenderer({ antialias: !liteRender, alpha: true, powerPreference: "high-performance" });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, liteRender ? 1 : 1.25));
+      // Mesh detail is the one thing still decided from what the device claims,
+      // because it is fixed at build time. Resolution and post-processing are
+      // measured during warm-up instead — see calibrate().
+      const modestHardware = deviceMemory <= 4 || navigator.hardwareConcurrency <= 4;
+      // Multisampling on the default framebuffer is nearly free next to the
+      // shimmer it removes from every machined edge in the sculpture.
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
       renderer.setClearColor(0x000000, 0);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 0.95;
@@ -71,26 +89,56 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 50);
       camera.position.set(0, 0, 10);
-      let composer: { render: () => void; setSize: (width: number, height: number) => void; dispose: () => void } | null = null;
-      let bloom: { strength: number; dispose: () => void } | null = null;
-      if (!liteRender) {
+      let composer: {
+        render: () => void;
+        setSize: (width: number, height: number) => void;
+        setPixelRatio: (ratio: number) => void;
+      } | null = null;
+      let bloom: { strength: number } | null = null;
+      let dropBloom = () => {};
+      detach.push(() => dropBloom());
+      /**
+       * The glow around the signal is the first thing to go on a machine that
+       * cannot afford it, so it is added only once a measured frame has shown
+       * there is room — and taken away again if adding it proves otherwise.
+       */
+      async function addBloom() {
         const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
           import("three/addons/postprocessing/EffectComposer.js"),
           import("three/addons/postprocessing/RenderPass.js"),
           import("three/addons/postprocessing/UnrealBloomPass.js"),
           import("three/addons/postprocessing/OutputPass.js"),
         ]);
-        if (disposed) { cleanup(); return; }
-        const composed = new EffectComposer(renderer);
+        if (disposed) return;
+        // The composer draws into its own buffer, where the renderer's own
+        // multisampling does not reach; without this the post-processed path
+        // is the aliased one, which is backwards.
+        const buffer = renderer.getDrawingBufferSize(new THREE.Vector2());
+        const target = new THREE.WebGLRenderTarget(Math.max(1, buffer.x), Math.max(1, buffer.y), {
+          type: THREE.HalfFloatType,
+          samples: 4,
+        });
+        const composed = new EffectComposer(renderer, target);
         const renderPass = new RenderPass(scene, camera);
         const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.24, 0.55, 1.45);
-        bloom = bloomPass;
         const outputPass = new OutputPass();
         composed.addPass(renderPass);
         composed.addPass(bloomPass);
         composed.addPass(outputPass);
         composer = composed;
-        detach.push(() => { renderPass.dispose(); bloomPass.dispose(); outputPass.dispose(); composed.dispose(); });
+        bloom = bloomPass;
+        dropBloom = () => {
+          composer = null;
+          bloom = null;
+          dropBloom = () => {};
+          renderPass.dispose();
+          bloomPass.dispose();
+          outputPass.dispose();
+          // The composer owns both of its buffers, this one included.
+          composed.dispose();
+        };
+        const { width, height } = element!.getBoundingClientRect();
+        if (width && height) composed.setSize(width, height);
       }
       const room = new RoomEnvironment();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -338,8 +386,8 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         const phase = u * Math.PI * 4 - time * 1.35;
         return target.set(waveEnd.x - (1 - u) * waveLength, waveEnd.y + Math.sin(phase) * envelope, waveEnd.z + Math.cos(phase) * envelope * 0.7);
       }
-      const segments = liteRender ? 96 : 120;
-      const sides = liteRender ? 6 : 8;
+      const segments = modestHardware ? 96 : 120;
+      const sides = modestHardware ? 6 : 8;
       const vertices = new Float32Array((segments + 1) * sides * 3);
       const indices: number[] = [];
       for (let i = 0; i < segments; i++) {
@@ -423,12 +471,162 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         const stem = line(output, [[sample.x, 0, 0.01], [sample.x, sample.y, 0.01]], trace);
         return stem;
       });
+      // The bench machine the processed signal is carried to, where handling it
+      // is written out a line at a time. Built to the standard of the processor
+      // beside it: a graphite shell over a vented housing, a machined stand,
+      // and the screen recessed behind its own bezel.
+      const station = new THREE.Group();
+      sculpture.add(station);
+      // Its own glass rather than the panel's: a display has to stay readable
+      // under the same softbox the instrument fronts are there to catch.
+      const display = material(new THREE.MeshPhysicalMaterial({
+        color: 0x05090c, metalness: 0.04, roughness: 0.44,
+        clearcoat: 0.5, clearcoatRoughness: 0.22, ior: 1.5,
+        emissive: 0x0a1a22, emissiveIntensity: 0.12, envMapIntensity: 0.12,
+      }));
+      // Moulded rather than machined: the same grain, much finer, and matte.
+      const shell = material(new THREE.MeshStandardMaterial({
+        color: 0x1b1f22, metalness: 0.38, roughness: 0.58,
+        roughnessMap: grain, bumpMap: grain, bumpScale: 0.0004,
+      }));
+      box(station, 2.58, 1.54, 0.012, -0.052, metal, 0.02);
+      box(station, 2.56, 1.52, 0.055, -0.075, shell, 0.025);
+      // The electronics sit in a housing behind the panel, vented across the back.
+      const housing = new THREE.Mesh(geometry(new RoundedBoxGeometry(1.24, 0.8, 0.11, 2, 0.03)), shell);
+      housing.position.set(0, -0.02, -0.15);
+      station.add(housing);
+      const ventGeometry = geometry(new THREE.BoxGeometry(0.52, 0.013, 0.004));
+      for (let i = 0; i < 7; i++) {
+        const vent = new THREE.Mesh(ventGeometry, graphite);
+        vent.position.set(0, 0.22 - i * 0.062, -0.207);
+        station.add(vent);
+      }
+      const screenPanel = box(station, 2.4, 1.32, 0.012, -0.041, display, 0.006);
+      screenPanel.position.y = 0.04;
+      // Thin on three sides with a chin under the screen, standing a little
+      // proud of the glass so the display reads as set into the case.
+      for (const [width, height, x, y] of [
+        [2.56, 0.06, 0, 0.73],
+        [2.56, 0.14, 0, -0.69],
+        [0.08, 1.52, -1.24, 0],
+        [0.08, 1.52, 1.24, 0],
+      ]) {
+        const bar = box(station, width, height, 0.035, -0.018, shell, 0.008);
+        bar.position.x = x;
+        bar.position.y = y;
+      }
+      const led = new THREE.Mesh(geometry(new THREE.BoxGeometry(0.024, 0.011, 0.006)), orange);
+      led.position.set(1.05, -0.7, -0.002);
+      station.add(led);
+      line(station, [[-0.16, -0.735, 0.002], [0.16, -0.735, 0.002]], grid);
+
+      // Both leads land in jacks on the back edge, where they would.
+      const stationIn = new THREE.Vector3(-1.36, -0.12, -0.08);
+      const stationOut = new THREE.Vector3(1.36, -0.12, -0.08);
+      const jackGeometry = geometry(new RoundedBoxGeometry(0.1, 0.12, 0.09, 2, 0.012));
+      const collarGeometry = geometry(new THREE.TorusGeometry(0.032, 0.007, 8, 20));
+      for (const port of [stationIn, stationOut]) {
+        const side = Math.sign(port.x);
+        const jack = new THREE.Mesh(jackGeometry, graphite);
+        jack.position.set(side * 1.24, port.y, port.z);
+        const collar = new THREE.Mesh(collarGeometry, solder);
+        collar.rotation.y = Math.PI / 2;
+        collar.position.set(side * 1.29, port.y, port.z);
+        station.add(jack, collar);
+      }
+      const arm = new THREE.Mesh(geometry(new RoundedBoxGeometry(0.34, 0.3, 0.16, 2, 0.03)), shell);
+      arm.position.set(0, -0.6, -0.16);
+      const neck = new THREE.Mesh(geometry(new RoundedBoxGeometry(0.24, 0.62, 0.12, 2, 0.03)), metal);
+      neck.position.set(0, -1, -0.16);
+      const foot = new THREE.Mesh(geometry(new THREE.CylinderGeometry(0.58, 0.62, 0.05, 32)), metal);
+      foot.position.set(0, -1.3, -0.13);
+      foot.scale.z = 0.62;
+      station.add(arm, neck, foot);
+      // Power dressed down the back of the stand, out of the signal's way.
+      const cable = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.1, -0.44, -0.19),
+        new THREE.Vector3(0.24, -0.78, -0.25),
+        new THREE.Vector3(0.16, -1.12, -0.24),
+        new THREE.Vector3(0.05, -1.28, -0.18),
+      ]);
+      station.add(new THREE.Mesh(geometry(new THREE.TubeGeometry(cable, 24, 0.016, 6, false)), graphite));
+
+      // Everything on the screen sits in front of the recessed glass.
+      const screen = new THREE.Group();
+      screen.position.set(0, 0.04, -0.028);
+      station.add(screen);
+      const codeInk = material(new THREE.MeshBasicMaterial({ color: 0x93a3af }));
+      const codeFaint = material(new THREE.MeshBasicMaterial({ color: 0x4b5862 }));
+      // The gold off the chip's contacts, so the second colour on the screen is
+      // one the sculpture already uses.
+      const codeString = material(new THREE.MeshBasicMaterial({ color: 0xc0a173 }));
+      line(screen, [[-1.1, 0.56, 0], [1.1, 0.56, 0]], trace);
+      line(screen, [[-0.99, 0.5, 0], [-0.99, -0.6, 0]], grid);
+      for (const x of [-0.75, -0.6]) line(screen, [[x, 0.46, 0], [x, -0.6, 0]], grid);
+      const tabGeometry = geometry(new THREE.BoxGeometry(1, 0.018, 0.004));
+      for (const [width, x, finish] of [[0.26, -0.95, orange], [0.2, -0.65, codeFaint]] as const) {
+        const openTab = new THREE.Mesh(tabGeometry, finish);
+        openTab.position.set(x, 0.605, 0);
+        openTab.scale.x = width;
+        screen.add(openTab);
+      }
+      const scrollbar = new THREE.Mesh(geometry(new THREE.BoxGeometry(0.016, 0.38, 0.004)), codeFaint);
+      scrollbar.position.set(1.13, 0.26, 0);
+      screen.add(scrollbar);
+      // Indent, then the run of tokens on that line. The kinds are the ones an
+      // editor would colour: a keyword, a string, a comment, and the rest.
+      const codeRows: { indent: number; tokens: [width: number, kind: number][] }[] = [
+        { indent: 0, tokens: [[0.86, 3]] },
+        { indent: 0, tokens: [[0.34, 1], [0.62, 0], [0.24, 0]] },
+        { indent: 1, tokens: [[0.5, 0], [0.4, 1], [0.3, 0]] },
+        { indent: 1, tokens: [[0.72, 0], [0.28, 2]] },
+        { indent: 2, tokens: [[0.42, 1], [0.58, 0]] },
+        { indent: 2, tokens: [[0.5, 0], [0.32, 2], [0.44, 0]] },
+        { indent: 1, tokens: [[0.36, 1], [0.66, 0]] },
+        { indent: 0, tokens: [[0.3, 1], [0.48, 0], [0.5, 2]] },
+        { indent: 1, tokens: [[0.56, 0], [0.42, 1]] },
+      ];
+      const codeInks = [codeInk, orange, codeString, codeFaint];
+      const tokenGeometry = geometry(new THREE.BoxGeometry(1, 0.034, 0.005));
+      const numberGeometry = geometry(new THREE.BoxGeometry(0.045, 0.014, 0.004));
+      const tokens: { mesh: Three.Mesh; x: number; y: number; width: number; from: number; to: number }[] = [];
+      const lineNumbers: { mesh: Three.Mesh; from: number }[] = [];
+      // Typing runs at one pace across the whole block, so the write head moves
+      // like a cursor rather than a line arriving at a time.
+      const written = codeRows.reduce((total, row) => total + row.tokens.reduce((sum, [width]) => sum + width, 0), 0);
+      let typed = 0;
+      codeRows.forEach((row, index) => {
+        const y = 0.42 - index * 0.125;
+        let x = -0.9 + row.indent * 0.15;
+        const number = new THREE.Mesh(numberGeometry, codeFaint);
+        number.position.set(-1.06, y, 0);
+        screen.add(number);
+        lineNumbers.push({ mesh: number, from: typed / written });
+        for (const [width, kind] of row.tokens) {
+          const mesh = new THREE.Mesh(tokenGeometry, codeInks[kind]);
+          mesh.position.set(x + width / 2, y, 0);
+          mesh.scale.x = width;
+          screen.add(mesh);
+          tokens.push({ mesh, x, y, width, from: typed / written, to: (typed + width) / written });
+          typed += width;
+          x += width + 0.055;
+        }
+      });
+      const caret = new THREE.Mesh(geometry(new THREE.BoxGeometry(0.02, 0.076, 0.005)), orange);
+      screen.add(caret);
+      const activeLine = new THREE.Mesh(
+        geometry(new THREE.PlaneGeometry(2.32, 0.096)),
+        material(new THREE.MeshBasicMaterial({ color: signal, transparent: true, opacity: 0.06 })),
+      );
+      activeLine.position.z = -0.004;
+      screen.add(activeLine);
+      const writeHead = new THREE.Vector3();
+
       const pulseGeometry = geometry(new THREE.SphereGeometry(0.05, 16, 12));
       // One persistent pulse avoids visibility and scale jumps at stage boundaries.
       const signalPulse = new THREE.Mesh(pulseGeometry, white);
       sculpture.add(signalPulse);
       const bridgeSegments = 48;
-      const bridgePositions = new Float32Array((bridgeSegments + 1) * sides * 3);
       const bridgeIndices: number[] = [];
       for (let i = 0; i < bridgeSegments; i++) {
         for (let j = 0; j < sides; j++) {
@@ -436,13 +634,53 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
           bridgeIndices.push(a, b, a + sides, b, b + sides, a + sides);
         }
       }
-      const bridgeGeometry = geometry(new THREE.BufferGeometry());
-      bridgeGeometry.setAttribute("position", new THREE.BufferAttribute(bridgePositions, 3).setUsage(THREE.DynamicDrawUsage));
-      bridgeGeometry.setIndex(bridgeIndices);
-      const bridge = new THREE.Mesh(bridgeGeometry, orange);
-      bridge.frustumCulled = false;
-      sculpture.add(bridge);
-      const bridgeCurve = new THREE.CubicBezierCurve3();
+      /**
+       * A length of the signal spanning two stages of the story. The caller
+       * places both ends, then asks for the tube between them; `collapse`
+       * retracts it into the far end as the near object leaves.
+       */
+      function makeBridge() {
+        const positions = new Float32Array((bridgeSegments + 1) * sides * 3);
+        const shape = geometry(new THREE.BufferGeometry());
+        shape.setAttribute("position", new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+        shape.setIndex(bridgeIndices);
+        const mesh = new THREE.Mesh(shape, orange);
+        mesh.frustumCulled = false;
+        sculpture.add(mesh);
+        const curve = new THREE.CubicBezierCurve3();
+        function span(fromScale: number, toScale: number, collapse: number) {
+          curve.v0.lerp(curve.v3, collapse);
+          const reach = curve.v0.distanceTo(curve.v3) * 0.35;
+          curve.v1.copy(curve.v0);
+          curve.v1.x += reach;
+          curve.v2.copy(curve.v3);
+          curve.v2.x -= reach;
+          if (!mesh.visible) return;
+          for (let i = 0; i <= bridgeSegments; i++) {
+            const u = i / bridgeSegments;
+            curve.getPoint(u, point);
+            curve.getTangent(u, tangent);
+            normal.crossVectors(tangent, up).normalize();
+            binormal.crossVectors(tangent, normal).normalize();
+            // Match both transformed tube radii as one object shrinks and the next grows.
+            const blend = THREE.MathUtils.lerp(collapse, 1, transition(u, 0, 1));
+            const radius = SIGNAL_RADIUS * THREE.MathUtils.lerp(fromScale, toScale, blend);
+            for (let j = 0; j < sides; j++) {
+              const angle = j / sides * Math.PI * 2;
+              const a = Math.cos(angle) * radius, b = Math.sin(angle) * radius;
+              const offset = (i * sides + j) * 3;
+              positions[offset] = point.x + normal.x * a + binormal.x * b;
+              positions[offset + 1] = point.y + normal.y * a + binormal.y * b;
+              positions[offset + 2] = point.z + normal.z * a + binormal.z * b;
+            }
+          }
+          shape.attributes.position.needsUpdate = true;
+        }
+        return { mesh, curve, span };
+      }
+      // Chip to machine, then machine to panel.
+      const chipBridge = makeBridge();
+      const codeBridge = makeBridge();
 
       RectAreaLightUniformsLib.init();
       const key = new THREE.RectAreaLight(0xf4f6ff, 5.5, 4, 7);
@@ -463,7 +701,11 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
       let waveClock = 0;
       let lastWaveClockFrame = 0;
       let lastIdleFrame = 0;
-      let prewarmed = false;
+      // Drawing is held back until the warm-up has finished with the scene, so
+      // the two are never mid-frame at the same time.
+      let warm = false;
+      /** Scaled down only if the warm-up finds this machine cannot keep up. */
+      let quality = 1;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
       function markReady() {
         if (disposed) return;
@@ -484,27 +726,27 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         const viewWidth = viewHeight * camera.aspect;
         const centerX = portrait ? 0 : viewWidth * (mix(0.235, 0.07, s.focus) + s.closeup * 0.015);
         const centerY = portrait ? -viewHeight * mix(0.23, 0.11, s.focus) : 0.06;
-        // Leave the text column and take over the viewport as the chip appears.
-        sculpture.position.set(centerX + mix(0, -2.67, s.handoff), centerY, 0);
+        // Leave the text column and take over the viewport as the chip appears,
+        // then track left once per handover as the story walks along the bench.
+        sculpture.position.set(centerX - 2.67 * (s.write + s.handoff), centerY, 0);
         sculpture.rotation.set(
-          0.12 + s.approach * 0.3 + s.closeup * 0.12 - s.handoff * 0.32,
-          -0.1 - s.approach * 0.45 + s.closeup * 0.2 + s.handoff * 0.7,
-          -0.06 - s.approach * 0.15 + s.handoff * 0.25,
+          0.12 + s.approach * 0.3 + s.closeup * 0.12 - s.write * 0.32,
+          -0.1 - s.approach * 0.45 + s.closeup * 0.2 + s.write * 0.7,
+          -0.06 - s.approach * 0.15 + s.write * 0.25,
         );
         // A moving softbox draws a highlight across the case as the shot opens.
         key.position.x = mix(-3, 1.8, s.open);
         key.lookAt(centerX, 0, 0);
         rim.intensity = 2.7 + s.closeup * 0.7;
-        if (bloom) bloom.strength = 0.17 + Math.sin(s.process * Math.PI) * 0.1;
-        const release = transition(value, 0.84, 0.89);
-        processor.visible = s.approach > 0.001 && release < 0.999;
-        processor.scale.setScalar(mix(0.7, 2.08, s.approach) * mix(1, 0.17, s.handoff) * (1 - release));
+        if (bloom) bloom.strength = 0.17 + Math.sin(s.process * Math.PI) * 0.1 + Math.sin(s.code * Math.PI) * 0.05;
+        processor.visible = s.approach > 0.001 && s.chipRelease < 0.999;
+        processor.scale.setScalar(mix(0.7, 2.08, s.approach) * mix(1, 0.17, s.write) * (1 - s.chipRelease));
         processor.rotation.y = -(1 - s.approach) * 0.95;
         const initialWaveScale = 1.8 * Math.max(1, camera.aspect / 1.85);
         waveEnd.set(mix(1.215 * initialWaveScale, -0.94 * 2.08, s.approach), 0, mix(0, SIGNAL_PLANE_Z * 2.08, s.approach));
         point.copy(inputPin).multiply(processor.scale).applyEuler(processor.rotation);
         processor.position.copy(waveEnd).sub(point);
-        processor.position.x -= s.handoff * 1.4;
+        processor.position.x -= s.write * 1.4;
         carrier.position.z = 0.04 - s.open * 0.08;
         lid.position.z = 0.49 + s.open * 1.05;
         lid.position.y = s.open * 0.12;
@@ -524,68 +766,94 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         const dt = lastWaveClockFrame ? Math.min((now - lastWaveClockFrame) / 1000, 0.05) : 0;
         lastWaveClockFrame = now;
         if (input.visible && !reduced.matches) {
-          const approachDrift = transition(value, 0.18, 0.43) * (1 - s.feed) * 0.28;
+          const approachDrift = transition(value, 0.14, 0.34) * (1 - s.feed) * 0.28;
           waveClock += dt * (1 + approachDrift);
         }
         const time = waveClock;
         if (input.visible) updateWave(time);
 
+        // The machine unfolds from the right as the case slides away, and later
+        // makes the same exit itself.
+        station.visible = s.write > 0.001 && s.stationRelease < 0.999;
+        station.scale.setScalar(mix(0.06, 1.5, s.write) * mix(1, 0.17, s.handoff) * (1 - s.stationRelease));
+        // Lifted as it lands, so the screen sits on the frame's centre line and
+        // the stand has somewhere to stand.
+        station.position.set(mix(4.5, 2.67, s.write) - s.handoff * 1.35, mix(-0.4, 0.24, s.write), 0);
+        station.rotation.set(0, mix(-1.15, 0, s.write), mix(-0.1, 0, s.write));
+        processor.updateMatrix();
+        station.updateMatrix();
+        before.copy(outputPin).applyMatrix4(processor.matrix);
+        after.copy(stationIn).applyMatrix4(station.matrix);
+        // Keep the machine clear of the case while both are on stage.
+        station.position.x += Math.max(0, before.x + 0.3 - after.x);
+        station.updateMatrix();
+
+        // One pace for the whole block, so the write head reads as a cursor
+        // rather than a line arriving at a time. The head is tracked clear of
+        // the glass, so the bead that follows it rides the screen instead of
+        // sitting half buried in it.
+        const headZ = screen.position.z + 0.08;
+        writeHead.set(-0.9, 0.42 + screen.position.y, headZ);
+        for (const token of tokens) {
+          const t = Math.max(0, Math.min(1, (s.code - token.from) / (token.to - token.from)));
+          token.mesh.visible = t > 0.002;
+          token.mesh.scale.x = Math.max(0.0001, token.width * t);
+          token.mesh.position.x = token.x + token.width * t / 2;
+          if (t > 0) writeHead.set(token.x + token.width * t, token.y + screen.position.y, headZ);
+        }
+        for (const number of lineNumbers) number.mesh.visible = s.code > number.from;
+        caret.visible = s.code > 0.002 && s.code < 0.998;
+        caret.position.set(writeHead.x + 0.03, writeHead.y - screen.position.y, 0.002);
+        activeLine.visible = caret.visible;
+        activeLine.position.y = caret.position.y;
+        // The screen lifts as it fills, rather than a lamp being pointed at it.
+        display.emissiveIntensity = 0.1 + s.code * 0.32;
+
         output.visible = s.handoff > 0.001;
         output.scale.setScalar(mix(0.05, 1.65, s.handoff) * (1 - s.exit * 0.12));
-        output.position.x = mix(0.45, -0.52, s.handoff);
+        // Held one handover to the right, so the panel lands centred once the
+        // second pan has run.
+        output.position.x = mix(0.45, -0.52, s.handoff) + 2.67;
         output.rotation.y = mix(-1.2, 0, s.handoff);
         output.rotation.z = mix(-0.12, 0, s.handoff);
-        processor.updateMatrix();
         output.updateMatrix();
-        before.copy(outputPin).applyMatrix4(processor.matrix);
+        before.copy(stationOut).applyMatrix4(station.matrix);
         after.copy(graphPoints[0]).applyMatrix4(output.matrix);
-        // Keep the unfolding panel outside the case while both are visible.
-        output.position.x += Math.max(0, before.x + 0.28 - after.x);
+        // Keep the unfolding panel outside the machine while both are visible.
+        output.position.x += Math.max(0, before.x + 0.3 - after.x);
+        output.updateMatrix();
         graphGeometry.setDrawRange(0, Math.floor(s.graph * 128) * 8 * 6);
         samples.forEach((sample, index) => { sample.visible = s.graph >= index / 16 && s.graph > 0; });
         sampleStems.forEach((stem, index) => { stem.visible = s.graph >= index / 16 && s.graph > 0; });
-        // Carry the processed signal to the first graph sample before releasing the chip.
-        processor.updateMatrix();
-        output.updateMatrix();
-        bridgeCurve.v0.copy(outputPin).applyMatrix4(processor.matrix);
-        bridgeCurve.v3.copy(graphPoints[0]).applyMatrix4(output.matrix);
-        bridgeCurve.v0.lerp(bridgeCurve.v3, release);
-        const reach = bridgeCurve.v0.distanceTo(bridgeCurve.v3) * 0.35;
-        bridgeCurve.v1.copy(bridgeCurve.v0);
-        bridgeCurve.v1.x += reach;
-        bridgeCurve.v2.copy(bridgeCurve.v3);
-        bridgeCurve.v2.x -= reach;
-        bridge.visible = s.handoff > 0 && release < 0.999;
-        if (bridge.visible) {
-          for (let i = 0; i <= bridgeSegments; i++) {
-            const u = i / bridgeSegments;
-            bridgeCurve.getPoint(u, point);
-            bridgeCurve.getTangent(u, tangent);
-            normal.crossVectors(tangent, up).normalize();
-            binormal.crossVectors(tangent, normal).normalize();
-            // Match both transformed tube radii as the chip shrinks and graph grows.
-            const blend = mix(release, 1, transition(u, 0, 1));
-            const radius = SIGNAL_RADIUS * mix(processor.scale.x, output.scale.x, blend);
-            for (let j = 0; j < sides; j++) {
-              const angle = j / sides * Math.PI * 2;
-              const a = Math.cos(angle) * radius, b = Math.sin(angle) * radius;
-              const offset = (i * sides + j) * 3;
-              bridgePositions[offset] = point.x + normal.x * a + binormal.x * b;
-              bridgePositions[offset + 1] = point.y + normal.y * a + binormal.y * b;
-              bridgePositions[offset + 2] = point.z + normal.z * a + binormal.z * b;
-            }
-          }
-          bridgeGeometry.attributes.position.needsUpdate = true;
-        }
-        signalPulse.visible = value >= 0.29;
+        // Hand the signal on before letting go of the stage that carried it.
+        chipBridge.mesh.visible = s.write > 0 && s.chipRelease < 0.999;
+        chipBridge.curve.v0.copy(outputPin).applyMatrix4(processor.matrix);
+        chipBridge.curve.v3.copy(stationIn).applyMatrix4(station.matrix);
+        chipBridge.span(processor.scale.x, station.scale.x, s.chipRelease);
+        codeBridge.mesh.visible = s.handoff > 0 && s.stationRelease < 0.999;
+        codeBridge.curve.v0.copy(stationOut).applyMatrix4(station.matrix);
+        codeBridge.curve.v3.copy(graphPoints[0]).applyMatrix4(output.matrix);
+        codeBridge.span(station.scale.x, output.scale.x, s.stationRelease);
+
+        signalPulse.visible = value >= 0.23;
         signalPulse.scale.setScalar(1 - s.exit);
-        if (value < 0.43) {
+        if (value < 0.34) {
           incoming(s.feed, time, signalPulse.position);
-        } else if (value < 0.7) {
+        } else if (value < 0.55) {
           // TubeGeometry uses arc length sampling; the pulse must use it too.
           circuitPath.getPointAt(s.process, signalPulse.position).applyMatrix4(processor.matrix);
-        } else if (value < 0.78) {
-          bridgeCurve.getPoint(transition(value, 0.7, 0.78), signalPulse.position);
+        } else if (value < 0.655) {
+          chipBridge.curve.getPoint(transition(value, 0.55, 0.655), signalPulse.position);
+        } else if (value < 0.8) {
+          // In at the port, up to the write head, and back out to the far port
+          // once the last token is down.
+          before.copy(stationIn).applyMatrix4(station.matrix);
+          after.copy(writeHead).applyMatrix4(station.matrix);
+          signalPulse.position.copy(before).lerp(after, transition(value, 0.655, 0.7));
+          before.copy(stationOut).applyMatrix4(station.matrix);
+          signalPulse.position.lerp(before, transition(value, 0.77, 0.8));
+        } else if (value < 0.85) {
+          codeBridge.curve.getPoint(transition(value, 0.8, 0.85), signalPulse.position);
         } else {
           graphCurve.getPointAt(s.graph, signalPulse.position).applyMatrix4(output.matrix);
         }
@@ -595,20 +863,102 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         if (composer) composer.render();
         else renderer.render(scene, camera);
       }
-      function prewarmRenderer() {
-        if (prewarmed || contextLost) return;
-        prewarmed = true;
-        const states = [processor, output, bridge, input, signalPulse].map((object) => [object, object.visible] as const);
+      /** Compile every material in the scene, whatever the current pose hides. */
+      async function compileAll() {
+        const shown = [processor, station, output, chipBridge.mesh, codeBridge.mesh, input, signalPulse]
+          .map((object) => [object, object.visible] as const);
         const circuitRange = { start: circuitGeometry.drawRange.start, count: circuitGeometry.drawRange.count };
         const graphRange = { start: graphGeometry.drawRange.start, count: graphGeometry.drawRange.count };
-        states.forEach(([object]) => { object.visible = true; });
+        shown.forEach(([object]) => { object.visible = true; });
         circuitGeometry.setDrawRange(0, Infinity);
         graphGeometry.setDrawRange(0, Infinity);
-        renderer.compile(scene, camera);
-        render();
+        // Compiling off the main thread where the browser offers it: the intro
+        // is counting on that thread and freezes if this blocks it.
+        if (renderer.compileAsync) await renderer.compileAsync(scene, camera);
+        else renderer.compile(scene, camera);
         circuitGeometry.setDrawRange(circuitRange.start, circuitRange.count);
         graphGeometry.setDrawRange(graphRange.start, graphRange.count);
-        states.forEach(([object, wasVisible]) => { object.visible = wasVisible; });
+        shown.forEach(([object, wasVisible]) => { object.visible = wasVisible; });
+      }
+      const probe = new Uint8Array(4);
+      /**
+       * A drawn frame, timed honestly. `render` only queues work, so without
+       * reading a pixel back — which blocks until the queue has drained — the
+       * measurement would be of the queueing and not of the drawing.
+       */
+      function timePose(value: number) {
+        const start = performance.now();
+        pose(value);
+        render();
+        const gl = renderer.getContext();
+        gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, probe);
+        return performance.now() - start;
+      }
+      function nextFrame() {
+        // A hidden tab hands out no frames at all, so the wait is bounded and
+        // the warm-up finishes rather than parking the scene forever.
+        return new Promise<void>((resolve) => {
+          const timer = window.setTimeout(done, 40);
+          function done() { window.clearTimeout(timer); resolve(); }
+          requestAnimationFrame(done);
+        });
+      }
+      /** Draw every beat once and report the middling frame among them. */
+      async function sweep(report: (fraction: number) => void, deadline: number) {
+        const costs: number[] = [];
+        for (let i = 0; i < WARM_POSES.length; i++) {
+          costs.push(timePose(WARM_POSES[i]));
+          report((i + 1) / WARM_POSES.length);
+          if (disposed || performance.now() > deadline) break;
+          await nextFrame();
+          if (disposed) break;
+        }
+        // The first frame of a sweep pays for texture uploads the rest do not.
+        const timed = (costs.length > 2 ? costs.slice(1) : costs).sort((a, b) => a - b);
+        return timed[Math.floor(timed.length / 2)] ?? 0;
+      }
+      /**
+       * Every stage of the story is drawn once while the intro still covers the
+       * page, so no shader compiles under the reader's first scroll — and since
+       * those frames have to be drawn anyway, they are timed, and what the
+       * machine can actually afford is settled from the measurement rather than
+       * guessed from its screen size.
+       */
+      async function calibrate() {
+        const deadline = performance.now() + WARM_BUDGET;
+        // Nothing timed against a hidden tab means anything: it hands out no
+        // frames, and throttles what it does draw. A load like that keeps the
+        // defaults rather than being judged on numbers that are not real.
+        let measured = !document.hidden;
+        const watch = () => { measured = measured && !document.hidden; };
+        document.addEventListener("visibilitychange", watch);
+        try {
+          onWarming?.(0.05);
+          await compileAll();
+          if (disposed || contextLost) return;
+          onWarming?.(0.3);
+          let cost = await sweep((fraction) => onWarming?.(0.3 + 0.3 * fraction), deadline);
+          if (disposed || contextLost || !measured) return;
+          if (cost > SLOW_FRAME && quality > 0.75) {
+            // Too expensive at this sharpness: hand some resolution back and
+            // keep the frame rate, which is the more visible of the two.
+            quality = 0.72;
+            resize();
+            cost = await sweep((fraction) => onWarming?.(0.6 + 0.15 * fraction), deadline);
+            if (disposed || contextLost || !measured) return;
+          }
+          onWarming?.(0.78);
+          if (cost <= BLOOM_HEADROOM && performance.now() < deadline) {
+            await addBloom();
+            if (disposed || contextLost || !composer) return;
+            const glowing = await sweep((fraction) => onWarming?.(0.78 + 0.2 * fraction), deadline + 300);
+            if (disposed || contextLost) return;
+            if (glowing > SLOW_FRAME || !measured) dropBloom();
+          }
+        } finally {
+          document.removeEventListener("visibilitychange", watch);
+          onWarming?.(1);
+        }
       }
       function canAnimateWave() {
         return progress.current < 0.18 && visible && !document.hidden && !contextLost && !reduced.matches;
@@ -626,23 +976,36 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         cancelAnimationFrame(frame);
         frame = 0;
         lastIdleFrame = 0;
-        if (!visible || document.hidden || contextLost) return;
+        if (!warm || !visible || document.hidden || contextLost) return;
         pose(progress.current);
         render();
         if (canAnimateWave()) frame = requestAnimationFrame(animateWave);
+      }
+      /**
+       * Sharpness under a fixed pixel count rather than a fixed ratio. A phone
+       * at three times density and a laptop at two both draw about as many
+       * pixels as they can afford, and both draw more of them than the flat
+       * caps this replaces ever allowed. Recomputed on every resize, since the
+       * ratio changes when a window is dragged between two screens.
+       */
+      function pixelRatioFor(width: number, height: number) {
+        const ceiling = Math.sqrt(PIXEL_BUDGET / Math.max(1, width * height));
+        return Math.max(0.8, Math.min(window.devicePixelRatio || 1, 2, Math.max(1, ceiling)) * quality);
       }
       function resize() {
         const { width, height } = element!.getBoundingClientRect();
         if (!width || !height) return;
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
+        const ratio = pixelRatioFor(width, height);
+        renderer.setPixelRatio(ratio);
         renderer.setSize(width, height);
+        composer?.setPixelRatio(ratio);
         composer?.setSize(width, height);
-        prewarmRenderer();
         sync();
       }
       function lost(event: Event) { event.preventDefault(); contextLost = true; cancelAnimationFrame(frame); onUnavailable(); }
-      function restored() { contextLost = false; markReady(); resize(); sync(); }
+      function restored() { contextLost = false; warm = true; markReady(); resize(); sync(); }
       const observer = new ResizeObserver(resize);
       observer.observe(element!);
       const intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; sync(); });
@@ -659,14 +1022,25 @@ export default function SignalCore({ progress, seek, onUnavailable, onReady }: {
         document.removeEventListener("visibilitychange", sync);
         reduced.removeEventListener("change", sync);
       });
-      resize(); sync(); markReady();
+      resize();
+      // The intro overlay holds the page until this settles, which is what buys
+      // the scene the room to be warmed up and measured before it is seen.
+      // A warm-up that fails is not a scene that fails: whatever it managed to
+      // compile, the story still has to be drawn.
+      void calibrate().catch(() => {}).finally(() => {
+        if (disposed) return;
+        warm = true;
+        resize();
+        sync();
+        markReady();
+      });
     }
     initialize().catch(() => { cleanup(); cleanup = () => {}; if (!disposed) onUnavailable(); });
     return () => { disposed = true; cleanup(); };
-  }, [progress, seek, onUnavailable, onReady]);
+  }, [progress, seek, onUnavailable, onWarming, onReady]);
 
   return (
-    <div className={styles.stage} role="img" aria-label="An orange analog waveform flows through a silver processor and emerges as a sampled data graph.">
+    <div className={styles.stage} role="img" aria-label="An orange analog waveform flows through a silver processor, is written out as code on a bench machine, and emerges as a sampled data graph.">
       <div ref={host} className={styles.canvas} data-ready={ready} aria-hidden="true" />
     </div>
   );

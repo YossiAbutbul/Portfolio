@@ -36,10 +36,10 @@ const RATE = 55;
 const COUNT_OUT = 1;
 /**
  * What the readout may claim before each milestone lands: hero mounted, WebGL
- * module arrived, first frame drawn. The climb between them is a clock, since
- * nothing downstream reports real progress — a shader compile has no
- * percentage to give. The ceilings are the honest part: the number cannot
- * claim a milestone that has not actually happened.
+ * module arrived, first frame drawn. The climb between the first two is a
+ * clock; from the second on, the scene's warm-up reports real progress and the
+ * ceiling rises with it. Either way the ceilings are the honest part: the
+ * number cannot claim a milestone that has not actually happened.
  */
 const CEIL = [22, 60, 96];
 
@@ -239,7 +239,11 @@ export default function AppLoader() {
         // Approaches the current ceiling without arriving, so the number is
         // always moving even when the milestone it is waiting on is not.
         const climb = 99 * (1 - Math.exp((-(now - start) / CLIMB) * 2.6));
-        const ceiling = CEIL[scene.mounting ? 2 : scene.declared ? 1 : 0];
+        // Once the scene is mounting it warms up in measurable steps, so the
+        // last stretch is earned rather than timed.
+        const ceiling = scene.mounting
+          ? CEIL[1] + (CEIL[2] - CEIL[1]) * scene.warmup
+          : CEIL[scene.declared ? 1 : 0];
         shown = Math.max(shown, Math.min(climb, ceiling));
       }
 

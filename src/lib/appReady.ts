@@ -9,6 +9,7 @@
 
 let declared = false;
 let mounting = false;
+let warmup = 0;
 let settled = false;
 const listeners = new Set<() => void>();
 
@@ -31,6 +32,19 @@ export function mountingScene() {
 }
 
 /**
+ * How far through its warm-up the scene is, 0 to 1: shaders compiled, then
+ * every stage of the story drawn once so nothing has to compile mid-scroll.
+ * This is the one part of the wait that can report real progress, so the
+ * loader's readout follows it rather than a clock.
+ */
+export function warmingScene(value: number) {
+  const next = Math.max(0, Math.min(1, value));
+  if (next <= warmup) return;
+  warmup = next;
+  announce();
+}
+
+/**
  * The hero is done deciding: either it has drawn its first real frame, or it
  * has given up and fallen back to the static drawing. Both release the loader,
  * so a machine without WebGL never waits out the full timeout.
@@ -42,7 +56,7 @@ export function settleScene() {
 }
 
 export function readScene() {
-  return { declared, mounting, settled };
+  return { declared, mounting, warmup, settled };
 }
 
 export function watchScene(listener: () => void) {
