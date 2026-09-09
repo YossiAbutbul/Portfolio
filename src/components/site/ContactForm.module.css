@@ -1,0 +1,183 @@
+/* Filled fields on a raised card, rather than the hairline rows the rest of the
+   page uses. A form is the one place on this site where the reader gives
+   something back, and a field that looks like a box invites that; a field that
+   looks like a table row does not. */
+
+.form {
+  display: grid;
+  gap: 1.1rem;
+  min-width: 0;
+}
+
+/* Name and email share a row, then the message takes the width, which is the
+   shape a short message actually has. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper-sunk);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 7.5rem;
+  field-sizing: content;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ink-faint);
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--mark);
+}
+
+/* Chrome paints its own background and text colour over an autofilled field,
+   which on a dark form arrives as a pale blue block with black text in it. The
+   colour cannot be overridden directly, so the background is covered by an
+   inset shadow and the text recoloured through the fill property. The absurd
+   transition delay stops the same paint being reapplied on blur. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active,
+.textarea:-webkit-autofill,
+.textarea:-webkit-autofill:hover,
+.textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 100vmax var(--paper-sunk) inset;
+  box-shadow: 0 0 0 100vmax var(--paper-sunk) inset;
+  caret-color: var(--ink);
+  transition: background-color 100000s ease-in-out 0s;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem;
+  padding-top: 0.4rem;
+}
+
+/* Solid, because it is the one thing on the page that acts. */
+.submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 46px;
+  padding: 0 1.5rem;
+  border: 1px solid var(--mark);
+  border-radius: 2px;
+  background: var(--mark);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.submit:hover:not(:disabled),
+.submit:focus-visible {
+  background: none;
+  color: var(--mark);
+}
+
+.submit:disabled {
+  background: none;
+  color: var(--ink-faint);
+  border-color: var(--rule-strong);
+  cursor: progress;
+}
+
+.chevron {
+  font-size: 0.9em;
+}
+
+/* Something moving while the request is in flight, so a slow network reads as
+   work happening rather than as a dead button. */
+.pulse {
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+  animation: pulse 1s var(--ease-in-out) infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.2; }
+}
+
+.note {
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.error {
+  color: var(--limit);
+  font-size: 0.85rem;
+  letter-spacing: 0;
+}
+
+/* The reply, standing where the form was. */
+.sent {
+  display: grid;
+  gap: 0.75rem;
+  align-content: center;
+  min-height: 12rem;
+  padding: 1.5rem 0;
+}
+
+.sentTitle {
+  font-size: clamp(1.3rem, 2.4vw, 1.9rem);
+  letter-spacing: -0.03em;
+}
+
+.sentBody {
+  max-width: 42ch;
+  color: var(--ink-muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 40rem) {
+  .pair { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .textarea,
+  .submit { transition: none; }
+  .pulse { animation: none; }
+}

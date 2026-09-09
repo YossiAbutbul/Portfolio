@@ -14,8 +14,11 @@
 .heroActions .button { text-decoration-color: var(--mark); }
 .button:hover, .buttonGhost:hover { text-decoration-color: var(--ink); }
 .buttonGhost { color: var(--ink-muted); }
-.section { border-top: 1px solid var(--rule); scroll-margin-top: 5rem; }
-.sectionInner { padding-top: clamp(4rem, 7vw, 7rem); padding-bottom: clamp(5rem, 8vw, 8rem); }
+.section { position: relative; border-top: 1px solid var(--rule); scroll-margin-top: 5rem; }
+/* Trims the word that runs behind the contact card. `clip` rather than
+   `hidden`, which would make a scroll container of the section. */
+.section[id="contact"] { overflow: clip; }
+.sectionInner { position: relative; z-index: 1; padding-top: clamp(4rem, 7vw, 7rem); padding-bottom: clamp(5rem, 8vw, 8rem); }
 .sectionMain { display: grid; gap: clamp(2.5rem, 4vw, 4rem); min-width: 0; }
 .sectionTitle { font-size: clamp(2.5rem, 4.4vw, 4.8rem); font-weight: 400; letter-spacing: -0.055em; }
 .workList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem 2.5rem; padding: 0; margin: 0; list-style: none; }
@@ -64,15 +67,32 @@
 .entryDetail { max-width: 66ch; font-size: 1rem; line-height: 1.7; color: var(--ink-muted); margin-top: 0.3rem; }
 .cvRow { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; }
 .cvNote { font-size: 0.75rem; color: var(--ink-muted); text-transform: none; letter-spacing: 0; }
-/* Email is the primary action and gets its own block; the other two channels
-   are a uniform pair below it. Every row in the list shares one grid, rather
-   than the first being special-cased into a different layout. */
+/* All three channels are the same row: a label, the thing to use, a hairline.
+   Email leads because it is the one most likely to be used, not because it is
+   set differently. */
+/* Two columns: what to reach me on, and the thing to write in. The form is the
+   wider of the two because it is the one being used. */
+.contactStage { position: relative; }
+/* Set solid and very low in contrast, sized to bleed past the card on both
+   sides so only its shoulders show. Behind everything, and never read. */
+.contactGhost {
+  position: absolute; left: 50%; top: 50%; z-index: 0;
+  transform: translate(-50%, -50%);
+  font-size: clamp(9rem, 30vw, 26rem); font-weight: 500; line-height: 0.8;
+  letter-spacing: -0.06em; white-space: nowrap;
+  color: color-mix(in srgb, var(--paper-lift) 72%, var(--paper));
+  pointer-events: none; user-select: none;
+}
+/* Held in from the container so the word behind it has somewhere to show. A
+   card filling the full width would hide the whole thing and the effect would
+   only exist in the stylesheet. */
+.contactCard { position: relative; z-index: 1; max-width: 72rem; margin-inline: auto; padding: clamp(1.75rem, 3.4vw, 3.25rem); background: var(--paper-lift); border: 1px solid var(--rule); border-radius: 3px; }
+.contactGrid { display: grid; grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr); gap: clamp(2rem, 4vw, 4rem); align-items: start; }
+.contactAside { display: grid; gap: 1.5rem; align-content: start; min-width: 0; }
 .contactLede { max-width: 46ch; color: var(--ink-mid); }
-.contactPrimary { padding-bottom: 2rem; border-bottom: 1px solid var(--rule); }
-.contactEmail { display: inline-block; font-size: clamp(1.4rem, 3vw, 2.35rem); line-height: 1.15; letter-spacing: -0.035em; overflow-wrap: break-word; border-bottom: 1px solid var(--rule-strong); transition: color 180ms, border-color 180ms; }
-.contactEmail:hover, .contactEmail:focus-visible { color: var(--mark); border-color: var(--mark); }
 .contactList { margin: 0; padding: 0; list-style: none; }
-.contactList li { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 2rem; align-items: baseline; padding: 1rem 0; border-bottom: 1px solid var(--rule); }
+.contactList li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 1.25rem; align-items: baseline; padding: 0.8rem 0; border-bottom: 1px solid var(--rule); }
+.contactList li:first-child { border-top: 1px solid var(--rule); }
 .contactLabel { font-size: 0.85rem; color: var(--ink-muted); text-transform: none; letter-spacing: 0; }
 .contactValue { justify-self: start; font-size: 1.05rem; overflow-wrap: break-word; border-bottom: 1px solid transparent; transition: color 180ms, border-color 180ms; }
 .contactValue:hover, .contactValue:focus-visible { color: var(--mark); border-color: var(--mark); }
@@ -99,6 +119,7 @@
   .row { padding-bottom: 1.75rem; }
   .sectionInner { padding-top: 2.5rem; padding-bottom: 3rem; }
   .methodItem, .entry, .contactList li, .alsoLink { grid-template-columns: 1fr; gap: 0.75rem; }
+  .contactGrid { grid-template-columns: 1fr; }
   .methodStep { grid-row: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .previewFrame { transition: none; } .rowLink:hover .previewFrame { transform: none; } }

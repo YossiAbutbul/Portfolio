@@ -7,6 +7,7 @@ import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
 import HeroSequence from "./HeroSequence";
+import ContactForm from "./ContactForm";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
@@ -85,7 +86,7 @@ const BACKGROUND = [
     role: "Operational Project Leader",
     place: "IDF Intelligence, Unit 81",
     detail:
-      "Ran RF projects end to end — spec, integration, field trials — and wrote the Python tooling for spectrum analyzer data collection.",
+      "Ran RF projects end to end (spec, integration, field trials) and wrote the Python tooling for spectrum analyzer data collection.",
   },
 ];
 
@@ -231,7 +232,7 @@ export default function Home() {
             Creating User Interfaces Using LLMs: From Specification to Code
           </h3>
           <p className={styles.paperBody}>
-            A seminar on how language models turn a written spec into a working interface — where they get it wrong, and how much the wording of the spec changes what comes out.
+            A seminar on how language models turn a written spec into a working interface: where they get it wrong, and how much the wording of the spec changes what comes out.
           </p>
         </article>
       </Section>
@@ -262,30 +263,47 @@ export default function Home() {
 
       {/* ------------------------------------------------------------------ */}
       <Section id="contact" title="Contact">
-        <p className={styles.contactLede} data-rise>
-          Email is the surest way to reach me.
-        </p>
+        {/* The word passes behind the card, which is what keeps it from
+            colliding with anything set on top of it. */}
+        <div className={styles.contactStage}>
+          <span className={styles.contactGhost} aria-hidden="true">
+            Contact
+          </span>
 
-        <div className={styles.contactPrimary} data-rise>
-          <a className={styles.contactEmail} href={`mailto:${EMAIL}`}>
-            {EMAIL}
-          </a>
+          <div className={styles.contactCard}>
+            <div className={styles.contactGrid}>
+              <div className={styles.contactAside}>
+                <p className={styles.contactLede} data-rise>
+                  Work, a question, or something you think I would find interesting. All of it is
+                  welcome.
+                </p>
+
+                <ul className={styles.contactList} data-rise>
+                  <li>
+                    <span className={`mono ${styles.contactLabel}`}>Email</span>
+                    <a className={styles.contactValue} href={`mailto:${EMAIL}`}>
+                      {EMAIL}
+                    </a>
+                  </li>
+                  <li>
+                    <span className={`mono ${styles.contactLabel}`}>LinkedIn</span>
+                    <a className={styles.contactValue} href={LINKEDIN} target="_blank" rel="noreferrer">
+                      yossi-abutbul
+                    </a>
+                  </li>
+                  <li>
+                    <span className={`mono ${styles.contactLabel}`}>GitHub</span>
+                    <a className={styles.contactValue} href={GITHUB} target="_blank" rel="noreferrer">
+                      YossiAbutbul
+                    </a>
+                  </li>
+                </ul>
+              </div>
+
+              <ContactForm email={EMAIL} />
+            </div>
+          </div>
         </div>
-
-        <ul className={styles.contactList} data-rise>
-          <li>
-            <span className={`mono ${styles.contactLabel}`}>LinkedIn</span>
-            <a className={styles.contactValue} href={LINKEDIN} target="_blank" rel="noreferrer">
-              yossi-abutbul
-            </a>
-          </li>
-          <li>
-            <span className={`mono ${styles.contactLabel}`}>GitHub</span>
-            <a className={styles.contactValue} href={GITHUB} target="_blank" rel="noreferrer">
-              YossiAbutbul
-            </a>
-          </li>
-        </ul>
       </Section>
 
       <footer className={styles.footer}>
