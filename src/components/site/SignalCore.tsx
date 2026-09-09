@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type * as Three from "three";
+import type { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import type { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { signalStory, transition } from "./signal-story";
 import styles from "./SignalCore.module.css";
 
@@ -10,17 +12,19 @@ const SIGNAL_RADIUS = 0.018;
 const SIGNAL_PLANE_Z = 0.46;
 
 /** How sharp the scene may draw, as a count of pixels in the drawing buffer.
- *  Screen size is a poor guide to what a machine can push — a phone at three
+ *  Screen size is a poor guide to what a machine can push. A phone at three
  *  times density and a laptop at two land in the same place under a budget,
  *  and both end up sharper than a flat cap on either would allow. */
 const PIXEL_BUDGET = 4.5e6;
 /** A frame this expensive during warm-up costs more than the sharpness is worth. */
 const SLOW_FRAME = 14;
-/** Bloom roughly doubles what a frame costs, so it needs this much headroom. */
-const BLOOM_HEADROOM = 6.5;
+/** Three frames is enough to price a pass that has just been added. */
+const POST_POSES = [0.45, 0.72, 0.95];
 /** Warm-up buys a smooth first scroll; it must not become the wait itself.
  *  Past this the remaining poses are skipped rather than held for. */
 const WARM_BUDGET = 1200;
+/** Half rate, which is all the idle drift needs and half the battery it would take. */
+const IDLE_FRAME = 1000 / 30;
 /** Every beat of the story, drawn once before the reader can reach any of them. */
 const WARM_POSES = [0, 0.2, 0.32, 0.45, 0.58, 0.66, 0.72, 0.83, 0.95];
 
@@ -54,7 +58,7 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8;
       // Mesh detail is the one thing still decided from what the device claims,
       // because it is fixed at build time. Resolution and post-processing are
-      // measured during warm-up instead — see calibrate().
+      // measured during warm-up instead: see calibrate().
       const modestHardware = deviceMemory <= 4 || navigator.hardwareConcurrency <= 4;
       // Multisampling on the default framebuffer is nearly free next to the
       // shimmer it removes from every machined edge in the sculpture.
@@ -89,18 +93,18 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 50);
       camera.position.set(0, 0, 10);
-      let composer: {
-        render: () => void;
-        setSize: (width: number, height: number) => void;
-        setPixelRatio: (ratio: number) => void;
-      } | null = null;
-      let bloom: { strength: number } | null = null;
+      let composer: EffectComposer | null = null;
+      let bloom: UnrealBloomPass | null = null;
+      // The addon types leave `uniforms` as a bare object, so the two dials the
+      // pose actually turns are named here.
+      let bokeh: { uniforms: { focus: { value: number }; aperture: { value: number } } } | null = null;
       let dropBloom = () => {};
-      detach.push(() => dropBloom());
+      let dropBokeh = () => {};
+      detach.push(() => { dropBokeh(); dropBloom(); });
       /**
        * The glow around the signal is the first thing to go on a machine that
        * cannot afford it, so it is added only once a measured frame has shown
-       * there is room — and taken away again if adding it proves otherwise.
+       * there is room, and taken away again if adding it proves otherwise.
        */
       async function addBloom() {
         const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }, { OutputPass }] = await Promise.all([
@@ -128,6 +132,7 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
         composer = composed;
         bloom = bloomPass;
         dropBloom = () => {
+          dropBokeh();
           composer = null;
           bloom = null;
           dropBloom = () => {};
@@ -139,6 +144,28 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
         };
         const { width, height } = element!.getBoundingClientRect();
         if (width && height) composed.setSize(width, height);
+      }
+      /**
+       * A shallow focus is the last thing an offline render has that a live one
+       * usually does not, and the first thing the eye reads as "photographed".
+       * It costs a second pass over the geometry for depth, so like the glow it
+       * is earned rather than assumed.
+       */
+      async function addDepthOfField() {
+        if (!composer) return;
+        const { BokehPass } = await import("three/addons/postprocessing/BokehPass.js");
+        if (disposed || !composer) return;
+        const pass = new BokehPass(scene, camera, { focus: 10, aperture: 0.0004, maxblur: 0.006 });
+        // Straight after the scene is drawn, so the glow blooms what the lens
+        // actually resolved rather than the other way round.
+        composer.insertPass(pass, 1);
+        bokeh = pass as unknown as NonNullable<typeof bokeh>;
+        dropBokeh = () => {
+          bokeh = null;
+          dropBokeh = () => {};
+          composer?.removePass(pass);
+          pass.dispose();
+        };
       }
       const room = new RoomEnvironment();
       const pmrem = new THREE.PMREMGenerator(renderer);
@@ -189,7 +216,7 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       // composite, so `toneMapped: false` on the material buys nothing, and ACES
       // rolls the highlights off: fed #ff7a42 the wave arrives at #d36530, and
       // fed anything brighter it bleaches towards apricot, which is where the
-      // old 1.8x multiplier had left it. This lands on #f17747 — the closest to
+      // old 1.8x multiplier had left it. This lands on #f17747, the closest to
       // the accent the tone curve allows, its red a shade short of the token's.
       const signal = new THREE.Color(0xff6642);
       const orange = material(new THREE.MeshBasicMaterial({ color: signal, toneMapped: false }));
@@ -682,6 +709,41 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       const chipBridge = makeBridge();
       const codeBridge = makeBridge();
 
+      // A studio sits its subject against a lit sweep, not in a void, and the
+      // subject throws a shadow onto it. Both are one soft round falloff, drawn
+      // behind everything: the pool reads as the wall, and the shade reads as
+      // the shadow only because it falls across the pool.
+      const falloffSize = 96;
+      const falloffData = new Uint8Array(falloffSize * falloffSize * 4);
+      for (let y = 0; y < falloffSize; y++) {
+        for (let x = 0; x < falloffSize; x++) {
+          const dx = (x / (falloffSize - 1)) * 2 - 1;
+          const dy = (y / (falloffSize - 1)) * 2 - 1;
+          const edge = Math.max(0, 1 - Math.sqrt(dx * dx + dy * dy));
+          const index = (y * falloffSize + x) * 4;
+          falloffData.set([255, 255, 255, Math.round(255 * edge * edge * (3 - 2 * edge))], index);
+        }
+      }
+      const falloff = texture(new THREE.DataTexture(falloffData, falloffSize, falloffSize));
+      falloff.minFilter = falloff.magFilter = THREE.LinearFilter;
+      falloff.needsUpdate = true;
+      function backdrop(color: number, blending: Three.Blending) {
+        const finish = material(new THREE.MeshBasicMaterial({
+          map: falloff, color, transparent: true, opacity: 0, blending,
+          depthWrite: false, depthTest: false, toneMapped: false,
+        }));
+        const mesh = new THREE.Mesh(geometry(new THREE.PlaneGeometry(1, 1)), finish);
+        // Drawn first and testing against nothing, so the sculpture covers it.
+        mesh.renderOrder = -2;
+        scene.add(mesh);
+        return { mesh, finish };
+      }
+      const pool = backdrop(0x93aec4, THREE.AdditiveBlending);
+      const shade = backdrop(0x04070a, THREE.NormalBlending);
+      shade.mesh.renderOrder = -1;
+      const subject = new THREE.Vector3();
+      const staged = new THREE.Vector3();
+
       RectAreaLightUniformsLib.init();
       const key = new THREE.RectAreaLight(0xf4f6ff, 5.5, 4, 7);
       key.position.set(-3, 4, 6);
@@ -699,8 +761,11 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       let visible = true;
       let contextLost = false;
       let waveClock = 0;
-      let lastWaveClockFrame = 0;
-      let lastIdleFrame = 0;
+      // A second clock, running whenever the scene is on screen. The story is
+      // still derived entirely from scroll; this only rides on top of it.
+      let breathClock = 0;
+      let lastPoseFrame = 0;
+      let lastDrawnFrame = 0;
       // Drawing is held back until the warm-up has finished with the scene, so
       // the two are never mid-frame at the same time.
       let warm = false;
@@ -715,6 +780,10 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       function pose(value: number) {
         const s = signalStory(value);
         const mix = THREE.MathUtils.lerp;
+        const now = performance.now();
+        const step = lastPoseFrame ? Math.min((now - lastPoseFrame) / 1000, 0.05) : 0;
+        lastPoseFrame = now;
+        if (!reduced.matches) breathClock += step;
         const portrait = camera.aspect < 1;
         const fov = mix(36, 30, s.focus);
         if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -734,6 +803,15 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
           -0.1 - s.approach * 0.45 + s.closeup * 0.2 + s.write * 0.7,
           -0.06 - s.approach * 0.15 + s.write * 0.25,
         );
+        // Held still, a scene reads as a photograph of itself. Three slow
+        // drifts at periods that do not divide into each other, so the
+        // sculpture never visibly repeats and never arrives anywhere.
+        if (!reduced.matches) {
+          sculpture.rotation.x += Math.sin(breathClock * 0.31) * 0.032;
+          sculpture.rotation.y += Math.sin(breathClock * 0.47 + 1.2) * 0.078;
+          sculpture.rotation.z += Math.sin(breathClock * 0.21 + 2.3) * 0.018;
+          sculpture.position.y += Math.sin(breathClock * 0.37 + 0.7) * 0.05;
+        }
         // A moving softbox draws a highlight across the case as the shot opens.
         key.position.x = mix(-3, 1.8, s.open);
         key.lookAt(centerX, 0, 0);
@@ -762,12 +840,9 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
         waveLength = mix(2.43 * initialWaveScale, 2.43, s.approach) * (1 - s.feed);
         waveAmplitude = mix(0.86, 0.46, s.approach) * (1 - s.feed);
         input.visible = s.feed < 1;
-        const now = performance.now();
-        const dt = lastWaveClockFrame ? Math.min((now - lastWaveClockFrame) / 1000, 0.05) : 0;
-        lastWaveClockFrame = now;
         if (input.visible && !reduced.matches) {
           const approachDrift = transition(value, 0.14, 0.34) * (1 - s.feed) * 0.28;
-          waveClock += dt * (1 + approachDrift);
+          waveClock += step * (1 + approachDrift);
         }
         const time = waveClock;
         if (input.visible) updateWave(time);
@@ -835,6 +910,38 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
         codeBridge.curve.v3.copy(graphPoints[0]).applyMatrix4(output.matrix);
         codeBridge.span(station.scale.x, output.scale.x, s.stationRelease);
 
+        // Seat whatever is on stage: a pool behind it, and its shadow thrown
+        // down and to the right, away from the key light.
+        sculpture.updateMatrix();
+        subject.set(0, 0, 0.1).applyMatrix4(processor.matrix).applyMatrix4(sculpture.matrix);
+        let reach = 2.5 * processor.scale.x * SCULPTURE_SCALE;
+        if (s.write > 0.001) {
+          staged.set(0, 0.1, -0.05).applyMatrix4(station.matrix).applyMatrix4(sculpture.matrix);
+          subject.lerp(staged, s.write);
+          reach = mix(reach, 2.6 * station.scale.x * SCULPTURE_SCALE, s.write);
+        }
+        if (s.handoff > 0.001) {
+          staged.set(2.22, 0, 0).applyMatrix4(output.matrix).applyMatrix4(sculpture.matrix);
+          subject.lerp(staged, s.handoff);
+          reach = mix(reach, 2.6 * output.scale.x * SCULPTURE_SCALE, s.handoff);
+        }
+        // Dimmed rather than switched off as the hero leaves, so the last
+        // beat does not drop back into the void it started in.
+        const seated = s.focus * (1 - s.exit * 0.6);
+        pool.mesh.position.set(subject.x, subject.y, -2.6);
+        pool.mesh.scale.setScalar(reach * 2.1);
+        pool.finish.opacity = 0.085 * seated;
+        shade.mesh.position.set(subject.x + reach * 0.46, subject.y - reach * 0.6, -2.5);
+        shade.mesh.scale.set(reach * 2.4, reach * 1.5, 1);
+        shade.finish.opacity = 0.6 * seated;
+        if (bokeh) {
+          // Focus on whatever the pool is lighting, and open the lens up as the
+          // shot closes in. Wide establishing frames stay sharp throughout,
+          // close-ups fall away.
+          bokeh.uniforms.focus.value = Math.max(0.5, camera.position.z - subject.z);
+          bokeh.uniforms.aperture.value = 0.00018 + s.closeup * 0.0016 + s.code * 0.0009;
+        }
+
         signalPulse.visible = value >= 0.23;
         signalPulse.scale.setScalar(1 - s.exit);
         if (value < 0.34) {
@@ -883,7 +990,7 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       const probe = new Uint8Array(4);
       /**
        * A drawn frame, timed honestly. `render` only queues work, so without
-       * reading a pixel back — which blocks until the queue has drained — the
+       * reading a pixel back, which blocks until the queue has drained, the
        * measurement would be of the queueing and not of the drawing.
        */
       function timePose(value: number) {
@@ -904,11 +1011,11 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
         });
       }
       /** Draw every beat once and report the middling frame among them. */
-      async function sweep(report: (fraction: number) => void, deadline: number) {
+      async function sweep(report: (fraction: number) => void, deadline: number, poses = WARM_POSES) {
         const costs: number[] = [];
-        for (let i = 0; i < WARM_POSES.length; i++) {
-          costs.push(timePose(WARM_POSES[i]));
-          report((i + 1) / WARM_POSES.length);
+        for (let i = 0; i < poses.length; i++) {
+          costs.push(timePose(poses[i]));
+          report((i + 1) / poses.length);
           if (disposed || performance.now() > deadline) break;
           await nextFrame();
           if (disposed) break;
@@ -919,7 +1026,7 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
       }
       /**
        * Every stage of the story is drawn once while the intro still covers the
-       * page, so no shader compiles under the reader's first scroll — and since
+       * page, so no shader compiles under the reader's first scroll. Since
        * those frames have to be drawn anyway, they are timed, and what the
        * machine can actually afford is settled from the measurement rather than
        * guessed from its screen size.
@@ -947,39 +1054,64 @@ export default function SignalCore({ progress, seek, onUnavailable, onWarming, o
             cost = await sweep((fraction) => onWarming?.(0.6 + 0.15 * fraction), deadline);
             if (disposed || contextLost || !measured) return;
           }
-          onWarming?.(0.78);
-          if (cost <= BLOOM_HEADROOM && performance.now() < deadline) {
+          onWarming?.(0.7);
+          // Optimistic, and measured afterwards. Refusing the glow up front on
+          // a guess about what it would cost is how a machine that could have
+          // afforded it ends up without it, and how every machine that had it
+          // before lost it once this was measured. Only a frame that is truly
+          // slow loses anything here.
+          if (cost < SLOW_FRAME) {
             await addBloom();
             if (disposed || contextLost || !composer) return;
-            const glowing = await sweep((fraction) => onWarming?.(0.78 + 0.2 * fraction), deadline + 300);
+            const glowing = await sweep(() => {}, deadline + 400, POST_POSES);
             if (disposed || contextLost) return;
+            onWarming?.(0.85);
             if (glowing > SLOW_FRAME || !measured) dropBloom();
+            else {
+              await addDepthOfField();
+              if (disposed || contextLost) return;
+              if (bokeh) {
+                const focused = await sweep(() => {}, deadline + 700, POST_POSES);
+                if (disposed || contextLost) return;
+                if (focused > SLOW_FRAME || !measured) dropBokeh();
+              }
+            }
           }
         } finally {
           document.removeEventListener("visibilitychange", watch);
           onWarming?.(1);
         }
       }
-      function canAnimateWave() {
-        return progress.current < 0.18 && visible && !document.hidden && !contextLost && !reduced.matches;
+      /**
+       * The scene now draws whenever it is on screen rather than only while
+       * the wave is on, because the sculpture drifts even when the page is
+       * still. Everything that stops it stops it completely: off screen,
+       * another tab, a lost context, a reader who asked for less motion.
+       */
+      function canAnimate() {
+        return visible && !document.hidden && !contextLost && !reduced.matches;
       }
-      function animateWave(now: number) {
+      function animate(now: number) {
         frame = 0;
-        if (!canAnimateWave()) { lastIdleFrame = 0; return; }
-        const dt = lastIdleFrame ? Math.min((now - lastIdleFrame) / 1000, 0.05) : 0;
-        lastIdleFrame = now;
-        pose(progress.current);
-        render();
-        frame = requestAnimationFrame(animateWave);
+        if (!canAnimate()) { lastDrawnFrame = 0; return; }
+        // The drift is slow enough to carry at half rate, and the other half of
+        // those frames is battery on a page the reader may sit on for a while.
+        if (!lastDrawnFrame || now - lastDrawnFrame >= IDLE_FRAME) {
+          lastDrawnFrame = now;
+          pose(progress.current);
+          render();
+        }
+        frame = requestAnimationFrame(animate);
       }
       function sync() {
         cancelAnimationFrame(frame);
         frame = 0;
-        lastIdleFrame = 0;
         if (!warm || !visible || document.hidden || contextLost) return;
+        // Scrolling draws at full rate; the idle loop is the throttled one.
+        lastDrawnFrame = performance.now();
         pose(progress.current);
         render();
-        if (canAnimateWave()) frame = requestAnimationFrame(animateWave);
+        if (canAnimate()) frame = requestAnimationFrame(animate);
       }
       /**
        * Sharpness under a fixed pixel count rather than a fixed ratio. A phone
