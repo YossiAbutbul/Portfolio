@@ -234,23 +234,6 @@ export function buildDesk(kit: DeskKit): Desk {
     decal.position.set(.3, 0, .072); g.add(decal);
     addTool(g, { x: -2.2, y: -1.95, a: .1, rest: .14, circles: [[-1.7, 0, .2], [-1.1, 0, .2], [-.5, 0, .2], [.1, 0, .15], [.6, 0, .15], [1.38, 0, .36]], mass: .9, foot: [3.9, 1] });
   }
-  { // Paperclip: one wire, three straights and three round bends, nested like the real thing
-    const p = new THREE.Path();
-    p.moveTo(.07, .22); p.lineTo(.07, -.36);
-    p.absarc(0, -.36, .07, 0, Math.PI, true);
-    p.lineTo(-.07, .42);
-    p.absarc(.035, .42, .105, Math.PI, 0, true);
-    p.lineTo(.14, -.46);
-    p.absarc(0, -.46, .14, 0, Math.PI, true);
-    p.lineTo(-.14, .26);
-    const pts = p.getPoints(40).map((v) => new THREE.Vector3(v.x * 1.25, v.y * 1.25, 0));
-    const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal", .1);
-    const clipGeo = geo(new THREE.TubeGeometry(curve, 240, .014, 10, false));
-    const steel = std({ color: 0xc9c7c2, metalness: 1, roughness: .38 });
-    const g = new THREE.Group(); g.add(mesh(clipGeo, steel));
-    addTool(g, { x: -4.4, y: -.8, a: .6, rest: .016, circles: [[0, -.3, .2], [0, .25, .2]], mass: .05, foot: [.55, 1.35] });
-  }
-
   /* ---------- Physics ---------- */
   const raycaster = new THREE.Raycaster();
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -.15);
