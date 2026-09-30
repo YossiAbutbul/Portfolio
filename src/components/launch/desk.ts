@@ -193,18 +193,18 @@ export function buildDesk(kit: DeskKit): Desk {
 
   { // Pencil: one turned surface, so barrel, sharpened wood and graphite flow into each other
     // like a real pencil, coloured along its length rather than built from separate parts.
-    const R = .105;
+    const K = 1.55, R = .105 * K; // K thickens the whole profile evenly
     const profile: [number, number][] = [
       [0, -2.36], [.04, -2.355], [.075, -2.34], [.095, -2.315], [.104, -2.28], [R, -2.24],
       [R, 1.78], [.1, 1.86], [.082, 2.0], [.062, 2.16], [.044, 2.3], [.032, 2.4],
       [.024, 2.47], [.014, 2.55], [.006, 2.6], [0, 2.62],
     ];
-    const pencilGeo = geo(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 48));
+    const pencilGeo = geo(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r === .105 ? R : r * K, y)), 48));
     const pos = pencilGeo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
     const paint = new THREE.Color(0xe7cfa8), band = new THREE.Color(0x3c5a44), wood = new THREE.Color(0xd8b484), lead = new THREE.Color(0x2b2a28);
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i), r = Math.hypot(pos.getX(i), pos.getZ(i));
-      if (y > 2.43 || (y > 1.8 && r < .03)) c.copy(lead);
+      if (y > 2.43 || (y > 1.8 && r < .03 * K)) c.copy(lead);
       else if (y > 1.8) {
         // The painted edge the sharpener leaves: scalloped where the cut meets the paint.
         const a = Math.atan2(pos.getZ(i), pos.getX(i)), edge = 1.84 + Math.abs(Math.sin(a * 3)) * .08;
@@ -218,7 +218,7 @@ export function buildDesk(kit: DeskKit): Desk {
     const g = new THREE.Group();
     const body = mesh(pencilGeo, std({ vertexColors: true, roughness: .72 }));
     body.rotation.z = -Math.PI / 2; g.add(body);
-    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: R, circles: line(7, 4.8, .13), mass: .3, foot: [5.1, .45] });
+    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: R, circles: line(7, 4.8, .19), mass: .4, foot: [5.1, .6] });
   }
   { // Box cutter: soft rounded orange body with bevelled edges, a track for the blade, a snap blade
     // with its break lines, a ribbed grip and the thumb slider, after Oryzo's.
