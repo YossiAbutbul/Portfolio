@@ -232,7 +232,7 @@ export function buildDesk(kit: DeskKit): Desk {
       for (const t of tools) {
         // Home: a soft spring back to where the tool was laid out.
         const da = Math.atan2(Math.sin(t.ha - t.a), Math.cos(t.ha - t.a));
-        t.vx += (t.hx - t.x) * 3.2 * h; t.vy += (t.hy - t.y) * 3.2 * h; t.va += da * 4 * h;
+        t.vx += (t.hx - t.x) * 30 * h; t.vy += (t.hy - t.y) * 30 * h; t.va += da * 30 * h;
         // The pointer pushes a tool away from the point of it that is nearest, so an off-centre
         // approach turns it as well as moving it. Directly over a tool, it lifts and slides aside.
         if (pointer.on) {
@@ -247,15 +247,20 @@ export function buildDesk(kit: DeskKit): Desk {
             let dx = wx - pointer.x, dy = wy - pointer.y, len = Math.hypot(dx, dy);
             // Right on top of the tool there is no "away", so push it sideways off its own axis.
             if (len < .05) { dx = -Math.sin(t.a); dy = Math.cos(t.a); len = 1; }
-            const f = Math.pow(1 - Math.max(0, d) / 1.4, 2) * 80;
+            const f = Math.pow(1 - Math.max(0, d) / 1.4, 2) * 14;
             const fx = dx / len * f, fy = dy / len * f;
             t.vx += fx * h; t.vy += fy * h;
             t.va += ((wx - t.x) * fy - (wy - t.y) * fx) / t.inertia * t.mass * .5 * h;
           }
         }
         // Sliding friction on the mat.
-        t.vx *= Math.exp(-h * 6); t.vy *= Math.exp(-h * 6); t.va *= Math.exp(-h * 7);
+        t.vx *= Math.exp(-h * 9); t.vy *= Math.exp(-h * 9); t.va *= Math.exp(-h * 9);
         t.x += t.vx * h; t.y += t.vy * h; t.a += t.va * h;
+        // Tethered: a tool may shift a little and turn a little, never wander off.
+        const ox = t.x - t.hx, oy = t.y - t.hy, off = Math.hypot(ox, oy), MAX = .22;
+        if (off > MAX) { t.x = t.hx + ox / off * MAX; t.y = t.hy + oy / off * MAX; t.vx *= .3; t.vy *= .3; }
+        const oa = Math.atan2(Math.sin(t.a - t.ha), Math.cos(t.a - t.ha));
+        if (Math.abs(oa) > .09) { t.a = t.ha + Math.sign(oa) * .09; t.va *= .3; }
       }
       // Tool against tool, and against the device and the edges of the view.
       for (let i = 0; i < tools.length; i++) {
@@ -322,7 +327,7 @@ export function buildDesk(kit: DeskKit): Desk {
       for (const t of tools) {
         const dx = t.x - hitPoint.x, dy = t.y - hitPoint.y, d = Math.hypot(dx, dy);
         if (d > 2.2 || d < 1e-4) continue;
-        const k = (1 - d / 2.2) * 5;
+        const k = (1 - d / 2.2) * 2.2;
         t.vx += dx / d * k; t.vy += dy / d * k; t.va += (Math.random() - .5) * k * .8;
       }
     },

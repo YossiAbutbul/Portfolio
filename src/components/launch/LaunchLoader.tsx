@@ -36,6 +36,10 @@ export default function LaunchLoader() {
 
     const leave = () => {
       if (left) return; left = true;
+      // Stop holding the page the moment the sheet starts to lift.
+      clearInterval(muzzle);
+      root.style.overflow = overflowWas;
+      window.__lenis?.start();
       setPhase("leaving");
       window.setTimeout(() => setPhase("gone"), 750);
     };
