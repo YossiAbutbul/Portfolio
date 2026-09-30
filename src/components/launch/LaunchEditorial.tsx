@@ -16,7 +16,7 @@ export default function LaunchEditorial({ featured, other }: { featured: Project
   const stack = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([s]) => s);
 
   return (
-    <section className={styles.editorial} id="changelog" aria-labelledby="changelog-title">
+    <section className={styles.editorial} id="changelog" aria-labelledby="changelog-title" data-nav="light">
       <span className={styles.cap}>Release history</span>
       <h2 className={styles.big} id="changelog-title">experience</h2>
       <p className={styles.lede}>Every version was field-tested before the next one shipped. No versions were skipped.</p>

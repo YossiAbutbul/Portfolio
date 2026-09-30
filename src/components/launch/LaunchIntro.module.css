@@ -11,6 +11,20 @@
   z-index: 2;
   height: 100svh;
   color: var(--cream);
+  /* Clicks fall through to the desk so the tools can be picked up; only links take them. */
+  pointer-events: none;
+}
+
+.hero a {
+  pointer-events: auto;
+}
+
+.hint {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 4svh;
+  opacity: 0.75;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
 }
 
 .word {
@@ -19,8 +33,8 @@
   top: 11svh;
   margin: 0;
   font-weight: 800;
-  font-size: clamp(4rem, 14vw, 14rem);
-  line-height: 0.82;
+  font-size: clamp(3.4rem, 9.5vw, 10rem);
+  line-height: 0.86;
   letter-spacing: -0.05em;
   text-transform: none;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
@@ -42,31 +56,6 @@
   font-weight: 600;
   line-height: 1.25;
   text-shadow: 0 1px 20px rgba(0, 0, 0, 0.35);
-}
-
-.box {
-  position: absolute;
-  left: var(--gutter);
-  bottom: 5svh;
-  width: min(19rem, 70vw);
-  padding: 1.1rem;
-  background: rgba(40, 28, 20, 0.55);
-  backdrop-filter: blur(10px);
-}
-
-.box b {
-  display: block;
-  font-weight: 800;
-  font-size: 1.15rem;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-.box p {
-  margin: 2.6rem 0 0;
-  text-align: right;
-  font-weight: 600;
-  font-size: 0.9rem;
 }
 
 .scroll {
@@ -144,6 +133,7 @@
 }
 
 @media (max-width: 720px) {
+  .hint { display: none; }
   .side { top: auto; bottom: 34svh; left: var(--gutter); width: auto; font-size: 1.05rem; }
   .kicker { left: var(--gutter); top: 9svh; }
   .word { top: 13svh; }

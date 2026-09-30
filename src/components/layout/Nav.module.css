@@ -1,4 +1,4 @@
-/* Difference blending keeps the bar legible on every set without giving it a background. */
+/* Cream with a soft shadow reads on the desk and in the dark room; over the cream page it turns dark. */
 .nav {
   position: fixed;
   top: 0;
@@ -10,10 +10,11 @@
   align-items: center;
   gap: 1rem;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--gutter) 0;
-  color: #fff;
-  mix-blend-mode: difference;
-  font-size: 0.72rem;
-  font-weight: 700;
+  color: var(--cream);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.45);
+  transition: color 0.25s;
+  font-size: 0.78rem;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -50,4 +51,9 @@
   .links li:not(.keep) {
     display: none;
   }
+}
+
+.nav[data-tone="light"] {
+  color: var(--ink-dark);
+  text-shadow: none;
 }

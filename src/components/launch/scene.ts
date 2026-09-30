@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { buildDesk } from "./desk";
 
 /**
- * The launch scene: YOSSI-1 on a desk, then lifted into a spotlight, turned under a thermal camera,
+ * The launch scene: the device on a desk, then lifted into a spotlight, turned under a thermal camera,
  * and set back down. Everything is derived from scroll position each frame, so scrolling back
  * reverses it exactly. Sections are found by id; any that are missing are simply skipped.
  */
@@ -50,7 +51,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Variance shadows blur properly, which is what makes a soft window light look like one.
+  renderer.shadowMap.type = THREE.VSMShadowMap;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, .1, 100);
   camera.position.set(0, 0, 12);
@@ -66,13 +68,26 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const disposables: { dispose: () => void }[] = [envTarget];
   const keep = <T extends { dispose: () => void }>(x: T) => { disposables.push(x); return x; };
 
-  const sun = new THREE.DirectionalLight(0xffe0bd, 3.2);
+  const sunExtras: THREE.Light[] = [];
+  const sun = new THREE.DirectionalLight(0xffe0bd, 2.4);
   sun.position.set(-5, 6, 9); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
 
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6, near: 1, far: 30 });
-  sun.shadow.bias = -.0004; sun.shadow.radius = 6;
+  sun.shadow.bias = -.0006; sun.shadow.radius = 9; sun.shadow.blurSamples = 16;
   scene.add(sun, new THREE.HemisphereLight(0xfff1e0, 0x2a1a10, .7));
+  // Late sun through a window: a spot light carrying a blurred pane pattern across the desk.
+  if (!small()) {
+    const panes = document.createElement("canvas"); panes.width = panes.height = 256;
+    const pc = panes.getContext("2d")!; pc.fillStyle = "#000"; pc.fillRect(0, 0, 256, 256); pc.filter = "blur(6px)"; pc.fillStyle = "#fff";
+    for (const [px, py] of [[34, 34], [134, 34], [34, 134], [134, 134]]) pc.fillRect(px, py, 88, 88);
+    const paneTex = new THREE.CanvasTexture(panes); paneTex.colorSpace = THREE.SRGBColorSpace; disposables.push(paneTex);
+    const windowLight = new THREE.SpotLight(0xffc98f, 55, 40, .5, .7, 1.2);
+    windowLight.position.set(-9, 7, 11); windowLight.target.position.set(1.5, -1, 0);
+    windowLight.map = paneTex; windowLight.castShadow = true; windowLight.shadow.mapSize.set(1024, 1024); windowLight.shadow.radius = 12; windowLight.shadow.blurSamples = 16; windowLight.shadow.bias = -.0006;
+    scene.add(windowLight, windowLight.target);
+    sunExtras.push(windowLight);
+  }
   const spot = new THREE.SpotLight(0xffd9b0, 0, 30, .45, .8, 1.2);
   spot.position.set(2, 5, 10); scene.add(spot, spot.target);
 
@@ -93,83 +108,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
-  const desk = new THREE.Group(); scene.add(desk);
-  let seed = 11;
-  const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-  const wood = tex(1024 * TEX, 1024 * TEX, (x, w, h) => {
-    x.scale(TEX, TEX); w /= TEX; h /= TEX;
-    x.fillStyle = "#7a4a2a"; x.fillRect(0, 0, w, h);
-    for (let i = 0; i < 260; i++) {
-      const y = rnd() * h;
-      x.strokeStyle = `rgba(${40 + rnd() * 40},${20 + rnd() * 20},10,${.08 + rnd() * .12})`;
-      x.lineWidth = 1 + rnd() * 3; x.beginPath(); x.moveTo(0, y);
-      for (let px = 0; px <= w; px += 32) x.lineTo(px, y + Math.sin(px / 90 + i) * 6);
-      x.stroke();
-    }
-  });
-  wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.repeat.set(2, 2);
+  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, TEX, phone: small() });
+  const desk = deskSet.group; scene.add(desk);
   await yieldToMain(); if (signal?.aborted) return abandon();
-  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: wood, roughness: .7 }), false);
-  table.position.z = -.06; desk.add(table);
-
-  const MAT_W = 11.2, MAT_H = 7.4;
-  const matTex = tex(2240 * TEX, 1480 * TEX, (x, w, h) => {
-    x.scale(TEX, TEX); w /= TEX; h /= TEX;
-    x.fillStyle = "#2c574a"; x.fillRect(0, 0, w, h);
-    const cm = w / 56;
-    for (let i = 0; i * cm <= w; i++) { x.strokeStyle = i % 5 ? "rgba(225,240,230,.16)" : "rgba(225,240,230,.34)"; x.lineWidth = i % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(i * cm, 0); x.lineTo(i * cm, h); x.stroke(); }
-    for (let j = 0; j * cm <= h; j++) { x.strokeStyle = j % 5 ? "rgba(225,240,230,.16)" : "rgba(225,240,230,.34)"; x.lineWidth = j % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(0, j * cm); x.lineTo(w, j * cm); x.stroke(); }
-    x.fillStyle = "rgba(230,240,232,.7)"; x.font = `22px ${MONO}`;
-    for (let i = 5; i * cm < w; i += 5) { x.fillText(String(i), i * cm + 6, 26); x.fillText(String(i), i * cm + 6, h - 12); }
-    x.strokeStyle = "rgba(230,240,232,.3)"; x.lineWidth = 2;
-    x.beginPath(); x.arc(w * .82, h * .72, h * .16, 0, Math.PI * 2); x.stroke();
-    x.beginPath(); x.moveTo(w * .1, h * .9); x.lineTo(w * .3, h * .55); x.stroke();
-    x.font = `700 26px ${SANS}`; x.fillText("YOSSI-1 · CUTTING MAT · DO NOT SHIP BUGS", 30, h - 46);
-  });
-  await yieldToMain(); if (signal?.aborted) return abandon();
-  const matSide = std({ color: 0x244a3e, roughness: .9 });
-  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, roughness: .85 }), matSide], false);
-  mat.position.set(.9, -.1, -.03); desk.add(mat);
-
-  { // Pencil
-    const g = new THREE.Group();
-    g.add(mesh(geo(new THREE.CylinderGeometry(.11, .11, 4.2, 6)), std({ color: 0x5b6b3f, roughness: .45 })));
-    const tip = mesh(geo(new THREE.ConeGeometry(.11, .45, 6)), std({ color: 0xd9b384, roughness: .8 })); tip.position.y = 2.32; g.add(tip);
-    const lead = mesh(geo(new THREE.ConeGeometry(.035, .14, 12)), std({ color: 0x222222, roughness: .4, metalness: .3 })); lead.position.y = 2.6; g.add(lead);
-    const ferrule = mesh(geo(new THREE.CylinderGeometry(.115, .115, .3, 24)), std({ color: 0xc9c2b3, metalness: 1, roughness: .3 })); ferrule.position.y = -2.2; g.add(ferrule);
-    const rubber = mesh(geo(new THREE.CylinderGeometry(.11, .11, .22, 24)), std({ color: 0xd98a7a, roughness: .8 })); rubber.position.y = -2.45; g.add(rubber);
-    g.rotation.z = .62; g.position.set(4.3, 2.2, .12); desk.add(g);
-  }
-  { // Utility knife
-    const g = new THREE.Group();
-    g.add(mesh(geo(new RoundedBoxGeometry(3.1, .46, .2, 3, .08)), std({ color: 0xe0852f, roughness: .45 })));
-    const grip = mesh(geo(new RoundedBoxGeometry(1.5, .3, .22, 3, .06)), std({ color: 0x2a2320, roughness: .8 })); grip.position.x = -.5; g.add(grip);
-    const blade = mesh(geo(new THREE.BoxGeometry(.9, .3, .02)), std({ color: 0xdadada, metalness: 1, roughness: .2 })); blade.position.x = 1.95; g.add(blade);
-    const slider = mesh(geo(new RoundedBoxGeometry(.3, .16, .1, 2, .03)), std({ color: 0xcfc8bb, metalness: .8, roughness: .3 })); slider.position.set(.6, 0, .14); g.add(slider);
-    g.rotation.z = .55; g.position.set(4.6, -2.6, .12); desk.add(g);
-  }
-  { // Paperclips
-    const pts = [[0, -.5], [0, .45], [.26, .45], [.26, -.62], [-.08, -.62], [-.08, .3], [.16, .3], [.16, -.35]];
-    const path = new THREE.CurvePath<THREE.Vector3>();
-    for (let i = 0; i < pts.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pts[i][0], pts[i][1], 0), new THREE.Vector3(pts[i + 1][0], pts[i + 1][1], 0)));
-    const clipGeo = geo(new THREE.TubeGeometry(path, 64, .022, 8, false));
-    const steel = std({ color: 0xd9d6cf, metalness: 1, roughness: .25 });
-    const a = mesh(clipGeo, steel); a.position.set(-4.9, 2.4, .03); a.rotation.z = .9; desk.add(a);
-    const b = mesh(clipGeo, steel); b.position.set(-4.3, 1.9, .03); b.rotation.z = -.4; desk.add(b);
-  }
-  { // Eraser
-    const e = mesh(geo(new RoundedBoxGeometry(.9, .55, .3, 3, .08)), std({ color: 0xf1ede4, roughness: .9 }));
-    e.position.set(-4.6, -2.7, .15); e.rotation.z = .3; desk.add(e);
-  }
-  { // Sticky note
-    const note = tex(512, 512, (x) => {
-      x.fillStyle = "#efe2c4"; x.fillRect(0, 0, 512, 512); x.fillStyle = "#3a2c22"; x.font = `600 44px ${SANS}`;
-      ["TODO", "✓ find the slow part", "✓ build the fix", "✓ ship it", "☐ say hi"].forEach((l, i) => x.fillText(l, 40, 90 + i * 78));
-    });
-    const edge = std({ color: 0xe6d6b4 });
-    const n = mesh(geo(new THREE.BoxGeometry(1.7, 1.7, .01)), [edge, edge, edge, edge, std({ map: note, roughness: .9 }), edge]);
-    n.position.set(-3.6, -.6, .02); n.rotation.z = -.12; desk.add(n);
-  }
 
   // The veil darkens the desk into the spotlit room; its edges match the page backdrop exactly.
   const veilTex = tex(512, 512, (x, w, h) => {
@@ -205,7 +146,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const grille = new THREE.InstancedMesh(geo(new THREE.CircleGeometry(.018, 10)), dark, 60); const m4 = new THREE.Object3D();
   for (let i = 0; i < 60; i++) { m4.position.set(-1.28 + (i % 20) * .088, -.62 - Math.floor(i / 20) * .085, FRONT + .002); m4.updateMatrix(); grille.setMatrixAt(i, m4.matrix); }
   device.add(grille);
-  const labelTex = tex(512, 64, (x) => { x.fillStyle = "#8a7c6a"; x.font = `800 34px ${SANS}`; x.fillText("YOSSI-1", 0, 44); x.font = `400 20px ${MONO}`; x.fillText("MODEL YA-26", 200, 43); });
+  const labelTex = tex(512, 64, (x) => { x.fillStyle = "#8a7c6a"; x.font = `800 34px ${SANS}`; x.fillText("YOSSI ABUTBUL", 0, 44); x.font = `400 20px ${MONO}`; x.fillText("YA-26", 290, 43); });
   const label = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.2, .15)), keep(new THREE.MeshBasicMaterial({ transparent: true, map: labelTex })));
   label.position.set(-.73, -.82, FRONT + .002); device.add(label);
   const deviceMeshes: THREE.Mesh[] = [];
@@ -235,7 +176,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   let presses = 0, pressT = 0;
   function drawScreen() {
     const x = sx; x.fillStyle = "#0e0b09"; x.fillRect(0, 0, 640, 384);
-    x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`; x.fillText("YOSSI-1  ·  FW 2.1", 22, 38);
+    x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`; x.fillText("YOSSI ABUTBUL  ·  FW 2.1", 22, 38);
     x.fillStyle = "#f2e6d4"; x.font = `800 58px ${SANS}`;
     (scr.mode === "boot" ? "READY" : scr.text).split("\n").forEach((l, i) => x.fillText(l, 22, 170 + i * 64));
     if (scr.cursor) x.fillRect(22, 300, 26, 6);
@@ -340,6 +281,15 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     pointer.x = lerp(pointer.x, pointer.tx, 1 - Math.exp(-dt * 4)); pointer.y = lerp(pointer.y, pointer.ty, 1 - Math.exp(-dt * 4));
     moving += Math.abs(pointer.tx - pointer.x) + Math.abs(pointer.ty - pointer.y);
     const lifted = clamp((cur.z - FRONT) / 1.5);
+    // The desk is playable only while it is lit and the device is lying on it.
+    const onDesk = desk.visible && cur.veil < .05 && lifted < .03;
+    const halfH = camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), halfW = halfH * camera.aspect;
+    const obstacles: [number, number, number][] = onDesk ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s, cur.y, .95 * cur.s] as [number, number, number]) : [];
+    // Desktop keeps the tools in view; a phone is narrower than the mat, so there the mat is the edge.
+    const edge = small() ? { w: 5.5, h: 3.6 } : { w: halfW - .15, h: halfH - .15 };
+    const deskMoving = desk.visible ? deskSet.update(dt, edge, obstacles) : false;
+    if (!onDesk && deskSet.dragging()) deskSet.release();
+    canvas.style.pointerEvents = onDesk ? "auto" : "none";
     device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lifted), cur.z);
     device.rotation.set(cur.rx + pointer.y * .12 * (.3 + lifted), cur.ry + pointer.x * .25 * (.3 + lifted), cur.rz);
     device.scale.setScalar(Math.max(.0001, cur.s * cur.show));
@@ -347,7 +297,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     veil.visible = desk.visible = cur.veil < .985;
-    spot.intensity = cur.spot * 90; sun.intensity = 3.2 * (1 - cur.veil * .8);
+    spot.intensity = cur.spot * 90; sun.intensity = 2.4 * (1 - cur.veil * .8);
+    sunExtras.forEach((l) => { l.visible = desk.visible; });
     canvas.style.opacity = cur.show < .05 && cur.veil > .98 ? "0" : "1";
     setThermal(thermalMode);
     const heatValue = heat ? +heat.value : 0;
@@ -360,11 +311,32 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
     const floating = !still && lifted > .05 && device.visible;
-    idleFrames = moving > .0005 || floating || pressT > 0 || thermalMode ? 0 : idleFrames + 1;
+    idleFrames = moving > .0005 || floating || pressT > 0 || thermalMode || deskMoving ? 0 : idleFrames + 1;
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
   function kick() { if (!raf && !disposed) { last = performance.now(); raf = requestAnimationFrame(frame); } }
   addEventListener("scroll", kick, { passive: true });
+
+  /* ---------- Playing with the desk ---------- */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const rayAt = (x: number, y: number) => { const r = canvas.getBoundingClientRect(); ndc.set((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; };
+  const onDown = (e: PointerEvent) => {
+    if (!deskSet.grab(rayAt(e.clientX, e.clientY))) return;
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic events have no capturable pointer */ }
+    canvas.style.cursor = "grabbing"; e.preventDefault(); kick();
+  };
+  const onMove = (e: PointerEvent) => {
+    if (deskSet.dragging()) { deskSet.drag(rayAt(e.clientX, e.clientY)); kick(); return; }
+    if (e.pointerType === "mouse") canvas.style.cursor = deskSet.hit(rayAt(e.clientX, e.clientY)) ? "grab" : "";
+  };
+  const onUp = () => { if (deskSet.dragging()) { deskSet.release(); canvas.style.cursor = ""; kick(); } };
+  // A finger on a tool drags it; a finger anywhere else still scrolls the page.
+  const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; if (t && deskSet.hit(rayAt(t.clientX, t.clientY))) e.preventDefault(); };
+  canvas.addEventListener("pointerdown", onDown);
+  canvas.addEventListener("pointermove", onMove);
+  canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointercancel", onUp);
+  canvas.addEventListener("touchstart", onTouchStart, { passive: false });
   const onVisibility = () => { if (!document.hidden) kick(); };
   document.addEventListener("visibilitychange", onVisibility);
   const blink = window.setInterval(() => { if (scr.mode !== "heat" && !document.hidden) { scr.cursor = !scr.cursor; drawScreen(); kick(); } }, 530);
@@ -383,6 +355,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       disposed = true;
       cancelAnimationFrame(raf); clearInterval(blink);
       removeEventListener("pointermove", onPointer); removeEventListener("resize", resize); removeEventListener("scroll", kick);
+      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); canvas.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("visibilitychange", onVisibility);
       heat?.removeEventListener("input", onHeat);
       disposables.forEach((d) => d.dispose());

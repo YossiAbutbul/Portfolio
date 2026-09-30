@@ -45,7 +45,7 @@ export default function LaunchContact() {
         </ul>
       </section>
       <footer className={`${styles.footer} ${styles.cap}`}>
-        <span>YOSSI-1 · single unit · 2026</span>
+        <span>Yossi Abutbul · 2026</span>
         <a href="#top">Back to top</a>
       </footer>
     </>

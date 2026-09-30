@@ -1,0 +1,331 @@
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+/**
+ * The desk set: wood, the cutting mat, and the tools on it. Every tool is a small rigid body on the
+ * desk plane: grab one and it follows the pointer on a spring from the point you grabbed (so it
+ * turns naturally), flick it and it slides, and tools push each other and the device around.
+ */
+
+export interface DeskKit {
+  tex: (w: number, h: number, draw: (x: CanvasRenderingContext2D, w: number, h: number) => void) => THREE.CanvasTexture;
+  std: (p: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial;
+  geo: <T extends THREE.BufferGeometry>(g: T) => T;
+  mesh: (g: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], cast?: boolean) => THREE.Mesh;
+  SANS: string;
+  MONO: string;
+  /** Texture scale: 1 on desktop, .5 on phones. */
+  TEX: number;
+  /** Phones are portrait: the tools start closer in so they are on screen. */
+  phone: boolean;
+}
+
+interface Tool {
+  group: THREE.Group;
+  shadow: THREE.Mesh;
+  /** Collision circles in the tool's local frame: [x, y, r]. */
+  circles: [number, number, number][];
+  mass: number;
+  inertia: number;
+  rest: number;
+  collide: boolean;
+  x: number; y: number; a: number;
+  vx: number; vy: number; va: number;
+  lift: number;
+}
+
+export interface Desk {
+  group: THREE.Group;
+  /** Steps the bodies; returns true while anything is still moving. */
+  update: (dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) => boolean;
+  /** Tool under the ray, if any. */
+  hit: (ray: THREE.Ray) => boolean;
+  grab: (ray: THREE.Ray) => boolean;
+  drag: (ray: THREE.Ray) => void;
+  release: () => void;
+  dragging: () => boolean;
+}
+
+// Deterministic value noise, so the wood and the mat look the same on every visit.
+function makeNoise(seed: number) {
+  const perm = new Uint8Array(512);
+  let s = seed;
+  const r = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+  const p = [...Array(256).keys()];
+  for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+  const grid = (x: number, y: number) => perm[(perm[x & 255] + y) & 255] / 255;
+  const fade = (t: number) => t * t * (3 - 2 * t);
+  const noise = (x: number, y: number) => {
+    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+    const a = grid(xi, yi), b = grid(xi + 1, yi), c = grid(xi, yi + 1), d = grid(xi + 1, yi + 1);
+    const u = fade(xf), v = fade(yf);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+  const fbm = (x: number, y: number, oct = 4) => { let t = 0, amp = .5, f = 1; for (let i = 0; i < oct; i++) { t += noise(x * f, y * f) * amp; f *= 2; amp *= .5; } return t; };
+  return { noise, fbm, rand: r };
+}
+
+export function buildDesk(kit: DeskKit): Desk {
+  const { tex, std, geo, mesh, SANS, MONO, TEX, phone } = kit;
+  const group = new THREE.Group();
+  const N = makeNoise(7);
+
+  /* ---------- Wood table: planks with warped grain, a colour shift per plank, dark seams ---------- */
+  const W = Math.round(1024 * TEX), H = Math.round(1024 * TEX);
+  const woodData = (() => {
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d")!; const img = x.createImageData(W, H);
+    const bump = new Uint8ClampedArray(W * H);
+    const plank = H / 4;
+    for (let py = 0; py < H; py++) {
+      const pi = Math.floor(py / plank), shade = [0, .06, -.04, .03][pi % 4];
+      for (let px = 0; px < W; px++) {
+        const u = px / W * 6, v = py / H * 24;
+        const warp = N.fbm(u * .6 + pi * 7, v * .08, 3) * 4;
+        const grain = Math.sin((v + warp) * 9 + pi * 3) * .5 + .5;
+        const fine = N.noise(u * 60, v * 3) * .25;
+        const t = Math.min(1, Math.max(0, grain * .55 + fine + N.fbm(u * 2, v * .5, 2) * .3 + shade));
+        const seam = (py % plank) < 2 ? .45 : 1;
+        const i = (py * W + px) * 4;
+        img.data[i] = (104 + t * 60) * seam; img.data[i + 1] = (62 + t * 38) * seam; img.data[i + 2] = (34 + t * 20) * seam; img.data[i + 3] = 255;
+        bump[py * W + px] = 255 * (1 - grain * .6 - fine) * seam;
+      }
+    }
+    x.putImageData(img, 0, 0);
+    return { canvas: c, bump };
+  })();
+  const woodMap = new THREE.CanvasTexture(woodData.canvas); woodMap.colorSpace = THREE.SRGBColorSpace;
+  const woodBump = tex(W, H, (x) => { const img = x.createImageData(W, H); for (let i = 0; i < W * H; i++) { const b = woodData.bump[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } x.putImageData(img, 0, 0); });
+  for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
+  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: 1.4, roughness: .62 }), false);
+  table.position.z = -.06; group.add(table);
+
+  /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
+  const MAT_W = 11.2, MAT_H = 7.4;
+  const matTex = tex(Math.round(2240 * TEX), Math.round(1480 * TEX), (x, w, h) => {
+    x.scale(TEX, TEX); w /= TEX; h /= TEX;
+    x.fillStyle = "#2d5a4b"; x.fillRect(0, 0, w, h);
+    // Uneven tone from years of use.
+    for (let i = 0; i < 900; i++) {
+      const px = N.rand() * w, py = N.rand() * h, r = 40 + N.rand() * 160;
+      const g = x.createRadialGradient(px, py, 0, px, py, r);
+      const light = N.rand() > .5;
+      g.addColorStop(0, light ? "rgba(90,140,120,.035)" : "rgba(10,30,24,.05)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
+    }
+    for (let i = 0; i < 26000; i++) { x.fillStyle = N.rand() > .5 ? "rgba(210,235,225,.06)" : "rgba(0,20,14,.08)"; x.fillRect(N.rand() * w, N.rand() * h, 1.6, 1.6); }
+    const cm = w / 56;
+    for (let i = 0; i * cm <= w; i++) { x.strokeStyle = i % 5 ? "rgba(225,240,230,.15)" : "rgba(225,240,230,.32)"; x.lineWidth = i % 5 ? 1.1 : 2; x.beginPath(); x.moveTo(i * cm, 0); x.lineTo(i * cm, h); x.stroke(); }
+    for (let j = 0; j * cm <= h; j++) { x.strokeStyle = j % 5 ? "rgba(225,240,230,.15)" : "rgba(225,240,230,.32)"; x.lineWidth = j % 5 ? 1.1 : 2; x.beginPath(); x.moveTo(0, j * cm); x.lineTo(w, j * cm); x.stroke(); }
+    // Ruler ticks along the edges.
+    x.strokeStyle = "rgba(230,240,232,.55)";
+    for (let i = 0; i * cm / 2 <= w; i++) { const len = i % 10 === 0 ? 22 : i % 2 === 0 ? 14 : 8; x.lineWidth = 1.2; x.beginPath(); x.moveTo(i * cm / 2, 0); x.lineTo(i * cm / 2, len); x.moveTo(i * cm / 2, h); x.lineTo(i * cm / 2, h - len); x.stroke(); }
+    x.fillStyle = "rgba(230,240,232,.7)"; x.font = `20px ${MONO}`;
+    for (let i = 5; i * cm < w; i += 5) { x.fillText(String(i), i * cm + 5, 42); x.fillText(String(i), i * cm + 5, h - 28); }
+    x.strokeStyle = "rgba(230,240,232,.28)"; x.lineWidth = 2;
+    x.beginPath(); x.arc(w * .82, h * .72, h * .16, 0, Math.PI * 2); x.stroke();
+    for (const deg of [30, 45, 60]) { const r = deg * Math.PI / 180; x.beginPath(); x.moveTo(w * .08, h * .92); x.lineTo(w * .08 + Math.cos(r) * h * .5, h * .92 - Math.sin(r) * h * .5); x.stroke(); }
+    // Old knife cuts: thin pale scratches.
+    for (let i = 0; i < 70; i++) {
+      const px = N.rand() * w, py = N.rand() * h, len = 30 + N.rand() * 180, ang = (N.rand() - .5) * .6 + (N.rand() > .5 ? 0 : Math.PI / 2);
+      x.strokeStyle = `rgba(200,230,215,${.05 + N.rand() * .09})`; x.lineWidth = .8; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
+    }
+    x.font = `700 24px ${SANS}`; x.fillStyle = "rgba(230,240,232,.55)"; x.fillText("SELF-HEALING · 3 PLY · A3", 34, h - 60);
+  });
+  const matBump = tex(512, 340, (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); });
+  matBump.wrapS = matBump.wrapT = THREE.RepeatWrapping; matBump.repeat.set(4, 4);
+  const matSide = std({ color: 0x21463a, roughness: .9 });
+  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .6, roughness: .92 }), matSide], false);
+  mat.position.set(.9, -.1, -.03); group.add(mat);
+
+  /* ---------- Contact shadow: a soft dark pad under each tool, the thing that makes objects sit ---------- */
+  const padTex = tex(128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.55)"); g.addColorStop(.55, "rgba(0,0,0,.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const padMat = new THREE.MeshBasicMaterial({ map: padTex, transparent: true, depthWrite: false, toneMapped: false });
+  const padGeo = geo(new THREE.PlaneGeometry(1, 1));
+
+  const tools: Tool[] = [];
+  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean }) {
+    const g = new THREE.Group(); g.add(obj); group.add(g);
+    const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
+    const inertia = o.mass * o.circles.reduce((s, [cx, cy, r]) => s + cx * cx + cy * cy + r * r / 2, 0) / Math.max(1, o.circles.length);
+    const x = phone ? o.x * .42 : o.x, y = phone ? o.y * 1.3 : o.y;
+    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a: o.a, vx: 0, vy: 0, va: 0, lift: 0 });
+  }
+  const line = (n: number, len: number, r: number): [number, number, number][] => Array.from({ length: n }, (_, i) => [-len / 2 + len * i / (n - 1), 0, r]);
+
+  { // Pencil: hexagonal barrel, printed name, sharpened tip, ferrule and eraser
+    const g = new THREE.Group();
+    const paint = std({ color: 0x55653b, roughness: .38 });
+    const barrel = mesh(geo(new THREE.CylinderGeometry(.11, .11, 4.2, 6)), paint); barrel.rotation.y = Math.PI / 6; g.add(barrel);
+    const print = mesh(geo(new THREE.PlaneGeometry(1.6, .07)), new THREE.MeshBasicMaterial({ transparent: true, map: tex(512, 24, (x) => { x.fillStyle = "#d9c79a"; x.font = `700 18px ${SANS}`; x.fillText("HB · SHIP IT · ABUTBUL", 4, 18); }) }), false);
+    print.rotation.set(0, 0, Math.PI / 2); print.position.set(0, -.4, .096); g.add(print);
+    const tip = mesh(geo(new THREE.ConeGeometry(.11, .45, 6)), std({ color: 0xdcb88a, roughness: .85 })); tip.position.y = 2.32; tip.rotation.y = Math.PI / 6; g.add(tip);
+    const lead = mesh(geo(new THREE.ConeGeometry(.036, .14, 12)), std({ color: 0x262626, roughness: .35, metalness: .4 })); lead.position.y = 2.6; g.add(lead);
+    const ferrule = mesh(geo(new THREE.CylinderGeometry(.117, .117, .32, 24)), std({ color: 0xcfc7b4, metalness: 1, roughness: .28 })); ferrule.position.y = -2.22; g.add(ferrule);
+    const rubber = mesh(geo(new THREE.CylinderGeometry(.11, .1, .24, 24)), std({ color: 0xd88b7b, roughness: .85 })); rubber.position.y = -2.5; g.add(rubber);
+    g.rotation.z = -Math.PI / 2; // lie along x
+    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: .11, circles: line(7, 5, .13), mass: .4, foot: [5.4, .5] });
+  }
+  { // Utility knife: ribbed grip, snap blade, slider
+    const g = new THREE.Group();
+    g.add(mesh(geo(new RoundedBoxGeometry(3.1, .46, .2, 3, .08)), std({ color: 0xe08a34, roughness: .42 })));
+    const grip = mesh(geo(new RoundedBoxGeometry(1.5, .32, .22, 3, .06)), std({ color: 0x262120, roughness: .85 })); grip.position.x = -.5; g.add(grip);
+    const ribs = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.03, .3, .03)), std({ color: 0x1a1716, roughness: .8 }), 12); const m = new THREE.Object3D();
+    for (let i = 0; i < 12; i++) { m.position.set(-1.15 + i * .11, 0, .12); m.updateMatrix(); ribs.setMatrixAt(i, m.matrix); } ribs.castShadow = true; g.add(ribs);
+    const blade = mesh(geo(new THREE.BoxGeometry(.9, .3, .02)), std({ color: 0xe4e4e4, metalness: 1, roughness: .16 })); blade.position.x = 1.95; g.add(blade);
+    for (let i = 0; i < 5; i++) { const s = mesh(geo(new THREE.BoxGeometry(.006, .3, .022)), std({ color: 0x9a9a9a, metalness: 1, roughness: .3 }), false); s.position.x = 1.6 + i * .16; s.rotation.z = .5; g.add(s); }
+    const slider = mesh(geo(new RoundedBoxGeometry(.3, .16, .1, 2, .03)), std({ color: 0xcfc8bb, metalness: .8, roughness: .3 })); slider.position.set(.6, 0, .14); g.add(slider);
+    addTool(g, { x: 3.9, y: -2.2, a: .5, rest: .1, circles: [...line(6, 3.6, .25)], mass: .6, foot: [4, .9] });
+  }
+  { // SMA torque wrench: rubber grip, chrome shaft, the break-over joint, and the 8 mm open jaw
+    const g = new THREE.Group();
+    const chrome = std({ color: 0xe9e9e9, metalness: 1, roughness: .14 });
+    const grip = mesh(geo(new RoundedBoxGeometry(1.7, .36, .28, 4, .12)), std({ color: 0x1d1c1c, roughness: .9 })); grip.position.x = -1.1; g.add(grip);
+    const rings = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.035, .38, .3)), std({ color: 0x111111, roughness: .95 }), 9); const m = new THREE.Object3D();
+    for (let i = 0; i < 9; i++) { m.position.set(-1.8 + i * .17, 0, 0); m.updateMatrix(); rings.setMatrixAt(i, m.matrix); } rings.castShadow = true; g.add(rings);
+    const shaft = mesh(geo(new RoundedBoxGeometry(1.2, .2, .14, 3, .05)), chrome); shaft.position.x = .3; g.add(shaft);
+    const joint = mesh(geo(new THREE.CylinderGeometry(.15, .15, .2, 32)), chrome); joint.rotation.x = Math.PI / 2; joint.position.x = .95; g.add(joint);
+    // Head with an open hex jaw.
+    const head = new THREE.Shape(); head.absarc(0, 0, .34, .55, Math.PI * 2 - .55, false);
+    const jaw = .16; head.lineTo(.34, -jaw / 1.2); head.lineTo(.06, -jaw); head.lineTo(-.06, 0); head.lineTo(.06, jaw); head.lineTo(.34, jaw / 1.2);
+    const headGeo = geo(new THREE.ExtrudeGeometry(head, { depth: .09, bevelEnabled: true, bevelSize: .02, bevelThickness: .02, bevelSegments: 2 }));
+    headGeo.translate(0, 0, -.045);
+    const headMesh = mesh(headGeo, chrome); headMesh.position.x = 1.38; g.add(headMesh);
+    const neck = mesh(geo(new RoundedBoxGeometry(.3, .22, .1, 2, .04)), chrome); neck.position.x = 1.12; g.add(neck);
+    const decal = mesh(geo(new THREE.PlaneGeometry(1.0, .12)), new THREE.MeshBasicMaterial({ transparent: true, map: tex(512, 64, (x) => { x.fillStyle = "#3a3a3a"; x.font = `700 34px ${MONO}`; x.fillText("SMA · 8 IN-LB", 8, 46); }) }), false);
+    decal.position.set(.3, 0, .072); g.add(decal);
+    addTool(g, { x: -.7, y: -2.6, a: .06, rest: .14, circles: [[-1.7, 0, .2], [-1.1, 0, .2], [-.5, 0, .2], [.1, 0, .15], [.6, 0, .15], [1.38, 0, .36]], mass: .9, foot: [3.9, 1] });
+  }
+  { // Paperclips
+    const pts = [[0, -.5], [0, .45], [.26, .45], [.26, -.62], [-.08, -.62], [-.08, .3], [.16, .3], [.16, -.35]];
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    for (let i = 0; i < pts.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pts[i][0], pts[i][1], 0), new THREE.Vector3(pts[i + 1][0], pts[i + 1][1], 0)));
+    const clipGeo = geo(new THREE.TubeGeometry(path, 64, .02, 8, false));
+    const steel = std({ color: 0xdcd9d2, metalness: 1, roughness: .22 });
+    for (const [x, y, a] of [[-2.7, 2.9, .9], [-2.1, 2.55, -.4]] as const) {
+      const g = new THREE.Group(); g.add(mesh(clipGeo, steel));
+      addTool(g, { x, y, a, rest: .025, circles: [[0.09, -.3, .22], [0.09, .2, .22]], mass: .05, foot: [.7, 1.4] });
+    }
+  }
+  { // Eraser with its paper sleeve
+    const g = new THREE.Group();
+    g.add(mesh(geo(new RoundedBoxGeometry(.9, .55, .3, 3, .08)), std({ color: 0xf2eee5, roughness: .92 })));
+    const sleeve = mesh(geo(new THREE.BoxGeometry(.46, .57, .32)), std({ color: 0x3f5a8a, roughness: .7 })); sleeve.position.x = -.16; g.add(sleeve);
+    addTool(g, { x: -4.6, y: -2.7, a: .3, rest: .15, circles: [[-.25, 0, .3], [.25, 0, .3]], mass: .3, foot: [1.2, .85] });
+  }
+  { // Sticky note: slides under everything rather than bumping into it
+    const note = tex(512, 512, (x) => {
+      x.fillStyle = "#efe2c4"; x.fillRect(0, 0, 512, 512);
+      const g = x.createLinearGradient(0, 0, 0, 90); g.addColorStop(0, "rgba(160,130,80,.25)"); g.addColorStop(1, "rgba(160,130,80,0)"); x.fillStyle = g; x.fillRect(0, 0, 512, 90);
+      x.fillStyle = "#3a2c22"; x.font = `600 44px ${SANS}`;
+      ["TODO", "✓ find the slow part", "✓ build the fix", "✓ ship it", "☐ say hi"].forEach((l, i) => x.fillText(l, 40, 110 + i * 76));
+    });
+    const edge = std({ color: 0xe6d6b4 });
+    const g = new THREE.Group();
+    g.add(mesh(geo(new THREE.BoxGeometry(1.7, 1.7, .01)), [edge, edge, edge, edge, std({ map: note, roughness: .9 }), edge]));
+    addTool(g, { x: -4.1, y: -.5, a: -.12, rest: .006, circles: [[0, 0, .85]], mass: .08, foot: [1.9, 1.9], collide: false });
+  }
+
+  /* ---------- Physics ---------- */
+  const raycaster = new THREE.Raycaster();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -.15);
+  const hitPoint = new THREE.Vector3();
+  let held: { tool: Tool; lx: number; ly: number; px: number; py: number } | null = null;
+
+  function toolAt(ray: THREE.Ray) {
+    raycaster.ray.copy(ray);
+    const hits = raycaster.intersectObjects(tools.map((t) => t.group), true);
+    if (!hits.length) return null;
+    let o: THREE.Object3D | null = hits[0].object;
+    while (o && !tools.some((t) => t.group === o)) o = o.parent;
+    return tools.find((t) => t.group === o) ?? null;
+  }
+  const worldOf = (t: Tool, lx: number, ly: number) => { const c = Math.cos(t.a), s = Math.sin(t.a); return [t.x + lx * c - ly * s, t.y + lx * s + ly * c]; };
+
+  function update(dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) {
+    let moving = false;
+    const sub = 3, h = dt / sub;
+    for (let step = 0; step < sub; step++) {
+      for (const t of tools) {
+        if (held?.tool === t) {
+          // A critically damped spring from the grabbed point to the pointer.
+          const [gx, gy] = worldOf(t, held.lx, held.ly);
+          const rx = gx - t.x, ry = gy - t.y;
+          const pvx = t.vx - t.va * ry, pvy = t.vy + t.va * rx;
+          const k = 260 * t.mass, c = 2 * Math.sqrt(k * t.mass) * .9;
+          const fx = k * (held.px - gx) - c * pvx, fy = k * (held.py - gy) - c * pvy;
+          t.vx += fx / t.mass * h; t.vy += fy / t.mass * h;
+          t.va += (rx * fy - ry * fx) / t.inertia * h;
+          t.va *= Math.exp(-h * 6);
+        }
+        // Sliding friction on the mat.
+        const fr = held?.tool === t ? 1.5 : 5.5;
+        t.vx *= Math.exp(-h * fr); t.vy *= Math.exp(-h * fr); t.va *= Math.exp(-h * (fr + 2));
+        t.x += t.vx * h; t.y += t.vy * h; t.a += t.va * h;
+      }
+      // Tool against tool, and against the device and the edges of the view.
+      for (let i = 0; i < tools.length; i++) {
+        const A = tools[i]; if (!A.collide) continue;
+        for (const [ax, ay, ar] of A.circles) {
+          const [wx, wy] = worldOf(A, ax, ay);
+          for (let j = i + 1; j < tools.length; j++) {
+            const B = tools[j]; if (!B.collide) continue;
+            for (const [bx, by, br] of B.circles) {
+              const [vx, vy] = worldOf(B, bx, by);
+              const dx = vx - wx, dy = vy - wy, d = Math.hypot(dx, dy), pen = ar + br - d;
+              if (pen <= 0 || d < 1e-5) continue;
+              const nx = dx / d, ny = dy / d, im = 1 / A.mass + 1 / B.mass;
+              A.x -= nx * pen * (1 / A.mass) / im; A.y -= ny * pen * (1 / A.mass) / im;
+              B.x += nx * pen * (1 / B.mass) / im; B.y += ny * pen * (1 / B.mass) / im;
+              const rv = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
+              if (rv < 0) { const j2 = -(1.3) * rv / im; A.vx -= j2 * nx / A.mass; A.vy -= j2 * ny / A.mass; B.vx += j2 * nx / B.mass; B.vy += j2 * ny / B.mass; A.va -= j2 * .15 / A.inertia; B.va += j2 * .15 / B.inertia; }
+            }
+          }
+          for (const [ox, oy, or] of obstacles) {
+            const dx = wx - ox, dy = wy - oy, d = Math.hypot(dx, dy), pen = ar + or - d;
+            if (pen <= 0 || d < 1e-5) continue;
+            const nx = dx / d, ny = dy / d; A.x += nx * pen; A.y += ny * pen;
+            const rv = A.vx * nx + A.vy * ny; if (rv < 0) { A.vx -= 1.4 * rv * nx; A.vy -= 1.4 * rv * ny; A.va += (ax * ny - ay * nx) * rv * .6; }
+          }
+        }
+      }
+      for (const t of tools) {
+        for (const [cx, cy, r] of t.circles) {
+          const [wx, wy] = worldOf(t, cx, cy);
+          const ex = Math.max(0, Math.abs(wx) + r - bounds.w) * Math.sign(wx), ey = Math.max(0, Math.abs(wy) + r - bounds.h) * Math.sign(wy);
+          if (ex) { t.x -= ex; if (t.vx * ex > 0) t.vx *= -.4; }
+          if (ey) { t.y -= ey; if (t.vy * ey > 0) t.vy *= -.4; }
+        }
+      }
+    }
+    for (const t of tools) {
+      const target = held?.tool === t ? .35 : 0;
+      t.lift += (target - t.lift) * (1 - Math.exp(-dt * 14));
+      t.group.position.set(t.x, t.y, t.rest + t.lift);
+      t.group.rotation.z = t.a;
+      t.shadow.position.set(t.x + t.lift * .35, t.y - t.lift * .35, .004);
+      t.shadow.rotation.z = t.a;
+      const spread = 1 + t.lift * 1.4;
+      t.shadow.scale.x = Math.abs(t.shadow.scale.x) / (t.shadow.userData.spread || 1) * spread; t.shadow.scale.y = Math.abs(t.shadow.scale.y) / (t.shadow.userData.spread || 1) * spread; t.shadow.userData.spread = spread;
+      if (Math.abs(t.vx) + Math.abs(t.vy) + Math.abs(t.va) > .002 || Math.abs(t.lift - target) > .002) moving = true;
+    }
+    return moving || !!held;
+  }
+
+  return {
+    group,
+    update,
+    hit: (ray) => !!toolAt(ray),
+    grab(ray) {
+      const t = toolAt(ray); if (!t) return false;
+      raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return false;
+      const c = Math.cos(-t.a), s = Math.sin(-t.a), dx = hitPoint.x - t.x, dy = hitPoint.y - t.y;
+      held = { tool: t, lx: dx * c - dy * s, ly: dx * s + dy * c, px: hitPoint.x, py: hitPoint.y };
+      return true;
+    },
+    drag(ray) { if (!held) return; raycaster.ray.copy(ray); if (raycaster.ray.intersectPlane(plane, hitPoint)) { held.px = hitPoint.x; held.py = hitPoint.y; } },
+    release() { held = null; },
+    dragging: () => !!held,
+  };
+}
