@@ -92,9 +92,9 @@ export function buildDesk(kit: DeskKit): Desk {
         const grain = Math.sin((v + warp) * 9 + pi * 3) * .5 + .5;
         const fine = N.noise(u * 60, v * 3) * .25;
         const t = Math.min(1, Math.max(0, grain * .55 + fine + N.fbm(u * 2, v * .5, 2) * .3 + shade));
-        const seam = (py % plank) < 2 ? .45 : 1;
+        const seam = (py % plank) < 2 ? .7 : 1;
         const i = (py * W + px) * 4;
-        img.data[i] = (104 + t * 60) * seam; img.data[i + 1] = (62 + t * 38) * seam; img.data[i + 2] = (34 + t * 20) * seam; img.data[i + 3] = 255;
+        img.data[i] = (150 + t * 56) * seam; img.data[i + 1] = (98 + t * 42) * seam; img.data[i + 2] = (52 + t * 30) * seam; img.data[i + 3] = 255;
         bump[py * W + px] = 255 * (1 - grain * .6 - fine) * seam;
       }
     }
@@ -111,7 +111,7 @@ export function buildDesk(kit: DeskKit): Desk {
   const MAT_W = 11.2, MAT_H = 7.4;
   const matTex = tex(Math.round(2240 * TEX), Math.round(1480 * TEX), (x, w, h) => {
     x.scale(TEX, TEX); w /= TEX; h /= TEX;
-    x.fillStyle = "#2d5a4b"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#3a6448"; x.fillRect(0, 0, w, h);
     // Uneven tone from years of use.
     for (let i = 0; i < 900; i++) {
       const px = N.rand() * w, py = N.rand() * h, r = 40 + N.rand() * 160;
@@ -121,26 +121,32 @@ export function buildDesk(kit: DeskKit): Desk {
       x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
     }
     for (let i = 0; i < 26000; i++) { x.fillStyle = N.rand() > .5 ? "rgba(210,235,225,.06)" : "rgba(0,20,14,.08)"; x.fillRect(N.rand() * w, N.rand() * h, 1.6, 1.6); }
-    const cm = w / 56;
-    for (let i = 0; i * cm <= w; i++) { x.strokeStyle = i % 5 ? "rgba(225,240,230,.15)" : "rgba(225,240,230,.32)"; x.lineWidth = i % 5 ? 1.1 : 2; x.beginPath(); x.moveTo(i * cm, 0); x.lineTo(i * cm, h); x.stroke(); }
-    for (let j = 0; j * cm <= h; j++) { x.strokeStyle = j % 5 ? "rgba(225,240,230,.15)" : "rgba(225,240,230,.32)"; x.lineWidth = j % 5 ? 1.1 : 2; x.beginPath(); x.moveTo(0, j * cm); x.lineTo(w, j * cm); x.stroke(); }
-    // Ruler ticks along the edges.
-    x.strokeStyle = "rgba(230,240,232,.55)";
-    for (let i = 0; i * cm / 2 <= w; i++) { const len = i % 10 === 0 ? 22 : i % 2 === 0 ? 14 : 8; x.lineWidth = 1.2; x.beginPath(); x.moveTo(i * cm / 2, 0); x.lineTo(i * cm / 2, len); x.moveTo(i * cm / 2, h); x.lineTo(i * cm / 2, h - len); x.stroke(); }
-    x.fillStyle = "rgba(230,240,232,.7)"; x.font = `20px ${MONO}`;
-    for (let i = 5; i * cm < w; i += 5) { x.fillText(String(i), i * cm + 5, 42); x.fillText(String(i), i * cm + 5, h - 28); }
+    // A printed border carries the rulers; the grid sits inside it, like a real self-healing mat.
+    const m = 96, gw = w - m * 2, gh = h - m * 2, cells = 50, cm = gw / cells;
+    x.strokeStyle = "rgba(238,228,206,.5)"; x.lineWidth = 2.4; x.strokeRect(m, m, gw, gh);
+    for (let i = 0; i <= cells; i++) { const px = m + i * cm; x.strokeStyle = i % 5 ? "rgba(238,228,206,.2)" : "rgba(238,228,206,.42)"; x.lineWidth = i % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(px, m); x.lineTo(px, h - m); x.stroke(); }
+    for (let j = 0; j * cm <= gh + .5; j++) { const py = m + j * cm; x.strokeStyle = j % 5 ? "rgba(238,228,206,.2)" : "rgba(238,228,206,.42)"; x.lineWidth = j % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(m, py); x.lineTo(w - m, py); x.stroke(); }
+    // Ruler ticks and numbers in the border, bottom and left, in the mat's cream ink.
+    x.strokeStyle = "rgba(238,228,206,.75)"; x.fillStyle = "rgba(240,230,210,.85)"; x.font = `600 34px ${SANS}`; x.textAlign = "center";
+    for (let i = 0; i <= cells * 2; i++) { const px = m + i * cm / 2, len = i % 10 === 0 ? 26 : i % 2 === 0 ? 16 : 9; x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, h - m); x.lineTo(px, h - m + len); x.stroke(); }
+    for (let i = 0; i <= cells; i += 2) x.fillText(String(i * 5), m + i * cm, h - m + 66);
+    x.textAlign = "right"; x.textBaseline = "middle";
+    const rows = Math.floor(gh / cm);
+    for (let j = 0; j <= rows * 2; j++) { const py = h - m - j * cm / 2, len = j % 10 === 0 ? 26 : j % 2 === 0 ? 16 : 9; x.beginPath(); x.moveTo(m, py); x.lineTo(m - len, py); x.stroke(); }
+    for (let j = 0; j <= rows; j += 2) { x.save(); x.translate(m - 44, h - m - j * cm); x.rotate(-Math.PI / 2); x.textAlign = "center"; x.fillText(String(j * 5), 0, 0); x.restore(); }
+    x.textAlign = "left"; x.textBaseline = "alphabetic";
     // Old knife cuts: thin pale scratches.
     for (let i = 0; i < 70; i++) {
       const px = N.rand() * w, py = N.rand() * h, len = 30 + N.rand() * 180, ang = (N.rand() - .5) * .6 + (N.rand() > .5 ? 0 : Math.PI / 2);
       x.strokeStyle = `rgba(200,230,215,${.05 + N.rand() * .09})`; x.lineWidth = .8; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
     }
-    x.font = `700 24px ${SANS}`; x.fillStyle = "rgba(230,240,232,.55)"; x.fillText("SELF-HEALING · 3 PLY · A3", 34, h - 60);
+    x.font = `700 24px ${SANS}`; x.fillStyle = "rgba(240,230,210,.45)"; x.fillText("SELF-HEALING · 3 PLY · A3", w - 470, h - 34);
   });
   const matBump = tex(512, 340, (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); });
   matBump.wrapS = matBump.wrapT = THREE.RepeatWrapping; matBump.repeat.set(4, 4);
-  const matSide = std({ color: 0x21463a, roughness: .9 });
+  const matSide = std({ color: 0x2c5039, roughness: .9 });
   const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .6, roughness: .92 }), matSide], false);
-  mat.position.set(.9, -.1, -.03); group.add(mat);
+  mat.position.set(1.9, .45, -.03); mat.rotation.z = -.07; group.add(mat);
 
   /* ---------- Contact shadow: a soft dark pad under each tool, the thing that makes objects sit ---------- */
   const padTex = tex(128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.55)"); g.addColorStop(.55, "rgba(0,0,0,.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });

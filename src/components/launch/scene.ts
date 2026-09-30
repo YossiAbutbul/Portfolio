@@ -51,7 +51,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const TEX = small() ? .5 : 1;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small() ? 1.25 : 1.6));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.02;
   renderer.shadowMap.enabled = true;
   // Variance shadows blur properly, which is what makes a soft window light look like one.
   renderer.shadowMap.type = THREE.VSMShadowMap;
@@ -72,20 +72,23 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const keep = <T extends { dispose: () => void }>(x: T) => { disposables.push(x); return x; };
 
   const sunExtras: THREE.Light[] = [];
-  const sun = new THREE.DirectionalLight(0xffe0bd, 2.4);
+  const sun = new THREE.DirectionalLight(0xffe0bd, 1.7);
   sun.position.set(-5, 6, 9); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
 
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6, near: 1, far: 30 });
   sun.shadow.bias = -.0006; sun.shadow.radius = 9; sun.shadow.blurSamples = 16;
-  scene.add(sun, new THREE.HemisphereLight(0xfff1e0, 0x2a1a10, .7));
+  scene.add(sun, new THREE.HemisphereLight(0xffe9cf, 0x3a2414, .6));
   // Late sun through a window: a spot light carrying a blurred pane pattern across the desk.
   if (!small()) {
     const panes = document.createElement("canvas"); panes.width = panes.height = 256;
-    const pc = panes.getContext("2d")!; pc.fillStyle = "#000"; pc.fillRect(0, 0, 256, 256); pc.filter = "blur(6px)"; pc.fillStyle = "#fff";
-    for (const [px, py] of [[34, 34], [134, 34], [34, 134], [134, 134]]) pc.fillRect(px, py, 88, 88);
+    // Light through a window with a plant in it: bright panes broken up by soft leaf shadows.
+    const pc = panes.getContext("2d")!; pc.fillStyle = "#000"; pc.fillRect(0, 0, 256, 256); pc.filter = "blur(7px)"; pc.fillStyle = "#fff";
+    for (const [px, py] of [[20, 20], [134, 20], [20, 134], [134, 134]]) pc.fillRect(px, py, 102, 102);
+    pc.fillStyle = "#000"; let ls = 5; const lr = () => { ls = (Math.imul(ls, 1664525) + 1013904223) >>> 0; return ls / 4294967296; };
+    for (let i = 0; i < 26; i++) { pc.beginPath(); pc.ellipse(120 + (lr() - .5) * 200, 60 + lr() * 150, 8 + lr() * 18, 4 + lr() * 8, lr() * Math.PI, 0, Math.PI * 2); pc.fill(); }
     const paneTex = new THREE.CanvasTexture(panes); paneTex.colorSpace = THREE.SRGBColorSpace; disposables.push(paneTex);
-    const windowLight = new THREE.SpotLight(0xffc98f, 55, 40, .5, .7, 1.2);
+    const windowLight = new THREE.SpotLight(0xffc98f, 95, 40, .55, .6, 1.2);
     windowLight.position.set(-9, 7, 11); windowLight.target.position.set(1.5, -1, 0);
     windowLight.map = paneTex; windowLight.castShadow = true; windowLight.shadow.mapSize.set(1024, 1024); windowLight.shadow.radius = 12; windowLight.shadow.blurSamples = 16; windowLight.shadow.bias = -.0006;
     scene.add(windowLight, windowLight.target);
@@ -132,9 +135,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const device = new THREE.Group(); scene.add(device);
   const W = 3, H = 1.9, D = .75, FRONT = D / 2;
   const shell = phys({ color: 0xe9dfcf, roughness: .5, clearcoat: .3 });
-  const accent = phys({ color: 0xc46f35, roughness: .4, clearcoat: .4 });
+  const accent = phys({ color: 0xc8692c, roughness: .55, envMapIntensity: .35 });
   const dark = phys({ color: 0x2a221c, roughness: .5 });
-  const olive = phys({ color: 0x4d5a36, roughness: .45, clearcoat: .5 });
+  const olive = phys({ color: 0x4d5a36, roughness: .6, envMapIntensity: .35 });
   const glass = phys({ color: 0x0c0a09, roughness: .1, clearcoat: 1 });
   device.add(mesh(geo(new RoundedBoxGeometry(W, H, D, 6, .22)), shell));
   const sc = document.createElement("canvas"); sc.width = 640; sc.height = 384;
@@ -303,7 +306,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     veil.visible = desk.visible = cur.veil < .985;
-    spot.intensity = cur.spot * 90; sun.intensity = 2.4 * (1 - cur.veil * .8);
+    spot.intensity = cur.spot * 90; sun.intensity = 1.7 * (1 - cur.veil * .8);
     sunExtras.forEach((l) => { l.visible = desk.visible; });
     canvas.style.opacity = cur.show < .05 && cur.veil > .98 ? "0" : "1";
     setThermal(thermalMode);
@@ -313,6 +316,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     else if (!thermalMode && scr.mode === "heat") show(presses ? "msg" : "boot", "READY");
     pressT = Math.max(0, pressT - dt * 5);
     button.position.z = FRONT + .07 - Math.sin(pressT * Math.PI) * .06;
+    // On the desk the camera leans back and turns a touch, like a photo taken standing over a table;
+    // it straightens up as the room goes dark so every later pose is shot square on.
+    const tilt = 1 - cur.veil;
+    camera.position.set(0, -3.6 * tilt, 12 + 1.4 * tilt);
+    camera.up.set(Math.sin(.035 * tilt), Math.cos(.035 * tilt), 0);
+    camera.lookAt(0, .3 * tilt, 0);
     renderer.render(scene, camera);
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.

@@ -69,6 +69,8 @@ export default function LaunchStage() {
       {/* The giant word slides between the backdrop and the device; the scene moves it. */}
       <div className={styles.word} id="launch-word" aria-hidden="true">it ships.</div>
       <canvas ref={canvas} className={styles.canvas} data-ready={ready} aria-hidden="true" />
+      {/* Lens: vignette, grain and soft focus at the edges, only over the desk. */}
+      <div className={styles.lens} data-on={backdrop === "desk"} aria-hidden="true" />
     </>
   );
 }
