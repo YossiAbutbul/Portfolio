@@ -117,7 +117,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
-  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, TEX, phone: small() });
+  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, TEX, phone: small(), photo: !small() });
   const desk = deskSet.group; scene.add(desk);
   hooks.onProgress?.(.6);
   await yieldToMain(); if (signal?.aborted) return abandon();
@@ -387,7 +387,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     gtao.updateGtaoMaterial({ radius: .5, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 16 });
     gtao.blendIntensity = .95;
     c.addPass(gtao);
-    const b = new BokehPass(scene, camera, { focus: 13, aperture: .0022, maxblur: .007 });
+    // Just a hint of focus falloff at the far edge; sharpness is what makes a product shot read as real.
+    const b = new BokehPass(scene, camera, { focus: 13, aperture: .0005, maxblur: .0025 });
     c.addPass(b);
     c.addPass(new OutputPass());
     c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);

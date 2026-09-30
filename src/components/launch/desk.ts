@@ -18,6 +18,8 @@ export interface DeskKit {
   TEX: number;
   /** Phones are portrait: the tools start closer in so they are on screen. */
   phone: boolean;
+  /** Desktop swaps in photographed textures (public/textures) once they arrive. */
+  photo: boolean;
 }
 
 interface Tool {
@@ -73,7 +75,7 @@ function makeNoise(seed: number) {
 }
 
 export function buildDesk(kit: DeskKit): Desk {
-  const { tex, std, geo, mesh, SANS, MONO, TEX, phone } = kit;
+  const { tex, std, geo, mesh, SANS, MONO, TEX, phone, photo } = kit;
   const group = new THREE.Group();
   const N = makeNoise(7);
 
@@ -106,6 +108,24 @@ export function buildDesk(kit: DeskKit): Desk {
   for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
   const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: 2.2, roughness: .78 }), false);
   table.position.z = -.06; group.add(table);
+
+  // Desktop: photographed oak (Poly Haven oak_veneer_01, CC0) replaces the generated wood once loaded.
+  const loader = new THREE.TextureLoader();
+  const photoTex = (url: string, color: boolean, repeat: [number, number], rotate = 0) => {
+    const t = loader.load(url, () => { (table.material as THREE.Material).needsUpdate = true; });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); t.anisotropy = 8;
+    if (rotate) { t.center.set(.5, .5); t.rotation = rotate; }
+    if (color) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  if (photo) {
+    const m = table.material as THREE.MeshStandardMaterial;
+    const rep: [number, number] = [2.4, 1.6];
+    m.map = photoTex("/textures/oak-color.webp", true, rep, Math.PI / 2);
+    m.normalMap = photoTex("/textures/oak-normal.webp", false, rep, Math.PI / 2); m.normalScale.set(.8, .8);
+    m.roughnessMap = photoTex("/textures/oak-rough.webp", false, rep, Math.PI / 2); m.roughness = 1;
+    m.bumpMap = null; m.color.set(0xf2dcc0); m.needsUpdate = true;
+  }
 
   /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
   const MAT_W = 11.2, MAT_H = 7.4;
@@ -147,6 +167,14 @@ export function buildDesk(kit: DeskKit): Desk {
   const matSide = std({ color: 0x2c5039, roughness: .9 });
   const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .9, roughness: 1 }), matSide], false);
   mat.position.set(1.9, .45, -.03); mat.rotation.z = -.07; group.add(mat);
+  // Desktop: the mat keeps its printed colour and grid, with photographed surface relief (Poly Haven
+  // linoleum_brown, CC0) tiled small, so it reads as a real matte plastic sheet.
+  if (photo) {
+    const top = (mat.material as THREE.Material[])[4] as THREE.MeshStandardMaterial;
+    top.normalMap = photoTex("/textures/mat-normal.webp", false, [7, 4.6]); top.normalScale.set(.45, .45);
+    top.roughnessMap = photoTex("/textures/mat-rough.webp", false, [7, 4.6]); top.roughness = 1;
+    top.bumpMap = null; top.needsUpdate = true;
+  }
 
   /* ---------- Contact shadow: a soft dark pad under each tool, the thing that makes objects sit ---------- */
   const padTex = tex(128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.55)"); g.addColorStop(.55, "rgba(0,0,0,.22)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
@@ -189,7 +217,7 @@ export function buildDesk(kit: DeskKit): Desk {
   }
   { // SMA torque wrench: rubber grip, chrome shaft, the break-over joint, and the 8 mm open jaw
     const g = new THREE.Group();
-    const chrome = std({ color: 0xa9a9a7, metalness: 1, roughness: .42 });
+    const chrome = std({ color: 0x9a9a98, metalness: 1, roughness: .48, envMapIntensity: .45 });
     const grip = mesh(geo(new RoundedBoxGeometry(1.7, .36, .28, 4, .12)), std({ color: 0x1d1c1c, roughness: .9 })); grip.position.x = -1.1; g.add(grip);
     const rings = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.035, .38, .3)), std({ color: 0x111111, roughness: .95 }), 9); const m = new THREE.Object3D();
     for (let i = 0; i < 9; i++) { m.position.set(-1.8 + i * .17, 0, 0); m.updateMatrix(); rings.setMatrixAt(i, m.matrix); } rings.castShadow = true; g.add(rings);
