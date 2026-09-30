@@ -199,17 +199,25 @@ export function buildDesk(kit: DeskKit): Desk {
       [R, 1.78], [.1, 1.86], [.082, 2.0], [.062, 2.16], [.044, 2.3], [.032, 2.4],
       [.024, 2.47], [.014, 2.55], [.006, 2.6], [0, 2.62],
     ];
-    const pencilGeo = geo(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r === .105 ? R : r * K, y)), 48));
+    // Dense rows where the paint meets the wood, so the colour change follows the scallop instead of
+    // being smeared into spikes across long triangles.
+    const rows: THREE.Vector2[] = [];
+    profile.forEach(([r, y], i) => {
+      const v = new THREE.Vector2(r === .105 ? R : r * K, y), next = profile[i + 1];
+      rows.push(v);
+      if (!next || y < 1.7 || y > 2.05) return;
+      const n = Math.ceil((next[1] - y) / .008), w = new THREE.Vector2(next[0] === .105 ? R : next[0] * K, next[1]);
+      for (let k = 1; k < n; k++) rows.push(v.clone().lerp(w, k / n));
+    });
+    const pencilGeo = geo(new THREE.LatheGeometry(rows, 96));
     const pos = pencilGeo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
-    const paint = new THREE.Color(0x2c3322), band = new THREE.Color(0xc9a878), wood = new THREE.Color(0xecd4ab), lead = new THREE.Color(0x2b2a28);
+    const paint = new THREE.Color(0x2c3322), band = new THREE.Color(0xc9a878), wood = new THREE.Color(0xdcbd8e), lead = new THREE.Color(0x2b2a28);
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i), r = Math.hypot(pos.getX(i), pos.getZ(i));
       if (y > 2.43 || (y > 1.8 && r < .03 * K)) c.copy(lead);
-      else if (y > 1.8) {
-        // The painted edge the sharpener leaves: scalloped where the cut meets the paint.
-        const a = Math.atan2(pos.getZ(i), pos.getX(i)), edge = 1.84 + Math.abs(Math.sin(a * 3)) * .08;
-        c.copy(y < edge ? paint : wood);
-      } else if (y < -2.0 && y > -2.14) c.copy(band);
+      // A round pencil sharpens to a clean ring where the paint ends.
+      else if (y > 1.8) c.copy(y < 1.87 ? paint : wood);
+      else if (y < -2.0 && y > -2.14) c.copy(band);
       else c.copy(paint);
       col.set([c.r, c.g, c.b], i * 3);
     }
