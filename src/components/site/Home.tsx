@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
 import type { Project } from "@/types/project";
-import HeroSequence from "./HeroSequence";
+import LaunchStage from "@/components/launch/LaunchStage";
+import LaunchIntro from "@/components/launch/LaunchIntro";
 import ContactForm from "./ContactForm";
 import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
@@ -161,7 +162,8 @@ export default function Home() {
   return (
     <div ref={root} className={styles.page}>
       {/* ------------------------------------------------------------------ */}
-      <HeroSequence />
+      <LaunchStage />
+      <LaunchIntro />
 
       {/* ------------------------------------------------------------------ */}
       <Section id="work" title="Projects">
@@ -309,7 +311,7 @@ export default function Home() {
       <footer className={styles.footer}>
         <div className={`container mono ${styles.footerInner}`}>
           <span>Yossi Abutbul · 2026</span>
-          <a href="#hero">Back to top</a>
+          <a href="#top">Back to top</a>
         </div>
       </footer>
     </div>

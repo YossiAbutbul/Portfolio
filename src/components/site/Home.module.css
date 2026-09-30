@@ -14,7 +14,7 @@
 .heroActions .button { text-decoration-color: var(--mark); }
 .button:hover, .buttonGhost:hover { text-decoration-color: var(--ink); }
 .buttonGhost { color: var(--ink-muted); }
-.section { position: relative; border-top: 1px solid var(--rule); scroll-margin-top: 5rem; }
+.section { position: relative; z-index: 2; background: var(--paper); border-top: 1px solid var(--rule); scroll-margin-top: 5rem; }
 /* Trims the word that runs behind the contact card. `clip` rather than
    `hidden`, which would make a scroll container of the section. */
 .section[id="contact"] { overflow: clip; }
@@ -96,7 +96,7 @@
 .contactLabel { font-size: 0.85rem; color: var(--ink-muted); text-transform: none; letter-spacing: 0; }
 .contactValue { justify-self: start; font-size: 1.05rem; overflow-wrap: break-word; border-bottom: 1px solid transparent; transition: color 180ms, border-color 180ms; }
 .contactValue:hover, .contactValue:focus-visible { color: var(--mark); border-color: var(--mark); }
-.footer { border-top: 1px solid var(--rule); }
+.footer { position: relative; z-index: 2; background: var(--paper); border-top: 1px solid var(--rule); }
 .footerInner { max-width: none !important; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-top: 1.5rem; padding-bottom: 1.5rem; font-size: 0.75rem; text-transform: none; letter-spacing: 0; color: var(--ink-muted); }
 @media (max-height: 46rem) {
   .heroName { margin-bottom: 0.9rem; }

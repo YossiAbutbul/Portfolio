@@ -1,0 +1,160 @@
+.cap {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------- Desk hero ---------- */
+.hero {
+  position: relative;
+  z-index: 2;
+  height: 100svh;
+  color: var(--cream);
+}
+
+.word {
+  position: absolute;
+  left: var(--gutter);
+  top: 11svh;
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(4rem, 14vw, 14rem);
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  text-transform: none;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
+}
+
+.kicker {
+  position: absolute;
+  left: calc(var(--gutter) + 16vw);
+  top: 8svh;
+}
+
+.side {
+  position: absolute;
+  right: var(--gutter);
+  top: 44svh;
+  width: min(24rem, 32vw);
+  margin: 0;
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.25;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.35);
+}
+
+.box {
+  position: absolute;
+  left: var(--gutter);
+  bottom: 5svh;
+  width: min(19rem, 70vw);
+  padding: 1.1rem;
+  background: rgba(40, 28, 20, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.box b {
+  display: block;
+  font-weight: 800;
+  font-size: 1.15rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.box p {
+  margin: 2.6rem 0 0;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.scroll {
+  position: absolute;
+  left: 50%;
+  bottom: 3svh;
+  translate: -50% 0;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  min-height: 44px;
+}
+
+.scroll i {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  display: inline-grid;
+  place-items: center;
+  font-style: normal;
+  font-size: 0.7rem;
+}
+
+/* ---------- The spotlight beat ---------- */
+.pin {
+  position: relative;
+  z-index: 2;
+  height: 260svh;
+}
+
+.frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.duo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  padding: 0 var(--gutter);
+  color: var(--cream);
+}
+
+.duo h2 {
+  margin: 0;
+  max-width: 9ch;
+  font-size: clamp(2.2rem, 4.2vw, 4.4rem);
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+}
+
+.duo p {
+  justify-self: end;
+  max-width: 17rem;
+  margin: 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.fade {
+  transition: opacity 0.5s, transform 0.6s var(--ease-out);
+}
+
+.fade[data-off] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+@media (max-width: 720px) {
+  .side { top: auto; bottom: 28svh; left: var(--gutter); width: auto; }
+  .kicker { left: var(--gutter); top: 9svh; }
+  .word { top: 13svh; }
+  .duo { grid-template-columns: 1fr; align-content: space-between; padding-block: 16svh 10svh; }
+  .duo p { justify-self: start; }
+}
+
+/* No pinned scrolling: the beat becomes an ordinary section with its words in place. */
+@media (prefers-reduced-motion: reduce) {
+  .pin { height: auto; }
+  .frame { position: relative; height: auto; min-height: 70svh; }
+  .duo { position: relative; min-height: 70svh; }
+  .fade, .fade[data-off] { opacity: 1; transform: none; transition: none; }
+}
