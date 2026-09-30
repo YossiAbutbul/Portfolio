@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, JetBrains_Mono } from "next/font/google";
+import { Figtree, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import Nav from "@/components/layout/Nav";
@@ -7,9 +7,9 @@ import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import PageTransition from "@/components/layout/PageTransition";
 
-const archivo = Archivo({
+const figtree = Figtree({
   subsets: ["latin"],
-  variable: "--font-archivo",
+  variable: "--font-figtree",
   display: "swap",
 });
 
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101112",
+  themeColor: "#17110e",
 };
 
 export default function RootLayout({
@@ -69,7 +69,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${jetbrains.variable}`}
+      className={`${figtree.variable} ${jetbrains.variable}`}
       data-theme="dark"
     >
       <body>

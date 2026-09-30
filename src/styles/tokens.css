@@ -1,26 +1,36 @@
-/* Dark surfaces, silver type, and orange accents. */
+/* Launch palette: warm dark room, cream type, cork accent. The set colours (olive, mat green, red,
+   sand, plum) belong to specific scenes and cards; --mark stays the one accent for UI. */
 
 :root,
 [data-theme="dark"] {
-  --paper: #101112;
-  --paper-lift: #191b1d;
-  --paper-sunk: #0b0c0d;
+  --paper: #17110e;
+  --paper-lift: #231913;
+  --paper-sunk: #0f0b09;
 
-  --ink: #f2f0e9;
-  --ink-mid: #b7bab9;
-  --ink-muted: #a0a5a5;
-  --ink-faint: #858b8b;
+  --ink: #f2e6d4;
+  --ink-mid: #d8c9b3;
+  --ink-muted: #b3a38d;
+  --ink-faint: #8f806c;
 
-  --rule: rgba(240, 240, 235, 0.12);
-  --rule-strong: rgba(240, 240, 235, 0.24);
-  --rule-heavy: rgba(240, 240, 235, 0.36);
+  --rule: rgba(242, 230, 212, 0.12);
+  --rule-strong: rgba(242, 230, 212, 0.24);
+  --rule-heavy: rgba(242, 230, 212, 0.36);
 
-  --mark: #ff7a42;
-  --mark-soft: rgba(255, 122, 66, 0.15);
+  --mark: #c46f35;
+  --mark-soft: rgba(196, 111, 53, 0.16);
 
-  /* Semantic, kept apart from the highlighter: this is a limit being crossed,
-     never a brand colour. */
-  --limit: #A4352A;
+  /* Scene and card colours. */
+  --cream: #f2e6d4;
+  --sand: #e7d3b8;
+  --cork: #c46f35;
+  --olive: #4d5a36;
+  --mat: #2e5a49;
+  --red: #b3361f;
+  --plum: #2a0f38;
+  --ink-dark: #1a1410;
+
+  /* Semantic, never a brand colour. */
+  --limit: #b3361f;
 
   --grain-opacity: 0.035;
   --grain-blend: screen;
@@ -54,7 +64,7 @@
 
   --hairline-w: 1px;
 
-  --font-sans: var(--font-archivo, "Archivo"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-figtree, "Figtree"), system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: var(--font-jetbrains, "JetBrains Mono"), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Layout - a wide label margin and a measured text column, like a spec page. */
