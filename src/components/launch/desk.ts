@@ -78,7 +78,7 @@ export function buildDesk(kit: DeskKit): Desk {
   const N = makeNoise(7);
 
   /* ---------- Wood table: planks with warped grain, a colour shift per plank, dark seams ---------- */
-  const W = Math.round(1024 * TEX), H = Math.round(1024 * TEX);
+  const W = Math.round(2048 * TEX), H = Math.round(2048 * TEX);
   const woodData = (() => {
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const x = c.getContext("2d")!; const img = x.createImageData(W, H);
@@ -90,11 +90,11 @@ export function buildDesk(kit: DeskKit): Desk {
         const u = px / W * 6, v = py / H * 24;
         const warp = N.fbm(u * .6 + pi * 7, v * .08, 3) * 4;
         const grain = Math.sin((v + warp) * 9 + pi * 3) * .5 + .5;
-        const fine = N.noise(u * 60, v * 3) * .25;
+        const fine = N.noise(u * 90, v * 4) * .18 + N.noise(u * 240, v * 9) * .08;
         const t = Math.min(1, Math.max(0, grain * .55 + fine + N.fbm(u * 2, v * .5, 2) * .3 + shade));
         const seam = (py % plank) < 2 ? .7 : 1;
         const i = (py * W + px) * 4;
-        img.data[i] = (150 + t * 56) * seam; img.data[i + 1] = (98 + t * 42) * seam; img.data[i + 2] = (52 + t * 30) * seam; img.data[i + 3] = 255;
+        img.data[i] = (172 + t * 48) * seam; img.data[i + 1] = (112 + t * 38) * seam; img.data[i + 2] = (56 + t * 26) * seam; img.data[i + 3] = 255;
         bump[py * W + px] = 255 * (1 - grain * .6 - fine) * seam;
       }
     }
@@ -104,7 +104,7 @@ export function buildDesk(kit: DeskKit): Desk {
   const woodMap = new THREE.CanvasTexture(woodData.canvas); woodMap.colorSpace = THREE.SRGBColorSpace;
   const woodBump = tex(W, H, (x) => { const img = x.createImageData(W, H); for (let i = 0; i < W * H; i++) { const b = woodData.bump[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } x.putImageData(img, 0, 0); });
   for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
-  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: 1.4, roughness: .62 }), false);
+  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: 2.2, roughness: .78 }), false);
   table.position.z = -.06; group.add(table);
 
   /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
@@ -145,7 +145,7 @@ export function buildDesk(kit: DeskKit): Desk {
   const matBump = tex(512, 340, (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); });
   matBump.wrapS = matBump.wrapT = THREE.RepeatWrapping; matBump.repeat.set(4, 4);
   const matSide = std({ color: 0x2c5039, roughness: .9 });
-  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .6, roughness: .92 }), matSide], false);
+  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .9, roughness: 1 }), matSide], false);
   mat.position.set(1.9, .45, -.03); mat.rotation.z = -.07; group.add(mat);
 
   /* ---------- Contact shadow: a soft dark pad under each tool, the thing that makes objects sit ---------- */
@@ -165,7 +165,7 @@ export function buildDesk(kit: DeskKit): Desk {
 
   { // Pencil: hexagonal barrel, printed name, sharpened tip, ferrule and eraser
     const g = new THREE.Group();
-    const paint = std({ color: 0x55653b, roughness: .38 });
+    const paint = std({ color: 0x55653b, roughness: .58 });
     const barrel = mesh(geo(new THREE.CylinderGeometry(.11, .11, 4.2, 6)), paint); barrel.rotation.y = Math.PI / 6; g.add(barrel);
     const print = mesh(geo(new THREE.PlaneGeometry(1.6, .07)), new THREE.MeshBasicMaterial({ transparent: true, map: tex(512, 24, (x) => { x.fillStyle = "#d9c79a"; x.font = `700 18px ${SANS}`; x.fillText("HB · SHIP IT · ABUTBUL", 4, 18); }) }), false);
     print.rotation.set(0, 0, Math.PI / 2); print.position.set(0, -.4, .096); g.add(print);
@@ -178,7 +178,7 @@ export function buildDesk(kit: DeskKit): Desk {
   }
   { // Utility knife: ribbed grip, snap blade, slider
     const g = new THREE.Group();
-    g.add(mesh(geo(new RoundedBoxGeometry(3.1, .46, .2, 3, .08)), std({ color: 0xe08a34, roughness: .42 })));
+    g.add(mesh(geo(new RoundedBoxGeometry(3.1, .46, .2, 3, .08)), std({ color: 0xe08a34, roughness: .62 })));
     const grip = mesh(geo(new RoundedBoxGeometry(1.5, .32, .22, 3, .06)), std({ color: 0x262120, roughness: .85 })); grip.position.x = -.5; g.add(grip);
     const ribs = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.03, .3, .03)), std({ color: 0x1a1716, roughness: .8 }), 12); const m = new THREE.Object3D();
     for (let i = 0; i < 12; i++) { m.position.set(-1.15 + i * .11, 0, .12); m.updateMatrix(); ribs.setMatrixAt(i, m.matrix); } ribs.castShadow = true; g.add(ribs);
@@ -189,7 +189,7 @@ export function buildDesk(kit: DeskKit): Desk {
   }
   { // SMA torque wrench: rubber grip, chrome shaft, the break-over joint, and the 8 mm open jaw
     const g = new THREE.Group();
-    const chrome = std({ color: 0xe9e9e9, metalness: 1, roughness: .14 });
+    const chrome = std({ color: 0xa9a9a7, metalness: 1, roughness: .42 });
     const grip = mesh(geo(new RoundedBoxGeometry(1.7, .36, .28, 4, .12)), std({ color: 0x1d1c1c, roughness: .9 })); grip.position.x = -1.1; g.add(grip);
     const rings = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.035, .38, .3)), std({ color: 0x111111, roughness: .95 }), 9); const m = new THREE.Object3D();
     for (let i = 0; i < 9; i++) { m.position.set(-1.8 + i * .17, 0, 0); m.updateMatrix(); rings.setMatrixAt(i, m.matrix); } rings.castShadow = true; g.add(rings);
@@ -204,19 +204,25 @@ export function buildDesk(kit: DeskKit): Desk {
     const neck = mesh(geo(new RoundedBoxGeometry(.3, .22, .1, 2, .04)), chrome); neck.position.x = 1.12; g.add(neck);
     const decal = mesh(geo(new THREE.PlaneGeometry(1.0, .12)), new THREE.MeshBasicMaterial({ transparent: true, map: tex(512, 64, (x) => { x.fillStyle = "#3a3a3a"; x.font = `700 34px ${MONO}`; x.fillText("SMA · 8 IN-LB", 8, 46); }) }), false);
     decal.position.set(.3, 0, .072); g.add(decal);
-    addTool(g, { x: -.7, y: -2.6, a: .06, rest: .14, circles: [[-1.7, 0, .2], [-1.1, 0, .2], [-.5, 0, .2], [.1, 0, .15], [.6, 0, .15], [1.38, 0, .36]], mass: .9, foot: [3.9, 1] });
+    addTool(g, { x: -2.2, y: -1.95, a: .1, rest: .14, circles: [[-1.7, 0, .2], [-1.1, 0, .2], [-.5, 0, .2], [.1, 0, .15], [.6, 0, .15], [1.38, 0, .36]], mass: .9, foot: [3.9, 1] });
   }
-  { // Paperclips
-    const pts = [[0, -.5], [0, .45], [.26, .45], [.26, -.62], [-.08, -.62], [-.08, .3], [.16, .3], [.16, -.35]];
-    const path = new THREE.CurvePath<THREE.Vector3>();
-    for (let i = 0; i < pts.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pts[i][0], pts[i][1], 0), new THREE.Vector3(pts[i + 1][0], pts[i + 1][1], 0)));
-    const clipGeo = geo(new THREE.TubeGeometry(path, 64, .02, 8, false));
-    const steel = std({ color: 0xdcd9d2, metalness: 1, roughness: .22 });
-    for (const [x, y, a] of [[-4.2, -2.5, .9]] as const) {
-      const g = new THREE.Group(); g.add(mesh(clipGeo, steel));
-      addTool(g, { x, y, a, rest: .025, circles: [[0.09, -.3, .22], [0.09, .2, .22]], mass: .05, foot: [.7, 1.4] });
-    }
+  { // Paperclip: one wire, three straights and three round bends, nested like the real thing
+    const p = new THREE.Path();
+    p.moveTo(.07, .22); p.lineTo(.07, -.36);
+    p.absarc(0, -.36, .07, 0, Math.PI, true);
+    p.lineTo(-.07, .42);
+    p.absarc(.035, .42, .105, Math.PI, 0, true);
+    p.lineTo(.14, -.46);
+    p.absarc(0, -.46, .14, 0, Math.PI, true);
+    p.lineTo(-.14, .26);
+    const pts = p.getPoints(40).map((v) => new THREE.Vector3(v.x * 1.25, v.y * 1.25, 0));
+    const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal", .1);
+    const clipGeo = geo(new THREE.TubeGeometry(curve, 240, .014, 10, false));
+    const steel = std({ color: 0xc9c7c2, metalness: 1, roughness: .38 });
+    const g = new THREE.Group(); g.add(mesh(clipGeo, steel));
+    addTool(g, { x: -4.4, y: -.8, a: .6, rest: .016, circles: [[0, -.3, .2], [0, .25, .2]], mass: .05, foot: [.55, 1.35] });
   }
+
   /* ---------- Physics ---------- */
   const raycaster = new THREE.Raycaster();
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -.15);

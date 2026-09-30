@@ -39,6 +39,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   catch { return null; }
 
   // Loop state lives up here: resize() and the font callback can call kick() during setup.
+  let composer: { render: () => void; setSize: (w: number, h: number) => void; setPixelRatio: (r: number) => void } | null = null;
+  let bokeh: { uniforms: { focus: { value: number } } } | null = null;
   let last = performance.now(), time = 0, lastBackdrop = "", raf = 0, idleFrames = 0, disposed = false;
   const small = () => innerWidth <= 720;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
@@ -63,7 +65,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const envTarget = pmrem.fromScene(room, .04);
   room.dispose(); pmrem.dispose();
   scene.environment = envTarget.texture;
-  scene.environmentIntensity = .35;
+  // Low: a bright studio reflection is what made everything read as glossy plastic.
+  scene.environmentIntensity = .16;
   hooks.onProgress?.(.25);
   await yieldToMain(); if (signal?.aborted) { envTarget.dispose(); renderer.dispose(); return null; }
 
@@ -134,7 +137,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* ---------- The device ---------- */
   const device = new THREE.Group(); scene.add(device);
   const W = 3, H = 1.9, D = .75, FRONT = D / 2;
-  const shell = phys({ color: 0xe9dfcf, roughness: .5, clearcoat: .3 });
+  const shell = phys({ color: 0xe6dccb, roughness: .66, sheen: .2, sheenRoughness: .8 });
   const accent = phys({ color: 0xc8692c, roughness: .55, envMapIntensity: .35 });
   const dark = phys({ color: 0x2a221c, roughness: .5 });
   const olive = phys({ color: 0x4d5a36, roughness: .6, envMapIntensity: .35 });
@@ -156,6 +159,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const labelTex = tex(512, 64, (x) => { x.fillStyle = "#8a7c6a"; x.font = `800 34px ${SANS}`; x.fillText("YOSSI ABUTBUL", 0, 44); x.font = `400 20px ${MONO}`; x.fillText("YA-26", 290, 43); });
   const label = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.2, .15)), keep(new THREE.MeshBasicMaterial({ transparent: true, map: labelTex })));
   label.position.set(-.73, -.82, FRONT + .002); device.add(label);
+  // Contact shadow under the device while it lies on the desk: what makes it sit rather than hover.
+  const devicePadTex = tex(256, 160, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.7)"); g.addColorStop(.6, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const devicePad = new THREE.Mesh(geo(new THREE.PlaneGeometry(W * 1.25, H * 1.35)), keep(new THREE.MeshBasicMaterial({ map: devicePadTex, transparent: true, depthWrite: false, toneMapped: false })));
+  devicePad.position.z = .006; devicePad.renderOrder = 1; scene.add(devicePad);
   const deviceMeshes: THREE.Mesh[] = [];
   device.traverse((o) => { if ((o as THREE.Mesh).isMesh && o !== screen && o !== label) deviceMeshes.push(o as THREE.Mesh); });
   const originals = new Map(deviceMeshes.map((o) => [o, o.material]));
@@ -269,6 +276,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   function resize() {
     renderer.setSize(innerWidth, innerHeight, false);
+    composer?.setPixelRatio(renderer.getPixelRatio()); composer?.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight; camera.fov = small() ? 44 : 30; camera.updateProjectionMatrix();
     kick();
   }
@@ -300,8 +308,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     if (!onDesk) deskSet.hover(null);
     canvas.style.pointerEvents = onDesk ? "auto" : "none";
     device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lifted), cur.z);
-    device.rotation.set(cur.rx + pointer.y * .12 * (.3 + lifted), cur.ry + pointer.x * .25 * (.3 + lifted), cur.rz);
+    // Lying on the desk the device is still; only once lifted does it lean toward the pointer.
+    device.rotation.set(cur.rx + pointer.y * .12 * lifted, cur.ry + pointer.x * .25 * lifted, cur.rz);
     device.scale.setScalar(Math.max(.0001, cur.s * cur.show));
+    devicePad.visible = desk.visible && lifted < .5; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
     device.visible = cur.show > .02;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
@@ -319,10 +329,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // On the desk the camera leans back and turns a touch, like a photo taken standing over a table;
     // it straightens up as the room goes dark so every later pose is shot square on.
     const tilt = 1 - cur.veil;
-    camera.position.set(0, -3.6 * tilt, 12 + 1.4 * tilt);
+    camera.position.set(0, -5.2 * tilt, 12 + 1.1 * tilt);
     camera.up.set(Math.sin(.035 * tilt), Math.cos(.035 * tilt), 0);
-    camera.lookAt(0, .3 * tilt, 0);
-    renderer.render(scene, camera);
+    camera.lookAt(0, .7 * tilt, 0);
+    if (composer && desk.visible) {
+      if (bokeh) bokeh.uniforms.focus.value = camera.position.distanceTo(device.position);
+      composer.render();
+    } else renderer.render(scene, camera);
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
     const floating = !still && lifted > .05 && device.visible;
@@ -355,6 +368,32 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // Compile every material up front, off the main thread where the driver allows it, so neither the
   // first frame nor the thermal switch stalls on shader compilation.
   hooks.onProgress?.(.75);
+  // Desktop: ambient occlusion so things darken where they meet the mat, and a shallow depth of field
+  // focused on the device. The dark scenes draw straight to the screen and keep their transparency.
+  if (!small()) {
+    const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { BokehPass }, { OutputPass }] = await Promise.all([
+      import("three/addons/postprocessing/EffectComposer.js"),
+      import("three/addons/postprocessing/RenderPass.js"),
+      import("three/addons/postprocessing/GTAOPass.js"),
+      import("three/addons/postprocessing/BokehPass.js"),
+      import("three/addons/postprocessing/OutputPass.js"),
+    ]);
+    if (signal?.aborted) return abandon();
+    const buffer = renderer.getDrawingBufferSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(buffer.x, buffer.y, { type: THREE.HalfFloatType, samples: 4 });
+    const c = new EffectComposer(renderer, target);
+    c.addPass(new RenderPass(scene, camera));
+    const gtao = new GTAOPass(scene, camera, buffer.x, buffer.y);
+    gtao.updateGtaoMaterial({ radius: .5, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 16 });
+    gtao.blendIntensity = .95;
+    c.addPass(gtao);
+    const b = new BokehPass(scene, camera, { focus: 13, aperture: .0022, maxblur: .007 });
+    c.addPass(b);
+    c.addPass(new OutputPass());
+    c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);
+    composer = c; bokeh = b as unknown as typeof bokeh;
+    disposables.push({ dispose: () => { c.dispose(); target.dispose(); gtao.dispose(); b.dispose(); } });
+  }
   await renderer.compileAsync(scene, camera).catch(() => {});
   hooks.onProgress?.(.9);
   setThermal(true); await renderer.compileAsync(scene, camera).catch(() => {}); setThermal(false);

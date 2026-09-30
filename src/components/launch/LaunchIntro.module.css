@@ -34,8 +34,9 @@
 
 .kicker {
   position: absolute;
-  left: calc(var(--gutter) + 16vw);
-  top: 8svh;
+  left: var(--gutter);
+  top: calc(11svh + clamp(3.4rem, 9.5vw, 10rem) * 1.8);
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
 }
 
 .side {
@@ -126,7 +127,7 @@
 
 @media (max-width: 720px) {
   .side { top: auto; bottom: 34svh; left: var(--gutter); width: auto; font-size: 1.05rem; }
-  .kicker { left: var(--gutter); top: 9svh; }
+  .kicker { top: calc(13svh + clamp(3.4rem, 9.5vw, 10rem) * 1.8); }
   .word { top: 13svh; }
   .duo { grid-template-columns: 1fr; align-content: space-between; padding-block: 16svh 10svh; }
   .duo p { justify-self: start; }
