@@ -13,16 +13,19 @@ be usable in the first ten seconds before it is impressive.
   `--font-jetbrains`.
 - Motion: `gsap` + `ScrollTrigger`, `lenis`, `three` (launch scene only), `motion` (route fade only).
   All are dynamically imported; keep it that way.
-- Contact form: Formspree (`@formspree/react`).
 
 ## Folders
 
 - `src/app/` routes: `/` and `/projects/[slug]` (statically generated).
 - `src/components/launch/` the launch scene: `scene.ts` (three.js desk, device, veil, thermal
   shader, scroll choreography; loaded with a dynamic import), `LaunchStage` (fixed backdrop + canvas,
-  loads the scene when idle on desktop and on first scroll/touch on phones), `LaunchIntro` (desk hero
-  and spotlight beat). Design reference: `design/launch-prototype/`.
-- `src/components/site/` the rest of the home page: `Home`, `ProjectSignature`, `ContactForm`.
+  loads the scene when idle on desktop and on first scroll/touch on phones), and one component per
+  beat in page order: `LaunchIntro` (desk hero + spotlight), `LaunchShips`, `LaunchReel` (projects),
+  `LaunchThermal`, `LaunchPress`, `LaunchEditorial` (release history, more work, paper),
+  `LaunchContact` (panels + footer), `LaunchToast`. Components talk to the scene through window
+  events (`launch:press-device`, `launch:press`, `launch:heat`, `launch:say`), not refs.
+  Design reference: `design/launch-prototype/`.
+- `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
   `PageTransition`, `SkipToContent`. There is no intro loader; the page must be readable at first paint.
 - `content/projects.ts` project data; `src/types/project.ts` its type.
@@ -35,7 +38,8 @@ be usable in the first ten seconds before it is impressive.
 - `npm run build` (static export to `out/`), `npm run serve` to preview it
 - `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`; ESLint 10 is not yet supported by
   `eslint-config-next`'s parser, so don't upgrade it).
-- No test suite. Verify in the browser at desktop and 375px mobile, and with reduced motion.
+- No test suite. Verify in the browser at desktop and 375px mobile, and with reduced motion. For
+  headless screenshots set `<html data-snap>` so the scene skips easing and shows the exact pose.
 
 ## Styling conventions
 
@@ -45,7 +49,8 @@ be usable in the first ten seconds before it is impressive.
 - Use tokens for colour, type steps, spacing, easing and durations. No raw hex in components
   except inside WebGL/SVG drawing code.
 - Anything measured (numbers, units, dates, labels) is mono with tabular figures.
-- New sections reuse the existing `Section` shell in `Home.tsx` rather than inventing layout.
+- New beats are their own `Launch*` component with an id the scene can find; pinned beats use the
+  `.pin` / `.frame` (sticky, 100svh) pattern in `LaunchSections.module.css`.
 - Copy states specific facts, not slogans. Do not write positioning statements or role titles
   ("full-stack developer", "AI engineer") into the site; the work carries that.
 - RF/hardware is background, not the headline.
