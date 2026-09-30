@@ -1,43 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import { withBasePath } from "@/lib/env";
-import type { Project } from "@/types/project";
 import LaunchStage from "@/components/launch/LaunchStage";
 import LaunchIntro from "@/components/launch/LaunchIntro";
+import LaunchShips from "@/components/launch/LaunchShips";
+import LaunchReel from "@/components/launch/LaunchReel";
 import ContactForm from "./ContactForm";
-import ProjectSignature, { type SignatureKind } from "./ProjectSignature";
 import styles from "./Home.module.css";
 
 const CV_HREF = "/Yossi Abutbul - CV 2026.pdf";
 const EMAIL = "abyossi22@gmail.com";
 const LINKEDIN = "https://www.linkedin.com/in/yossi-abutbul-550958199/";
 const GITHUB = "https://github.com/YossiAbutbul";
-
-/**
- * Each project draws the shape of its own subject rather than showing a
- * screenshot. Keyed by slug so a row never has to know how it is drawn.
- */
-const SIGNATURES: Record<string, SignatureKind> = {
-  "test-console": "contours",
-  oplanner: "semester",
-  "pipeline-cpu": "pipeline",
-  "current-logger": "bursts",
-  algorithmx: "graph",
-  "toast-turn": "flat",
-};
-
-const PROJECT_PREVIEWS: Record<string, string> = {
-  "test-console": "/projects/test-console/screenshot.png",
-  oplanner: "/projects/oplanner/poster.jpg",
-  "pipeline-cpu": "/projects/pipeline-cpu/poster.jpg",
-  "current-logger": "/projects/current-logger/screenshot.png",
-  algorithmx: "/projects/algorithmx/screenshot.png",
-  "toast-turn": "/projects/toast-turn/cover.png",
-};
 
 /**
  * How the work happens, in the order it happens. Each beat is anchored to a
@@ -166,16 +143,11 @@ export default function Home() {
       <LaunchIntro />
 
       {/* ------------------------------------------------------------------ */}
-      <Section id="work" title="Projects">
+      <LaunchShips />
+      <LaunchReel projects={FEATURED_PROJECTS} />
 
-        <ol className={styles.workList}>
-          {FEATURED_PROJECTS.map((project) => (
-            <WorkRow key={project.slug} project={project} />
-          ))}
-        </ol>
-
+      <Section id="also" title="Also shipped">
         <div className={styles.also} data-rise>
-          <h3 className={`mono ${styles.alsoLabel}`}>Also</h3>
           <ul className={styles.alsoList}>
             {OTHER_PROJECTS.map((project) => {
               const body = (
@@ -339,73 +311,5 @@ function Section({
         </div>
       </div>
     </section>
-  );
-}
-
-function WorkRow({ project }: { project: Project }) {
-  const [active, setActive] = useState(false);
-  const hasCase = !project.noCase;
-  const external = project.links.find((link) => link.label === "Live") ?? project.links[0];
-  const href = hasCase ? `/projects/${project.slug}` : external?.href ?? "#";
-  const signature = SIGNATURES[project.slug];
-  const preview = PROJECT_PREVIEWS[project.slug];
-
-  const inner = (
-    <>
-      <div className={styles.projectVisual}>
-        {preview ? (
-          <div className={styles.previewFrame}>
-            <Image src={withBasePath(preview)} alt={project.images?.find((image) => image.src === preview)?.alt ?? `${project.title} interface`} width={1280} height={720} sizes="(max-width: 768px) 90vw, 42vw" className={styles.previewImage} />
-          </div>
-        ) : (
-          <div className={styles.plotFrame} aria-hidden="true">
-            <div className={styles.largeSignature}>{signature && <ProjectSignature kind={signature} active={active} />}</div>
-            <span className={styles.plotLabel}>{project.slug === "test-console" ? "Load-pull contours" : project.slug === "current-logger" ? "Transmit current over time" : "Graph traversal"}</span>
-          </div>
-        )}
-      </div>
-      <div className={styles.rowBody}>
-        <div className={styles.rowHead}>
-          <h3 className={styles.rowTitle}>{project.title}</h3>
-          {project.metric && (
-            <span className={`mono ${styles.metric}`}>
-              <s>{project.metric.before}</s>
-              <span aria-hidden="true">→</span>
-              <b>{project.metric.after}</b>
-            </span>
-          )}
-        </div>
-
-        <p className={styles.rowSummary}>{project.summary}</p>
-
-        <ul className={`mono ${styles.stack}`}>
-          {project.stack.slice(0, 5).map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-
-    </>
-  );
-
-  const handlers = {
-    onPointerEnter: () => setActive(true),
-    onPointerLeave: () => setActive(false),
-    onFocus: () => setActive(true),
-    onBlur: () => setActive(false),
-  };
-
-  return (
-    <li className={styles.row} data-project>
-      {hasCase ? (
-        <Link className={styles.rowLink} href={href} {...handlers}>
-          {inner}
-        </Link>
-      ) : (
-        <a className={styles.rowLink} href={href} target="_blank" rel="noreferrer" {...handlers}>
-          {inner}
-        </a>
-      )}
-    </li>
   );
 }

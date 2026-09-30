@@ -1,0 +1,191 @@
+.cap {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Tall enough that each card gets most of a screen of scrolling. */
+.pin {
+  position: relative;
+  z-index: 2;
+  height: calc(var(--cards, 6) * 85svh + 100svh);
+  scroll-margin-top: 0;
+}
+
+.frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.head {
+  position: absolute;
+  left: var(--gutter);
+  top: 9svh;
+  z-index: 1;
+  color: var(--cream);
+}
+
+.head .cap {
+  color: var(--ink-faint);
+}
+
+.head h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.reel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  margin: 0;
+  padding: 12svh 0 0;
+  list-style: none;
+  will-change: transform;
+}
+
+.card {
+  flex: 0 0 auto;
+  width: min(64vw, 60rem);
+  height: min(66svh, 36rem);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  overflow: hidden;
+  transition: transform 0.5s var(--ease-out), filter 0.5s var(--ease-out);
+}
+
+.card[data-far] {
+  transform: scale(0.9);
+  filter: saturate(0.6) brightness(0.7);
+}
+
+.txt {
+  padding: clamp(1.2rem, 2.4vw, 2.4rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.txt .cap {
+  opacity: 0.75;
+}
+
+.txt h3 {
+  margin: 0.8rem 0 0;
+  font-size: clamp(1.8rem, 3.2vw, 3.2rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.txt p {
+  margin: 1rem 0 0;
+  font-weight: 500;
+}
+
+.metric {
+  font-weight: 800;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  letter-spacing: -0.02em;
+}
+
+.metric s {
+  opacity: 0.55;
+  font-weight: 600;
+}
+
+.stack {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.4rem;
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pic {
+  position: relative;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.pic img {
+  position: absolute;
+  inset: 1.2rem 1.2rem 1.2rem 0;
+  width: calc(100% - 1.2rem);
+  height: calc(100% - 2.4rem);
+  object-fit: cover;
+  object-position: left top;
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.5);
+}
+
+.count {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 5svh;
+  color: var(--cream);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 5vw, 4.4rem);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .card {
+    width: 86vw;
+    height: 76svh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .pic img {
+    inset: 0 1rem 1rem;
+    width: calc(100% - 2rem);
+    height: calc(100% - 1rem);
+  }
+  .count {
+    bottom: 2svh;
+  }
+}
+
+/* No pinned sideways travel: the cards stack as an ordinary list. */
+@media (prefers-reduced-motion: reduce) {
+  .pin { height: auto; }
+  .frame { position: relative; height: auto; overflow: visible; padding: 9svh var(--gutter) 6svh; }
+  .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
+  .reel { position: relative; flex-direction: column; height: auto; gap: 1.5rem; padding: 0; transform: none !important; }
+  .card { width: 100%; height: auto; min-height: 24rem; transition: none; }
+  .card[data-far] { transform: none; filter: none; }
+  .count { display: none; }
+}

@@ -286,6 +286,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       const p = prog(ships);
       t.veil = 1; t.spot = 1; t.z = 2.4; t.rx = -.35 + Math.sin(p * Math.PI) * .2; t.ry = -.5 + p * Math.PI; t.rz = .08; t.s = mob ? .62 : .92;
       t.show = 1 - smooth(.82, .98, p); backdrop = "void";
+      ships?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .08 || p > .92));
     } else if (rect(therm).top > vh * .4) {
       t.veil = 1; t.show = 0; t.z = 2.4; t.s = .2; backdrop = "void";
     } else if (rect(pressSec).top > vh * .4) {
@@ -299,6 +300,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       backdrop = t.veil > .5 ? "void" : "desk";
     }
     if (rect(after).top < vh * .6) t.show = 0;
+    // The giant word crosses the ships beat from right to left, behind the device.
+    const word = byId("launch-word");
+    if (word) {
+      const r = rect(ships), onScreen = r.top < vh && r.bottom > 0;
+      word.style.opacity = onScreen ? "1" : "0";
+      if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth, prog(ships))}px, 0, 0)`;
+    }
     return { t, backdrop, thermalMode };
   }
 
@@ -312,7 +320,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   function frame(now: number) {
     raf = 0;
     const dt = Math.min(.05, (now - last) / 1000); last = now;
-    const still = reduce.matches;
+    // <html data-snap> (set by the screenshot harness) skips easing so captures show the exact pose.
+    const still = reduce.matches || document.documentElement.hasAttribute("data-snap");
     if (!still) time += dt;
     const { t, backdrop, thermalMode } = choreograph();
     if (backdrop !== lastBackdrop) { lastBackdrop = backdrop; hooks.onBackdrop?.(backdrop); }

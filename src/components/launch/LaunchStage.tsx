@@ -65,6 +65,8 @@ export default function LaunchStage() {
   return (
     <>
       <div className={styles.backdrop} data-backdrop={backdrop} aria-hidden="true" />
+      {/* The giant word slides between the backdrop and the device; the scene moves it. */}
+      <div className={styles.word} id="launch-word" aria-hidden="true">it ships.</div>
       <canvas ref={canvas} className={styles.canvas} data-ready={ready} aria-hidden="true" />
     </>
   );

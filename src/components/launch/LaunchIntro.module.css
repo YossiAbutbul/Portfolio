@@ -158,3 +158,31 @@
   .duo { position: relative; min-height: 70svh; }
   .fade, .fade[data-off] { opacity: 1; transform: none; transition: none; }
 }
+
+/* ---------- "it ships." ---------- */
+.shipsPin {
+  height: 220svh;
+}
+
+.shipsKick {
+  position: absolute;
+  left: var(--gutter);
+  top: 30svh;
+  color: var(--cream);
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(1rem, 1.6vw, 1.4rem);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shipsPin { height: auto; }
+}
