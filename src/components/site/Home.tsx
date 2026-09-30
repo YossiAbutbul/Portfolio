@@ -8,6 +8,7 @@ import LaunchPress from "@/components/launch/LaunchPress";
 import LaunchEditorial from "@/components/launch/LaunchEditorial";
 import LaunchContact from "@/components/launch/LaunchContact";
 import LaunchToast from "@/components/launch/LaunchToast";
+import LaunchLoader from "@/components/launch/LaunchLoader";
 
 /**
  * The home page is one launch: the desk, the spotlight, the reel, the thermal test, the button,
@@ -17,6 +18,9 @@ import LaunchToast from "@/components/launch/LaunchToast";
 export default function Home() {
   return (
     <div style={{ position: "relative" }}>
+      {/* Without scripting nothing would ever lift the sheet, so it must not show at all. */}
+      <noscript><style>{"[data-launch-loader]{display:none!important}"}</style></noscript>
+      <LaunchLoader />
       <LaunchStage />
       <LaunchIntro />
       <LaunchShips />

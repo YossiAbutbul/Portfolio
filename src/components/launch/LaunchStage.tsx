@@ -21,7 +21,6 @@ export default function LaunchStage() {
     if (!el) return;
     let scene: LaunchScene | null = null;
     const abort = new AbortController();
-    const win = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
     let loading = false;
     const load = async () => {
@@ -34,16 +33,17 @@ export default function LaunchStage() {
         say: (message) => window.dispatchEvent(new CustomEvent("launch:say", { detail: message })),
         onPress: (count) => window.dispatchEvent(new CustomEvent("launch:press", { detail: count })),
         onHeat: (value) => window.dispatchEvent(new CustomEvent("launch:heat", { detail: value })),
+        onProgress: (value) => window.dispatchEvent(new CustomEvent("launch:progress", { detail: value })),
       }, abort.signal);
       if (!scene) return;
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
       setReady(true);
     };
-    // Desktop loads when the browser is idle. Phones wait for the first scroll or touch: the desk
-    // backdrop already covers the hero, and a phone's first seconds belong to the text.
+    // Desktop loads straight away, behind the loading screen, after the first paint. Phones wait for
+    // the first scroll or touch: a phone's first seconds belong to the text, not a 3D scene.
     const phone = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
-    const idle = phone ? 0 : win.requestIdleCallback ? win.requestIdleCallback(() => void load(), { timeout: 2500 }) : window.setTimeout(() => void load(), 800);
-    const hurry = () => { if (win.cancelIdleCallback) win.cancelIdleCallback(idle); else clearTimeout(idle); void load(); };
+    const idle = phone ? 0 : window.setTimeout(() => void load(), 0);
+    const hurry = () => { clearTimeout(idle); void load(); };
     const once = { once: true, passive: true } as const;
     let started = false;
     const start = () => { if (!started) { started = true; hurry(); } };
@@ -55,7 +55,7 @@ export default function LaunchStage() {
 
     return () => {
       abort.abort();
-      if (win.cancelIdleCallback) win.cancelIdleCallback(idle); else clearTimeout(idle);
+      clearTimeout(idle);
       window.removeEventListener("scroll", start);
       window.removeEventListener("pointerdown", start);
       window.removeEventListener("launch:press-device", press);

@@ -3,8 +3,8 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 
 /**
  * The desk set: wood, the cutting mat, and the tools on it. Every tool is a small rigid body on the
- * desk plane: grab one and it follows the pointer on a spring from the point you grabbed (so it
- * turns naturally), flick it and it slides, and tools push each other and the device around.
+ * desk plane, tethered to its home spot by a soft spring. The pointer is a force field: tools
+ * shy away from it, lift and turn a little, then settle back. A tap or click gives a short push.
  */
 
 export interface DeskKit {
@@ -30,8 +30,13 @@ interface Tool {
   rest: number;
   collide: boolean;
   x: number; y: number; a: number;
+  hx: number; hy: number; ha: number;
   vx: number; vy: number; va: number;
   lift: number;
+  /** Hover cue, 0..1, eased. */
+  near: number;
+  /** Seconds until this tool's one-off hop; negative once done. */
+  hop: number;
 }
 
 export interface Desk {
@@ -39,11 +44,12 @@ export interface Desk {
   /** Steps the bodies; returns true while anything is still moving. */
   update: (dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) => boolean;
   /** Tool under the ray, if any. */
-  hit: (ray: THREE.Ray) => boolean;
-  grab: (ray: THREE.Ray) => boolean;
-  drag: (ray: THREE.Ray) => void;
-  release: () => void;
-  dragging: () => boolean;
+  /** A tap or click: tools within reach get pushed away from it. */
+  poke: (ray: THREE.Ray) => void;
+  /** Pointer over the desk (mouse): nearby tools lift and shy away; null when it leaves. */
+  hover: (ray: THREE.Ray | null) => void;
+  /** Starts the one-off staggered hop that shows the tools are loose. */
+  hop: () => void;
 }
 
 // Deterministic value noise, so the wood and the mat look the same on every visit.
@@ -123,9 +129,6 @@ export function buildDesk(kit: DeskKit): Desk {
     for (let i = 0; i * cm / 2 <= w; i++) { const len = i % 10 === 0 ? 22 : i % 2 === 0 ? 14 : 8; x.lineWidth = 1.2; x.beginPath(); x.moveTo(i * cm / 2, 0); x.lineTo(i * cm / 2, len); x.moveTo(i * cm / 2, h); x.lineTo(i * cm / 2, h - len); x.stroke(); }
     x.fillStyle = "rgba(230,240,232,.7)"; x.font = `20px ${MONO}`;
     for (let i = 5; i * cm < w; i += 5) { x.fillText(String(i), i * cm + 5, 42); x.fillText(String(i), i * cm + 5, h - 28); }
-    x.strokeStyle = "rgba(230,240,232,.28)"; x.lineWidth = 2;
-    x.beginPath(); x.arc(w * .82, h * .72, h * .16, 0, Math.PI * 2); x.stroke();
-    for (const deg of [30, 45, 60]) { const r = deg * Math.PI / 180; x.beginPath(); x.moveTo(w * .08, h * .92); x.lineTo(w * .08 + Math.cos(r) * h * .5, h * .92 - Math.sin(r) * h * .5); x.stroke(); }
     // Old knife cuts: thin pale scratches.
     for (let i = 0; i < 70; i++) {
       const px = N.rand() * w, py = N.rand() * h, len = 30 + N.rand() * 180, ang = (N.rand() - .5) * .6 + (N.rand() > .5 ? 0 : Math.PI / 2);
@@ -150,7 +153,7 @@ export function buildDesk(kit: DeskKit): Desk {
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
     const inertia = o.mass * o.circles.reduce((s, [cx, cy, r]) => s + cx * cx + cy * cy + r * r / 2, 0) / Math.max(1, o.circles.length);
     const x = phone ? o.x * .42 : o.x, y = phone ? o.y * 1.3 : o.y;
-    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a: o.a, vx: 0, vy: 0, va: 0, lift: 0 });
+    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a: o.a, hx: x, hy: y, ha: o.a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, hop: Infinity });
   }
   const line = (n: number, len: number, r: number): [number, number, number][] => Array.from({ length: n }, (_, i) => [-len / 2 + len * i / (n - 1), 0, r]);
 
@@ -203,44 +206,17 @@ export function buildDesk(kit: DeskKit): Desk {
     for (let i = 0; i < pts.length - 1; i++) path.add(new THREE.LineCurve3(new THREE.Vector3(pts[i][0], pts[i][1], 0), new THREE.Vector3(pts[i + 1][0], pts[i + 1][1], 0)));
     const clipGeo = geo(new THREE.TubeGeometry(path, 64, .02, 8, false));
     const steel = std({ color: 0xdcd9d2, metalness: 1, roughness: .22 });
-    for (const [x, y, a] of [[-2.7, 2.9, .9], [-2.1, 2.55, -.4]] as const) {
+    for (const [x, y, a] of [[-4.2, -2.5, .9]] as const) {
       const g = new THREE.Group(); g.add(mesh(clipGeo, steel));
       addTool(g, { x, y, a, rest: .025, circles: [[0.09, -.3, .22], [0.09, .2, .22]], mass: .05, foot: [.7, 1.4] });
     }
   }
-  { // Eraser with its paper sleeve
-    const g = new THREE.Group();
-    g.add(mesh(geo(new RoundedBoxGeometry(.9, .55, .3, 3, .08)), std({ color: 0xf2eee5, roughness: .92 })));
-    const sleeve = mesh(geo(new THREE.BoxGeometry(.46, .57, .32)), std({ color: 0x3f5a8a, roughness: .7 })); sleeve.position.x = -.16; g.add(sleeve);
-    addTool(g, { x: -4.6, y: -2.7, a: .3, rest: .15, circles: [[-.25, 0, .3], [.25, 0, .3]], mass: .3, foot: [1.2, .85] });
-  }
-  { // Sticky note: slides under everything rather than bumping into it
-    const note = tex(512, 512, (x) => {
-      x.fillStyle = "#efe2c4"; x.fillRect(0, 0, 512, 512);
-      const g = x.createLinearGradient(0, 0, 0, 90); g.addColorStop(0, "rgba(160,130,80,.25)"); g.addColorStop(1, "rgba(160,130,80,0)"); x.fillStyle = g; x.fillRect(0, 0, 512, 90);
-      x.fillStyle = "#3a2c22"; x.font = `600 44px ${SANS}`;
-      ["TODO", "✓ find the slow part", "✓ build the fix", "✓ ship it", "☐ say hi"].forEach((l, i) => x.fillText(l, 40, 110 + i * 76));
-    });
-    const edge = std({ color: 0xe6d6b4 });
-    const g = new THREE.Group();
-    g.add(mesh(geo(new THREE.BoxGeometry(1.7, 1.7, .01)), [edge, edge, edge, edge, std({ map: note, roughness: .9 }), edge]));
-    addTool(g, { x: -4.1, y: -.5, a: -.12, rest: .006, circles: [[0, 0, .85]], mass: .08, foot: [1.9, 1.9], collide: false });
-  }
-
   /* ---------- Physics ---------- */
   const raycaster = new THREE.Raycaster();
   const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -.15);
   const hitPoint = new THREE.Vector3();
-  let held: { tool: Tool; lx: number; ly: number; px: number; py: number } | null = null;
+  const pointer = { x: 0, y: 0, vx: 0, vy: 0, t: 0, on: false };
 
-  function toolAt(ray: THREE.Ray) {
-    raycaster.ray.copy(ray);
-    const hits = raycaster.intersectObjects(tools.map((t) => t.group), true);
-    if (!hits.length) return null;
-    let o: THREE.Object3D | null = hits[0].object;
-    while (o && !tools.some((t) => t.group === o)) o = o.parent;
-    return tools.find((t) => t.group === o) ?? null;
-  }
   const worldOf = (t: Tool, lx: number, ly: number) => { const c = Math.cos(t.a), s = Math.sin(t.a); return [t.x + lx * c - ly * s, t.y + lx * s + ly * c]; };
 
   function update(dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) {
@@ -248,20 +224,31 @@ export function buildDesk(kit: DeskKit): Desk {
     const sub = 3, h = dt / sub;
     for (let step = 0; step < sub; step++) {
       for (const t of tools) {
-        if (held?.tool === t) {
-          // A critically damped spring from the grabbed point to the pointer.
-          const [gx, gy] = worldOf(t, held.lx, held.ly);
-          const rx = gx - t.x, ry = gy - t.y;
-          const pvx = t.vx - t.va * ry, pvy = t.vy + t.va * rx;
-          const k = 260 * t.mass, c = 2 * Math.sqrt(k * t.mass) * .9;
-          const fx = k * (held.px - gx) - c * pvx, fy = k * (held.py - gy) - c * pvy;
-          t.vx += fx / t.mass * h; t.vy += fy / t.mass * h;
-          t.va += (rx * fy - ry * fx) / t.inertia * h;
-          t.va *= Math.exp(-h * 6);
+        // Home: a soft spring back to where the tool was laid out.
+        const da = Math.atan2(Math.sin(t.ha - t.a), Math.cos(t.ha - t.a));
+        t.vx += (t.hx - t.x) * 3.2 * h; t.vy += (t.hy - t.y) * 3.2 * h; t.va += da * 4 * h;
+        // The pointer pushes a tool away from the point of it that is nearest, so an off-centre
+        // approach turns it as well as moving it. Directly over a tool, it lifts and slides aside.
+        if (pointer.on) {
+          let best: [number, number, number, number] | null = null;
+          for (const [cx, cy, r] of t.circles) {
+            const [wx, wy] = worldOf(t, cx, cy);
+            const d = Math.hypot(wx - pointer.x, wy - pointer.y) - r;
+            if (!best || d < best[2]) best = [wx, wy, d, r];
+          }
+          if (best && best[2] < 1.4) {
+            const [wx, wy, d] = best;
+            let dx = wx - pointer.x, dy = wy - pointer.y, len = Math.hypot(dx, dy);
+            // Right on top of the tool there is no "away", so push it sideways off its own axis.
+            if (len < .05) { dx = -Math.sin(t.a); dy = Math.cos(t.a); len = 1; }
+            const f = Math.pow(1 - Math.max(0, d) / 1.4, 2) * 80;
+            const fx = dx / len * f, fy = dy / len * f;
+            t.vx += fx * h; t.vy += fy * h;
+            t.va += ((wx - t.x) * fy - (wy - t.y) * fx) / t.inertia * t.mass * .5 * h;
+          }
         }
         // Sliding friction on the mat.
-        const fr = held?.tool === t ? 1.5 : 5.5;
-        t.vx *= Math.exp(-h * fr); t.vy *= Math.exp(-h * fr); t.va *= Math.exp(-h * (fr + 2));
+        t.vx *= Math.exp(-h * 6); t.vy *= Math.exp(-h * 6); t.va *= Math.exp(-h * 7);
         t.x += t.vx * h; t.y += t.vy * h; t.a += t.va * h;
       }
       // Tool against tool, and against the device and the edges of the view.
@@ -300,7 +287,14 @@ export function buildDesk(kit: DeskKit): Desk {
       }
     }
     for (const t of tools) {
-      const target = held?.tool === t ? .35 : 0;
+      // Hover cue: lift a little when the pointer is within reach.
+      let close = 0;
+      if (pointer.on) for (const [cx, cy, r] of t.circles) { const [wx, wy] = worldOf(t, cx, cy); close = Math.max(close, 1 - Math.max(0, Math.hypot(pointer.x - wx, pointer.y - wy) - r) / .6); }
+      t.near += (Math.max(0, close) - t.near) * (1 - Math.exp(-dt * 10));
+      // One hop each when the desk first appears, staggered, so touch users see the tools are loose.
+      let hop = 0;
+      if (t.hop > -1) { t.hop -= dt; if (t.hop < 0 && t.hop > -.45) hop = Math.sin(-t.hop / .45 * Math.PI) * .22; }
+      const target = t.near * .18 + hop;
       t.lift += (target - t.lift) * (1 - Math.exp(-dt * 14));
       t.group.position.set(t.x, t.y, t.rest + t.lift);
       t.group.rotation.z = t.a;
@@ -308,24 +302,31 @@ export function buildDesk(kit: DeskKit): Desk {
       t.shadow.rotation.z = t.a;
       const spread = 1 + t.lift * 1.4;
       t.shadow.scale.x = Math.abs(t.shadow.scale.x) / (t.shadow.userData.spread || 1) * spread; t.shadow.scale.y = Math.abs(t.shadow.scale.y) / (t.shadow.userData.spread || 1) * spread; t.shadow.userData.spread = spread;
-      if (Math.abs(t.vx) + Math.abs(t.vy) + Math.abs(t.va) > .002 || Math.abs(t.lift - target) > .002) moving = true;
+      if (Math.abs(t.vx) + Math.abs(t.vy) + Math.abs(t.va) > .002 || Math.abs(t.lift - target) > .002 || (t.hop > -.5 && t.hop < 5)) moving = true;
     }
-    return moving || !!held;
+    pointer.vx *= Math.exp(-dt * 10); pointer.vy *= Math.exp(-dt * 10);
+    return moving || pointer.on;
   }
 
   return {
     group,
     update,
-    hit: (ray) => !!toolAt(ray),
-    grab(ray) {
-      const t = toolAt(ray); if (!t) return false;
-      raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return false;
-      const c = Math.cos(-t.a), s = Math.sin(-t.a), dx = hitPoint.x - t.x, dy = hitPoint.y - t.y;
-      held = { tool: t, lx: dx * c - dy * s, ly: dx * s + dy * c, px: hitPoint.x, py: hitPoint.y };
-      return true;
+    poke(ray) {
+      raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
+      for (const t of tools) {
+        const dx = t.x - hitPoint.x, dy = t.y - hitPoint.y, d = Math.hypot(dx, dy);
+        if (d > 2.2 || d < 1e-4) continue;
+        const k = (1 - d / 2.2) * 5;
+        t.vx += dx / d * k; t.vy += dy / d * k; t.va += (Math.random() - .5) * k * .8;
+      }
     },
-    drag(ray) { if (!held) return; raycaster.ray.copy(ray); if (raycaster.ray.intersectPlane(plane, hitPoint)) { held.px = hitPoint.x; held.py = hitPoint.y; } },
-    release() { held = null; },
-    dragging: () => !!held,
+    hop() { tools.forEach((t, i) => { if (t.hop === Infinity) t.hop = .35 + i * .16; }); },
+    hover(ray) {
+      if (!ray) { pointer.on = false; return; }
+      raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
+      const now = performance.now() / 1000, dt = Math.min(.1, Math.max(.001, now - pointer.t));
+      if (pointer.on) { pointer.vx = (hitPoint.x - pointer.x) / dt; pointer.vy = (hitPoint.y - pointer.y) / dt; }
+      pointer.x = hitPoint.x; pointer.y = hitPoint.y; pointer.t = now; pointer.on = true;
+    },
   };
 }

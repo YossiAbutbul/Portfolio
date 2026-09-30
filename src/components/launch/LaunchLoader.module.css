@@ -1,0 +1,114 @@
+/* An olive drafting sheet: the device drawn as a blueprint while the scene loads. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #4b5a3d;
+  transition: opacity 0.7s var(--ease-out), visibility 0s linear 0.7s;
+}
+
+.sheet[data-phase="leaving"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.drawing {
+  width: min(92vw, 1100px);
+  height: auto;
+  overflow: visible;
+  transition: transform 0.8s var(--ease-out);
+}
+
+.sheet[data-phase="leaving"] .drawing {
+  transform: scale(1.12);
+}
+
+.construction line {
+  stroke: rgba(242, 230, 212, 0.16);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.hLines line {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: grow-x 0.9s var(--ease-out) both;
+}
+
+.vLines line {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: grow-y 0.9s var(--ease-out) 0.1s both;
+}
+
+.fill {
+  fill: rgba(196, 214, 176, 0.3);
+}
+
+.screenHole {
+  fill: #4b5a3d;
+}
+
+.outlines rect,
+.outlines circle,
+.outlines line {
+  fill: none;
+  stroke: rgba(242, 236, 222, 0.9);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 5;
+  animation: appear 0.6s var(--ease-out) both;
+}
+
+.outlines :nth-child(1) { animation-delay: 0.25s; }
+.outlines :nth-child(2) { animation-delay: 0.4s; }
+.outlines :nth-child(3) { animation-delay: 0.5s; }
+.outlines :nth-child(4) { animation-delay: 0.58s; }
+.outlines :nth-child(5) { animation-delay: 0.62s; }
+
+.handle line {
+  stroke: #ff8a3d;
+  stroke-width: 2;
+}
+
+.handle circle,
+.handle rect {
+  fill: #ff8a3d;
+}
+
+.handle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.handles .handle:nth-child(1) { animation-delay: 0.55s; }
+.handles .handle:nth-child(2) { animation-delay: 0.6s; }
+.handles .handle:nth-child(3) { animation-delay: 0.65s; }
+.handles .handle:nth-child(4) { animation-delay: 0.7s; }
+.handles .handle:nth-child(n + 5) { animation-delay: 0.8s; }
+
+.meta {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  display: flex;
+  justify-content: space-between;
+  color: rgba(242, 230, 212, 0.75);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes grow-x { from { transform: scaleX(0); } }
+@keyframes grow-y { from { transform: scaleY(0); } }
+@keyframes appear { from { opacity: 0; } }
+@keyframes pop { from { transform: scale(0); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { display: none; }
+}

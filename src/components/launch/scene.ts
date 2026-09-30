@@ -18,6 +18,8 @@ export interface SceneHooks {
   say?: (message: string) => void;
   /** Called whenever the device's button is pressed, with the running total. */
   onPress?: (count: number) => void;
+  /** Setup progress from 0 to 1, for the loading screen. */
+  onProgress?: (value: number) => void;
   /** Called when scrolling moves the thermal slider, so its readout can follow. */
   onHeat?: (value: number) => void;
   /** The scene decides which backdrop the page should show behind it. */
@@ -62,6 +64,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   room.dispose(); pmrem.dispose();
   scene.environment = envTarget.texture;
   scene.environmentIntensity = .35;
+  hooks.onProgress?.(.25);
   await yieldToMain(); if (signal?.aborted) { envTarget.dispose(); renderer.dispose(); return null; }
 
   // Everything created here is tracked so dispose() can release it.
@@ -110,6 +113,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* ---------- The desk ---------- */
   const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, TEX, phone: small() });
   const desk = deskSet.group; scene.add(desk);
+  hooks.onProgress?.(.6);
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   // The veil darkens the desk into the spotlit room; its edges match the page backdrop exactly.
@@ -267,9 +271,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   }
   addEventListener("resize", resize); resize();
 
-  function frame(now: number) {
+  function frame() {
+    // One clock for everything: rAF timestamps and performance.now() disagree by up to a frame.
+    const now = performance.now();
     raf = 0;
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
     // <html data-snap> (set by the screenshot harness) skips easing so captures show the exact pose.
     const still = reduce.matches || document.documentElement.hasAttribute("data-snap");
     if (!still) time += dt;
@@ -285,10 +291,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const onDesk = desk.visible && cur.veil < .05 && lifted < .03;
     const halfH = camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), halfW = halfH * camera.aspect;
     const obstacles: [number, number, number][] = onDesk ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s, cur.y, .95 * cur.s] as [number, number, number]) : [];
-    // Desktop keeps the tools in view; a phone is narrower than the mat, so there the mat is the edge.
-    const edge = small() ? { w: 5.5, h: 3.6 } : { w: halfW - .15, h: halfH - .15 };
+    // The mat is the edge: tools can be nudged partly out of frame, and their home spring brings them back.
+    const edge = { w: 6.2, h: 4.2 };
     const deskMoving = desk.visible ? deskSet.update(dt, edge, obstacles) : false;
-    if (!onDesk && deskSet.dragging()) deskSet.release();
+    if (!onDesk) deskSet.hover(null);
     canvas.style.pointerEvents = onDesk ? "auto" : "none";
     device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lifted), cur.z);
     device.rotation.set(cur.rx + pointer.y * .12 * (.3 + lifted), cur.ry + pointer.x * .25 * (.3 + lifted), cur.rz);
@@ -314,40 +320,39 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     idleFrames = moving > .0005 || floating || pressT > 0 || thermalMode || deskMoving ? 0 : idleFrames + 1;
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
-  function kick() { if (!raf && !disposed) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
+  function kick() { if (!raf && !disposed) { if (idleFrames >= 30) last = performance.now(); raf = requestAnimationFrame(frame); } }
   addEventListener("scroll", kick, { passive: true });
 
   /* ---------- Playing with the desk ---------- */
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const rayAt = (x: number, y: number) => { const r = canvas.getBoundingClientRect(); ndc.set((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; };
-  const onDown = (e: PointerEvent) => {
-    if (!deskSet.grab(rayAt(e.clientX, e.clientY))) return;
-    try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic events have no capturable pointer */ }
-    canvas.style.cursor = "grabbing"; e.preventDefault(); kick();
-  };
-  const onMove = (e: PointerEvent) => {
-    if (deskSet.dragging()) { deskSet.drag(rayAt(e.clientX, e.clientY)); kick(); return; }
-    if (e.pointerType === "mouse") canvas.style.cursor = deskSet.hit(rayAt(e.clientX, e.clientY)) ? "grab" : "";
-  };
-  const onUp = () => { if (deskSet.dragging()) { deskSet.release(); canvas.style.cursor = ""; kick(); } };
-  // A finger on a tool drags it; a finger anywhere else still scrolls the page.
-  const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; if (t && deskSet.hit(rayAt(t.clientX, t.clientY))) e.preventDefault(); };
+  // The desk reacts to the pointer; a tap or click gives the nearby tools a push. Nothing is dragged,
+  // so touch never has to fight the page's own scrolling.
+  const onDown = (e: PointerEvent) => { deskSet.poke(rayAt(e.clientX, e.clientY)); kick(); };
+  const onMove = (e: PointerEvent) => { if (e.pointerType !== "mouse") return; deskSet.hover(rayAt(e.clientX, e.clientY)); kick(); };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
-  canvas.addEventListener("pointerup", onUp);
-  canvas.addEventListener("pointercancel", onUp);
-  canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+  const onLeave = () => deskSet.hover(null);
+  // The tools hop once, as soon as the loading sheet has lifted (or straight away if there is none).
+  const onRevealed = () => { deskSet.hop(); kick(); };
+  window.addEventListener("launch:revealed", onRevealed);
+  if (!document.querySelector("[data-launch-loader]")) onRevealed();
+  canvas.addEventListener("pointerleave", onLeave);
   const onVisibility = () => { if (!document.hidden) kick(); };
   document.addEventListener("visibilitychange", onVisibility);
   const blink = window.setInterval(() => { if (scr.mode !== "heat" && !document.hidden) { scr.cursor = !scr.cursor; drawScreen(); kick(); } }, 530);
 
   // Compile every material up front, off the main thread where the driver allows it, so neither the
   // first frame nor the thermal switch stalls on shader compilation.
+  hooks.onProgress?.(.75);
   await renderer.compileAsync(scene, camera).catch(() => {});
+  hooks.onProgress?.(.9);
   setThermal(true); await renderer.compileAsync(scene, camera).catch(() => {}); setThermal(false);
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
-  frame(performance.now());
+  frame();
+  hooks.onProgress?.(1);
 
   return {
     press,
@@ -355,7 +360,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       disposed = true;
       cancelAnimationFrame(raf); clearInterval(blink);
       removeEventListener("pointermove", onPointer); removeEventListener("resize", resize); removeEventListener("scroll", kick);
-      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerleave", onLeave); window.removeEventListener("launch:revealed", onRevealed);
       document.removeEventListener("visibilitychange", onVisibility);
       heat?.removeEventListener("input", onHeat);
       disposables.forEach((d) => d.dispose());

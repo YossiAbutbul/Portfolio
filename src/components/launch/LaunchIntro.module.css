@@ -19,14 +19,6 @@
   pointer-events: auto;
 }
 
-.hint {
-  position: absolute;
-  right: var(--gutter);
-  bottom: 4svh;
-  opacity: 0.75;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
-}
-
 .word {
   position: absolute;
   left: var(--gutter);
@@ -133,7 +125,6 @@
 }
 
 @media (max-width: 720px) {
-  .hint { display: none; }
   .side { top: auto; bottom: 34svh; left: var(--gutter); width: auto; font-size: 1.05rem; }
   .kicker { left: var(--gutter); top: 9svh; }
   .word { top: 13svh; }

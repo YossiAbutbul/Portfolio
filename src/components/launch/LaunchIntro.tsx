@@ -8,7 +8,6 @@ export default function LaunchIntro() {
   return (
     <>
       <section className={styles.hero} id="top" aria-labelledby="hero-name">
-        <span className={`${styles.hint} ${styles.cap}`} aria-hidden="true">Drag the tools around</span>
         <span className={`${styles.kicker} ${styles.cap}`}>Takes a problem in. Ships software out.</span>
         <h1 className={styles.word} id="hero-name">Yossi<br />Abutbul</h1>
         <p className={styles.side}>
