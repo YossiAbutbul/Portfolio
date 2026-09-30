@@ -9,7 +9,7 @@ import styles from "./LaunchReel.module.css";
 /** One card colour per project, from the set palette, and the ink that reads on it. */
 const CARDS = [
   { bg: "var(--sand)", ink: "var(--ink-dark)" },
-  { bg: "var(--cork)", ink: "var(--cream)" },
+  { bg: "var(--cork)", ink: "var(--ink-dark)" },
   { bg: "var(--olive)", ink: "var(--cream)" },
   { bg: "var(--red)", ink: "var(--cream)" },
   { bg: "var(--mat)", ink: "var(--cream)" },

@@ -144,7 +144,7 @@
 }
 
 @media (max-width: 720px) {
-  .side { top: auto; bottom: 28svh; left: var(--gutter); width: auto; }
+  .side { top: auto; bottom: 34svh; left: var(--gutter); width: auto; font-size: 1.05rem; }
   .kicker { left: var(--gutter); top: 9svh; }
   .word { top: 13svh; }
   .duo { grid-template-columns: 1fr; align-content: space-between; padding-block: 16svh 10svh; }

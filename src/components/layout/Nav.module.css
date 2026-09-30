@@ -1,229 +1,53 @@
-/* Masthead: wordmark left, a short index and the full-page menu control right.
-   One rule per selector - the overrides that used to sit at the bottom of this
-   file have been folded in, so source order no longer decides the outcome. */
-
+/* Difference blending keeps the bar legible on every set without giving it a background. */
 .nav {
   position: fixed;
-  inset: 0 0 auto;
-  z-index: 100;
-  padding: 1.15rem var(--gutter);
-  pointer-events: none;
-  background: var(--paper);
-  border-bottom: var(--hairline-w) solid var(--rule);
-}
-
-.inner {
-  width: 100%;
-  max-width: none !important;
-  padding: 0 !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  pointer-events: none;
-}
-
-.monogram,
-.backLink,
-.menuBtn {
-  position: relative;
-  z-index: 3;
-  pointer-events: auto;
-}
-
-.monogram {
-  display: inline-flex;
   align-items: center;
-  gap: 0.8rem;
-  color: var(--ink);
-}
-
-.brandName {
-  font-size: 0.9rem;
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  height: 2.6rem;
-  padding: 0 1rem;
-  border: var(--hairline-w) solid var(--rule);
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--step--1);
-  letter-spacing: 0.12em;
+  gap: 1rem;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--gutter) 0;
+  color: #fff;
+  mix-blend-mode: difference;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ink);
-  background: var(--paper);
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
-.backLink:hover,
-.backLink:focus-visible {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-.backArrow {
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-
-.backLink:hover .backArrow {
-  transform: translateX(-0.25rem);
-}
-
-.right {
-  display: flex;
+.brand {
+  display: inline-flex;
   align-items: center;
-  gap: 1.5rem;
-  pointer-events: none;
-}
-
-/* --- Menu control --------------------------------------------------------- */
-
-.menuBtn {
-  width: 2.6rem;
-  height: 2.6rem;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.34rem;
-  border: 0;
-  color: var(--ink);
-  background: transparent;
-  transition: color var(--dur-fast) var(--ease-out);
-}
-
-.menuBtn:hover,
-.menuBtn:focus-visible {
-  color: var(--mark);
-}
-
-.menuBar {
-  display: block;
-  width: 1rem;
-  height: 1px;
-  background: currentColor;
-  transition: transform 220ms var(--ease-in-out);
-}
-
-.menuBarOpen:first-child {
-  transform: translateY(0.175rem) rotate(45deg);
-}
-
-.menuBarOpen:last-child {
-  transform: translateY(-0.175rem) rotate(-45deg);
-}
-
-/* --- Full-page index ------------------------------------------------------ */
-
-.navWrap {
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  padding: 7rem var(--gutter) 3rem;
-  display: flex;
-  align-items: center;
-  color: var(--ink);
-  background: var(--paper);
-  clip-path: inset(0 0 100% 0);
-  opacity: 0;
-  pointer-events: none;
-  transition: clip-path 520ms cubic-bezier(0.76, 0, 0.24, 1), opacity 140ms linear;
-}
-
-.navWrapOpen {
-  clip-path: inset(0 0 0 0);
-  opacity: 1;
-  pointer-events: auto;
+  min-height: 44px;
+  font-weight: 900;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
 }
 
 .links {
-  width: 100%;
-  max-width: var(--container-max);
-  margin: 0 auto;
-  padding: 0;
-  display: grid;
-  list-style: none;
-  counter-reset: navigation;
-}
-
-.links li {
-  counter-increment: navigation;
-  border-bottom: var(--hairline-w) solid var(--rule);
-}
-
-.links li:first-child {
-  border-top: var(--hairline-w) solid var(--rule-strong);
-}
-
-.link {
-  position: relative;
   display: flex;
+  gap: 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.links a {
+  display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.6em 0.35rem 0;
-  overflow: hidden;
-  font-family: var(--font-sans);
-  font-size: clamp(2.4rem, 6.4vw, 6rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.055em;
-  text-transform: uppercase;
+  min-height: 44px;
 }
 
-.link::before {
-  width: clamp(2.75rem, 6vw, 6rem);
-  flex: 0 0 auto;
-  content: "0" counter(navigation);
-  font-family: var(--font-mono);
-  font-size: var(--step--1);
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  color: var(--ink-faint);
+.links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
-.link::after {
-  position: absolute;
-  right: 0.15em;
-  content: "→";
-  line-height: 1.4;
-  font-size: 0.3em;
-  color: var(--ink-muted);
-  transform: translateX(-0.5rem);
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
-}
-
-.linkText {
-  transition: transform 240ms var(--ease-out), color var(--dur-fast) var(--ease-out);
-}
-
-.link:hover .linkText,
-.linkActive .linkText {
-  transform: translateX(0.9rem);
-}
-
-.link:hover::after,
-.linkActive::after {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-@media (max-width: 40rem) {
-  .nav {
-    padding: 1rem var(--gutter);
-  }
-
-  .navWrap {
-    padding: 6rem 1.25rem 2rem;
-  }
-
-  .link {
-    font-size: clamp(2rem, 12vw, 3.4rem);
-    padding-block: 0.5rem;
+@media (max-width: 720px) {
+  .links li:not(.keep) {
+    display: none;
   }
 }

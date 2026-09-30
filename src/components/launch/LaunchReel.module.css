@@ -86,10 +86,6 @@
   min-width: 0;
 }
 
-.txt .cap {
-  opacity: 0.75;
-}
-
 .txt h3 {
   margin: 0.8rem 0 0;
   font-size: clamp(1.8rem, 3.2vw, 3.2rem);
@@ -111,14 +107,13 @@
 }
 
 .metric s {
-  opacity: 0.55;
+  opacity: 0.8;
   font-weight: 600;
 }
 
 .stack {
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  opacity: 0.75;
 }
 
 .links {

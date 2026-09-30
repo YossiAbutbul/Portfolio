@@ -17,6 +17,8 @@ export interface SceneHooks {
   say?: (message: string) => void;
   /** Called whenever the device's button is pressed, with the running total. */
   onPress?: (count: number) => void;
+  /** Called when scrolling moves the thermal slider, so its readout can follow. */
+  onHeat?: (value: number) => void;
   /** The scene decides which backdrop the page should show behind it. */
   onBackdrop?: (backdrop: "desk" | "void" | "thermal") => void;
 }
@@ -58,6 +60,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   room.dispose(); pmrem.dispose();
   scene.environment = envTarget.texture;
   scene.environmentIntensity = .35;
+  await yieldToMain(); if (signal?.aborted) { envTarget.dispose(); renderer.dispose(); return null; }
 
   // Everything created here is tracked so dispose() can release it.
   const disposables: { dispose: () => void }[] = [envTarget];
@@ -65,7 +68,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   const sun = new THREE.DirectionalLight(0xffe0bd, 3.2);
   sun.position.set(-5, 6, 9); sun.castShadow = true;
-  sun.shadow.mapSize.set(small() ? 1024 : 2048, small() ? 1024 : 2048);
+  sun.shadow.mapSize.set(1024, 1024);
 
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6, near: 1, far: 30 });
   sun.shadow.bias = -.0004; sun.shadow.radius = 6;
@@ -105,6 +108,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     }
   });
   wood.wrapS = wood.wrapT = THREE.RepeatWrapping; wood.repeat.set(2, 2);
+  await yieldToMain(); if (signal?.aborted) return abandon();
   const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: wood, roughness: .7 }), false);
   table.position.z = -.06; desk.add(table);
 
@@ -122,6 +126,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     x.beginPath(); x.moveTo(w * .1, h * .9); x.lineTo(w * .3, h * .55); x.stroke();
     x.font = `700 26px ${SANS}`; x.fillText("YOSSI-1 · CUTTING MAT · DO NOT SHIP BUGS", 30, h - 46);
   });
+  await yieldToMain(); if (signal?.aborted) return abandon();
   const matSide = std({ color: 0x244a3e, roughness: .9 });
   const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, roughness: .85 }), matSide], false);
   mat.position.set(.9, -.1, -.03); desk.add(mat);
@@ -292,7 +297,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     } else if (rect(pressSec).top > vh * .4) {
       const p = prog(therm); thermalMode = true; backdrop = "thermal";
       t.veil = 1; t.z = 2; t.rx = -.25; t.ry = -.6 + p * 1.4; t.rz = .05; t.s = mob ? .66 : .95;
-      if (heat && !heatManual) heat.value = String(Math.round(smooth(.15, .85, p) * 100));
+      therm?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .1));
+      if (heat && !heatManual) {
+        const next = Math.round(smooth(.15, .85, p) * 100);
+        if (+heat.value !== next) { heat.value = String(next); hooks.onHeat?.(next); }
+      }
     } else {
       const p = prog(pressSec);
       t.veil = 1 - smooth(0, .3, p); t.spot = t.veil;
@@ -360,6 +369,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   document.addEventListener("visibilitychange", onVisibility);
   const blink = window.setInterval(() => { if (scr.mode !== "heat" && !document.hidden) { scr.cursor = !scr.cursor; drawScreen(); kick(); } }, 530);
 
+  // Compile every material up front, off the main thread where the driver allows it, so neither the
+  // first frame nor the thermal switch stalls on shader compilation.
+  await renderer.compileAsync(scene, camera).catch(() => {});
+  setThermal(true); await renderer.compileAsync(scene, camera).catch(() => {}); setThermal(false);
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
   frame(performance.now());

@@ -33,6 +33,7 @@ export default function LaunchStage() {
         onBackdrop: setBackdrop,
         say: (message) => window.dispatchEvent(new CustomEvent("launch:say", { detail: message })),
         onPress: (count) => window.dispatchEvent(new CustomEvent("launch:press", { detail: count })),
+        onHeat: (value) => window.dispatchEvent(new CustomEvent("launch:heat", { detail: value })),
       }, abort.signal);
       if (!scene) return;
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
