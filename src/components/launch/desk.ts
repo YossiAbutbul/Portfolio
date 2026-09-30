@@ -193,7 +193,7 @@ export function buildDesk(kit: DeskKit): Desk {
 
   { // Pencil: one turned surface, so barrel, sharpened wood and graphite flow into each other
     // like a real pencil, coloured along its length rather than built from separate parts.
-    const K = 1.55, R = .105 * K; // K thickens the whole profile evenly
+    const K = 1, R = .105 * K; // K thickens the whole profile evenly
     const profile: [number, number][] = [
       [0, -2.36], [.04, -2.355], [.075, -2.34], [.095, -2.315], [.104, -2.28], [R, -2.24],
       [R, 1.78], [.1, 1.86], [.082, 2.0], [.062, 2.16], [.044, 2.3], [.032, 2.4],
@@ -201,7 +201,7 @@ export function buildDesk(kit: DeskKit): Desk {
     ];
     const pencilGeo = geo(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r === .105 ? R : r * K, y)), 48));
     const pos = pencilGeo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
-    const paint = new THREE.Color(0xe7cfa8), band = new THREE.Color(0x3c5a44), wood = new THREE.Color(0xd8b484), lead = new THREE.Color(0x2b2a28);
+    const paint = new THREE.Color(0x2c3322), band = new THREE.Color(0xc9a878), wood = new THREE.Color(0xecd4ab), lead = new THREE.Color(0x2b2a28);
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i), r = Math.hypot(pos.getX(i), pos.getZ(i));
       if (y > 2.43 || (y > 1.8 && r < .03 * K)) c.copy(lead);
@@ -218,33 +218,76 @@ export function buildDesk(kit: DeskKit): Desk {
     const g = new THREE.Group();
     const body = mesh(pencilGeo, std({ vertexColors: true, roughness: .72 }));
     body.rotation.z = -Math.PI / 2; g.add(body);
-    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: R, circles: line(7, 4.8, .19), mass: .4, foot: [5.1, .6] });
+    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: R, circles: line(7, 4.8, .13), mass: .3, foot: [5.1, .45] });
   }
-  { // Box cutter: soft rounded orange body with bevelled edges, a track for the blade, a snap blade
-    // with its break lines, a ribbed grip and the thumb slider, after Oryzo's.
+  { // Box cutter, built like a real snap-off knife: a tapered orange body, a rubber overmould over
+    // the back half, a brushed steel channel with the thumb slider running in its slot, a steel nose
+    // guide, a blade with a bright ground edge and snap lines, and a dark end cap.
     const g = new THREE.Group();
-    const L = 3.1, Wd = .5, r = .22;
-    const outline = new THREE.Shape();
-    outline.moveTo(-L / 2 + r, -Wd / 2); outline.lineTo(L / 2 - .1, -Wd / 2); outline.quadraticCurveTo(L / 2, -Wd / 2, L / 2, -Wd / 2 + .1);
-    outline.lineTo(L / 2, Wd / 2 - .1); outline.quadraticCurveTo(L / 2, Wd / 2, L / 2 - .1, Wd / 2); outline.lineTo(-L / 2 + r, Wd / 2);
-    outline.absarc(-L / 2 + r, 0, Wd / 2, Math.PI / 2, Math.PI * 1.5, false);
-    const bodyGeo = geo(new THREE.ExtrudeGeometry(outline, { depth: .12, bevelEnabled: true, bevelThickness: .06, bevelSize: .05, bevelSegments: 5, curveSegments: 24 }));
-    bodyGeo.translate(0, 0, -.06);
-    const orange = std({ color: 0xe0802c, roughness: .55 });
+    const L = 3.1, back = .29, front = .23, nose = L / 2;
+    const orange = std({ color: 0xe57a22, roughness: .5, envMapIntensity: .5 });
+    const rubber = std({ color: 0x242120, roughness: .92 });
+    const steel = std({ color: 0xb4b4b2, metalness: 1, roughness: .38, envMapIntensity: .55 });
+    const darkSteel = std({ color: 0x5c5c5a, metalness: 1, roughness: .5, envMapIntensity: .4 });
+
+    // Body: wider at the grip, tapering to the nose, the nose cut back at an angle.
+    const body = new THREE.Shape();
+    body.moveTo(-L / 2 + .2, -back);
+    body.lineTo(nose - .2, -front);
+    body.quadraticCurveTo(nose - .06, -front, nose - .04, -front + .08);
+    body.lineTo(nose - .22, front);
+    body.lineTo(-L / 2 + .2, back);
+    body.quadraticCurveTo(-L / 2, back, -L / 2, back - .2);
+    body.lineTo(-L / 2, -back + .2);
+    body.quadraticCurveTo(-L / 2, -back, -L / 2 + .2, -back);
+    const bodyGeo = geo(new THREE.ExtrudeGeometry(body, { depth: .14, bevelEnabled: true, bevelThickness: .055, bevelSize: .05, bevelSegments: 6, curveSegments: 20 }));
+    bodyGeo.translate(0, 0, -.07);
     g.add(mesh(bodyGeo, orange));
-    // Blade track: a darker recessed channel along the top.
-    const track = mesh(geo(new RoundedBoxGeometry(L * .78, .16, .02, 2, .01)), std({ color: 0x7a3f12, roughness: .7 }), false);
-    track.position.set(.2, 0, .125); g.add(track);
-    // Grip: soft rubber pads at the back.
-    const grip = std({ color: 0x2b2522, roughness: .9 });
-    for (let i = 0; i < 7; i++) { const p = mesh(geo(new RoundedBoxGeometry(.07, .42, .05, 2, .02)), grip); p.position.set(-1.2 + i * .12, 0, .1); g.add(p); }
-    // Snap blade: out of the nose, with its break lines.
-    const bladeShape = new THREE.Shape(); bladeShape.moveTo(0, -.12); bladeShape.lineTo(.95, -.12); bladeShape.lineTo(1.25, .12); bladeShape.lineTo(0, .12);
-    const blade = mesh(geo(new THREE.ExtrudeGeometry(bladeShape, { depth: .012, bevelEnabled: false })), std({ color: 0xcfcfcf, metalness: .9, roughness: .3, envMapIntensity: .5 }));
-    blade.position.set(L / 2 - .15, 0, .02); g.add(blade);
-    for (let i = 0; i < 5; i++) { const s = mesh(geo(new THREE.BoxGeometry(.008, .26, .004)), std({ color: 0x7c7c7c, roughness: .5 }), false); s.position.set(L / 2 + .1 + i * .19, 0, .036); s.rotation.z = .55; g.add(s); }
-    const slider = mesh(geo(new RoundedBoxGeometry(.34, .2, .08, 3, .035)), std({ color: 0x3a3330, roughness: .6 })); slider.position.set(.55, 0, .16); g.add(slider);
-    addTool(g, { x: 3.9, y: -2.2, a: .5, rest: .12, circles: [...line(6, 3.6, .26)], mass: .6, foot: [4.2, .95] });
+
+    // Rubber overmould: a raised pad over the back half, with fine cross ribs for the thumb.
+    const pad = new THREE.Shape();
+    const px0 = -L / 2 + .16, px1 = -.05, pw = back - .07, pr = .14;
+    pad.moveTo(px0 + pr, -pw); pad.lineTo(px1, -pw + .03); pad.quadraticCurveTo(px1 + .08, 0, px1, pw - .03); pad.lineTo(px0 + pr, pw);
+    pad.quadraticCurveTo(px0, pw, px0, pw - pr); pad.lineTo(px0, -pw + pr); pad.quadraticCurveTo(px0, -pw, px0 + pr, -pw);
+    const padGeo = geo(new THREE.ExtrudeGeometry(pad, { depth: .02, bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 3, curveSegments: 12 }));
+    const padMesh = mesh(padGeo, rubber); padMesh.position.z = .1; g.add(padMesh);
+    const ribs = new THREE.InstancedMesh(geo(new RoundedBoxGeometry(.028, pw * 1.5, .02, 1, .008)), rubber, 16);
+    const m = new THREE.Object3D();
+    for (let i = 0; i < 16; i++) { m.position.set(px0 + .2 + i * .075, 0, .145); m.updateMatrix(); ribs.setMatrixAt(i, m.matrix); }
+    ribs.castShadow = true; g.add(ribs);
+
+    // Steel channel along the front half, with the dark slot the slider rides in.
+    const chan = mesh(geo(new RoundedBoxGeometry(nose - .3 - px1, .3, .03, 2, .012)), steel);
+    chan.position.set((px1 + nose - .3) / 2 + .02, 0, .125); g.add(chan);
+    const slot = mesh(geo(new THREE.BoxGeometry(nose - .5 - px1, .045, .01)), std({ color: 0x141312, roughness: 1 }), false);
+    slot.position.set((px1 + nose - .5) / 2 + .1, 0, .142); g.add(slot);
+    // Slider: a ridged thumb button sitting proud of the channel.
+    const slider = mesh(geo(new RoundedBoxGeometry(.36, .22, .09, 3, .035)), rubber); slider.position.set(.32, 0, .18); g.add(slider);
+    for (let i = 0; i < 5; i++) { const rdg = mesh(geo(new RoundedBoxGeometry(.03, .2, .03, 1, .01)), rubber); rdg.position.set(.2 + i * .06, 0, .23); g.add(rdg); }
+
+    // Steel nose guide that the blade slides out of.
+    const guide = mesh(geo(new RoundedBoxGeometry(.3, front * 2 + .02, .24, 3, .04)), darkSteel); guide.position.set(nose - .26, 0, -.005); g.add(guide);
+    const screw = mesh(geo(new THREE.CylinderGeometry(.045, .045, .02, 20)), steel); screw.rotation.x = Math.PI / 2; screw.position.set(nose - .26, 0, .12); g.add(screw);
+
+    // Blade: extended past the nose, point forward, ground edge along the bottom, snap lines parallel
+    // to the tip.
+    const bh = .17, tipRun = .22, ext = .62;
+    const bs = new THREE.Shape(); bs.moveTo(0, -bh); bs.lineTo(ext + tipRun, -bh); bs.lineTo(ext, bh); bs.lineTo(0, bh);
+    const blade = mesh(geo(new THREE.ExtrudeGeometry(bs, { depth: .012, bevelEnabled: false })), std({ color: 0xd4d4d2, metalness: .95, roughness: .26, envMapIntensity: .6 }));
+    blade.position.set(nose - .15, 0, .02); g.add(blade);
+    const edge = mesh(geo(new THREE.BoxGeometry(ext + tipRun - .02, .035, .004)), std({ color: 0xf2f2f0, metalness: 1, roughness: .12 }), false);
+    edge.position.set(nose - .15 + (ext + tipRun) / 2 - .01, -bh + .02, .034); g.add(edge);
+    const ang = Math.atan2(2 * bh, -tipRun), len = Math.hypot(2 * bh, tipRun);
+    for (let i = 1; i <= 2; i++) {
+      const sl = mesh(geo(new THREE.BoxGeometry(len, .007, .004)), std({ color: 0x6f6f6d, roughness: .5 }), false);
+      sl.rotation.z = ang; sl.position.set(nose - .15 + ext + tipRun / 2 - i * .2, 0, .034); g.add(sl);
+    }
+
+    // End cap with the snapper slot.
+    const cap = mesh(geo(new RoundedBoxGeometry(.18, back * 2 + .03, .27, 3, .07)), rubber); cap.position.set(-L / 2 + .04, 0, 0); g.add(cap);
+    const capSlot = mesh(geo(new THREE.BoxGeometry(.02, .3, .01)), std({ color: 0x0c0b0b, roughness: 1 }), false); capSlot.position.set(-L / 2 + .04, 0, .137); g.add(capSlot);
+
+    addTool(g, { x: 3.9, y: -2.2, a: .5, rest: .13, circles: [...line(6, 3.6, .28)], mass: .6, foot: [4.3, 1] });
   }
   { // SMA torque wrench: rubber grip, chrome shaft, the break-over joint, and the 8 mm open jaw
     const g = new THREE.Group();
