@@ -44,12 +44,12 @@
 }
 
 /* Over the pale 3D wall: dark ink. */
-.pin[data-nav="light"] .head {
+.pin[data-nav-force="light"] .head {
   color: var(--ink-dark);
   text-shadow: none;
 }
 
-.pin[data-nav="light"] .head span {
+.pin[data-nav-force="light"] .head span {
   color: #7a6450;
 }
 

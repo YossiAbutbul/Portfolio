@@ -86,11 +86,16 @@ export default function LaunchNotebook({ projects }: { projects: Project[] }) {
       }
       const r = root!.getBoundingClientRect(), n = leaves.length;
       const p = clamp(-r.top / Math.max(1, r.height - innerHeight));
-      // Once the 3D wall stands behind the top of the screen (the scene has finished its crane shot
-      // by the time the section pins), the bar and the heading go dark to read on its pale plaster
-      // (Nav follows data-nav="light").
-      const onWall = r.top < innerHeight * .15 && !!document.querySelector('canvas[data-ready="true"]');
-      if (onWall !== (root!.dataset.nav === "light")) { if (onWall) root!.dataset.nav = "light"; else delete root!.dataset.nav; }
+      // Once the 3D wall stands behind the top of the screen, the bar and the heading go dark to read
+      // on its pale plaster (Nav follows data-nav-force="light"). The wall rises during the scene's crane
+      // shot, while the section is still coming in: it is up behind the bar by the time the section's
+      // top is 45% of the way down the screen (the scene's low camera passes ~.4 there).
+      const onWall = r.top < innerHeight * .45 && r.bottom > 0 && !!document.querySelector('canvas[data-ready="true"]');
+      if (onWall !== (root!.dataset.navForce === "light")) {
+        if (onWall) root!.dataset.navForce = "light"; else delete root!.dataset.navForce;
+        // Nav checks on scroll, possibly earlier in this same frame: tell it the backdrop changed.
+        window.dispatchEvent(new Event("launch:nav"));
+      }
       // The pages follow the whole pinned scroll (as the scene's 3D notebook does).
       const u = p * n;
       leaves.forEach((leaf, j) => {

@@ -114,7 +114,8 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
       }
       // Leaving (the section's end scrolling up past the screen): the frame fades and drifts up.
       const leave = Math.min(1, Math.max(0, 1 - r.bottom / innerHeight));
-      frame!.parentElement!.style.opacity = leave ? String(1 - leave) : "";
+      // Gone by the time it is a third of the way off, so it never hangs ghosted over the next scene.
+      frame!.parentElement!.style.opacity = leave ? String(Math.max(0, 1 - leave * 3)) : "";
       frame!.parentElement!.style.transform = leave ? `translate3d(0, ${-leave * 8}svh, 0) scale(${1 - leave * .06})` : "";
       const next = Math.min(n - 1, Math.floor(progressOf(r) * n));
       if (next !== focus) {

@@ -21,21 +21,24 @@ export default function Nav() {
   const isProject = pathname.startsWith("/projects/");
   const header = useRef<HTMLElement>(null);
 
-  // Over a section marked data-nav="light" the bar switches to dark ink. One passive listener, one rAF.
+  // Over a section marked data-nav="light" the bar switches to dark ink, and anywhere while some
+  // element carries data-nav-force="light" (a 3D backdrop that is pale behind the bar, which no section
+  // rect can describe). One passive listener, one rAF.
   useEffect(() => {
     let frame = 0;
     const check = () => {
       frame = 0;
       const el = header.current; if (!el) return;
       const y = el.getBoundingClientRect().bottom / 2;
-      const light = [...document.querySelectorAll<HTMLElement>("[data-nav='light']")].some((s) => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom >= y; });
+      const light = !!document.querySelector("[data-nav-force='light']") || [...document.querySelectorAll<HTMLElement>("[data-nav='light']")].some((s) => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom >= y; });
       el.dataset.tone = light ? "light" : "dark";
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(check); };
     check();
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); };
+    window.addEventListener("launch:nav", schedule);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); window.removeEventListener("launch:nav", schedule); };
   }, [pathname]);
 
   function go(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
