@@ -1,0 +1,421 @@
+/* A screen of scrolling per project. */
+.pin {
+  position: relative;
+  z-index: 2;
+  height: calc(var(--cards, 6) * 100svh + 100svh);
+  color: var(--cream);
+}
+
+.frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.head {
+  position: absolute;
+  left: var(--gutter);
+  top: 12svh;
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.head span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.72em;
+  text-transform: uppercase;
+}
+
+/* The label column on the left; one project at a time, cross-fading. */
+.items {
+  position: absolute;
+  left: var(--gutter);
+  top: 50%;
+  width: min(30vw, 26rem);
+  translate: 0 -50%;
+}
+
+.item {
+  transition: opacity 0.45s var(--ease-out), transform 0.6s var(--ease-out);
+}
+
+.item:not(:first-child) {
+  position: absolute;
+  inset: 0 0 auto;
+}
+
+.item[data-off] {
+  opacity: 0;
+  transform: translateY(1rem);
+  pointer-events: none;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.meta b {
+  margin-right: 0.6rem;
+  color: var(--mark);
+  font-variant-numeric: tabular-nums;
+}
+
+.item h3 {
+  margin: 0.5rem 0 0;
+  font-size: clamp(2rem, 3.8vw, 3.8rem);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.summary {
+  margin: 1rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: rgba(242, 230, 212, 0.8);
+}
+
+.metric {
+  margin: 0.8rem 0 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.metric s {
+  opacity: 0.65;
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.links a:not(.pill) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.pill {
+  padding: 0 1.3rem;
+  border-radius: 999px;
+  background: var(--mark);
+  color: var(--ink-dark);
+}
+
+/* ---------- The browser window ---------- */
+.window {
+  --w: min(58vw, calc((80svh - 5.4rem) * 16 / 9));
+  position: absolute;
+  right: var(--gutter);
+  top: 50%;
+  width: var(--w);
+  translate: 0 -50%;
+  overflow: hidden;
+  border: 1px solid rgba(242, 230, 212, 0.14);
+  border-radius: 14px;
+  background: #1f1814;
+  box-shadow: 0 50px 120px -40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+
+.chrome {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  height: 2.4rem;
+  padding: 0 0.9rem;
+  background: #171210;
+}
+
+.lights {
+  display: flex;
+  gap: 0.45rem;
+  align-self: center;
+}
+
+.lights i {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #4a3c33;
+}
+
+.lights i:first-child { background: #c4553a; }
+.lights i:nth-child(2) { background: #d39a3c; }
+.lights i:nth-child(3) { background: #6d8b4a; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  height: 1.9rem;
+  max-width: 14rem;
+  padding: 0 1rem;
+  border-radius: 9px 9px 0 0;
+  background: #1f1814;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addr {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  height: 3rem;
+  padding: 0 0.9rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.nav {
+  color: var(--ink-faint);
+  font-size: 1.1rem;
+  letter-spacing: 0.3em;
+}
+
+.field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  height: 2rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: #120d0b;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lock {
+  flex: none;
+  width: 0.55rem;
+  height: 0.45rem;
+  margin: 0.2rem 0.55rem 0 0;
+  border-radius: 2px;
+  background: var(--ink-faint);
+  position: relative;
+}
+
+.lock::before {
+  content: "";
+  position: absolute;
+  left: 0.08rem;
+  bottom: 0.4rem;
+  width: 0.39rem;
+  height: 0.3rem;
+  border: 2px solid var(--ink-faint);
+  border-bottom: 0;
+  border-radius: 0.3rem 0.3rem 0 0;
+  box-sizing: border-box;
+}
+
+.caret {
+  width: 2px;
+  height: 1rem;
+  background: var(--mark);
+  opacity: 0;
+}
+
+.window[data-state="typing"] .caret {
+  opacity: 1;
+  animation: blink 0.9s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Lab tools have no public site: their address is their source, said plainly. */
+.badge {
+  display: none;
+  margin-left: auto;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--mark-soft);
+  color: var(--mark);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.window[data-source] .badge {
+  display: inline-block;
+}
+
+.progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 2px;
+  background: var(--mark);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+}
+
+.window[data-state="loading"] .progress {
+  opacity: 1;
+  transform: scaleX(1);
+  transition: transform 0.65s cubic-bezier(0.3, 0.6, 0.4, 1);
+}
+
+.window[data-state="done"] .progress {
+  opacity: 0;
+  transform: scaleX(1);
+  transition: opacity 0.3s;
+}
+
+.view {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #0b0806;
+}
+
+.shot {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.45s var(--ease-out);
+}
+
+.shot[data-on] {
+  opacity: 1;
+}
+
+/* While the next address is typed and loads, the old page dims like a page about to change. */
+.window:not([data-state="done"]) .shot[data-on] {
+  opacity: 0.35;
+}
+
+.shot video,
+.shot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.shot[data-on] .pan {
+  animation: pan 16s ease-in-out infinite alternate;
+}
+
+@keyframes pan {
+  from { transform: scale(1.02) translate(0, 0); }
+  to { transform: scale(1.1) translate(-3%, -2%); }
+}
+
+/* Counter and numbers, bottom left. */
+.rail {
+  position: absolute;
+  left: var(--gutter);
+  bottom: 6svh;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.count {
+  font-weight: 800;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.dots {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.dots button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.dots button:hover,
+.dots button[data-on] {
+  color: var(--mark);
+}
+
+.dots button:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 2px;
+}
+
+/* Phones: the window across the top, the label underneath. */
+@media (max-width: 860px) {
+  .head { top: 8svh; }
+  .window { --w: auto; left: var(--gutter); right: var(--gutter); top: 15svh; translate: none; }
+  .tab { max-width: 9rem; }
+  .badge { display: none !important; }
+  .items { top: auto; bottom: 11svh; width: auto; right: var(--gutter); translate: none; }
+  .item h3 { font-size: clamp(1.7rem, 8.5vw, 2.4rem); }
+  .summary { font-size: 0.85rem; }
+  .metric { display: none; }
+  .rail { bottom: 2.5svh; }
+  .dots { display: none; }
+}
+
+/* Reduced motion: no pinning or typing; the labels list, the window shows the first project. */
+@media (prefers-reduced-motion: reduce) {
+  .pin { height: auto; }
+  .frame { position: relative; height: auto; overflow: visible; padding: 9svh var(--gutter) 6svh; }
+  .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
+  .window { position: relative; left: auto; right: auto; top: auto; translate: none; width: 100%; margin-bottom: 3rem; }
+  .items { position: relative; left: 0; top: 0; width: 100%; translate: none; display: flex; flex-direction: column; gap: 3rem; }
+  .item, .item:not(:first-child) { position: relative; inset: auto; transition: none; }
+  .item[data-off] { opacity: 1; transform: none; pointer-events: auto; }
+  .shot, .window .progress { transition: none; }
+  .shot[data-on] .pan { animation: none; }
+  .rail { display: none; }
+}

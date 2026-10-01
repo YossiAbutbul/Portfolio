@@ -2,7 +2,7 @@ import { FEATURED_PROJECTS, OTHER_PROJECTS } from "@content/projects";
 import LaunchStage from "@/components/launch/LaunchStage";
 import LaunchIntro from "@/components/launch/LaunchIntro";
 import LaunchShips from "@/components/launch/LaunchShips";
-import LaunchReel from "@/components/launch/LaunchReel";
+import LaunchBrowser from "@/components/launch/LaunchBrowser";
 import LaunchThermal from "@/components/launch/LaunchThermal";
 import LaunchPress from "@/components/launch/LaunchPress";
 import LaunchEditorial from "@/components/launch/LaunchEditorial";
@@ -26,7 +26,7 @@ export default function Home() {
       <LaunchIntro />
       <LaunchHeroScroll />
       <LaunchShips />
-      <LaunchReel projects={FEATURED_PROJECTS} />
+      <LaunchBrowser projects={FEATURED_PROJECTS} />
       <LaunchThermal />
       <LaunchPress />
       <LaunchEditorial featured={FEATURED_PROJECTS} other={OTHER_PROJECTS} />

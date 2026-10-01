@@ -1,0 +1,21 @@
+/* Shared by the project presentations. */
+
+export const PREVIEWS: Record<string, string> = {
+  "test-console": "/projects/test-console/screenshot.png",
+  oplanner: "/projects/oplanner/poster.jpg",
+  "pipeline-cpu": "/projects/pipeline-cpu/poster.jpg",
+  "current-logger": "/projects/current-logger/screenshot.png",
+  algorithmx: "/projects/algorithmx/screenshot.png",
+  "toast-turn": "/projects/toast-turn/cover.png",
+};
+
+/* Silent loops of the apps working, each with a poster from its own first frames and its true size.
+   OPlanner and Pipeline CPU are screen recordings of the real apps; AlgorithmX and ToastTurn were
+   recorded from the live sites. Test Console and Current Logger need their lab hardware, so they
+   keep a slow pan over the screenshot. */
+export const DEMOS: Record<string, { src: string; poster: string; w: number; h: number }> = {
+  oplanner: { src: "/projects/oplanner/demo.mp4", poster: "/projects/oplanner/demo-poster.jpg", w: 1920, h: 1112 },
+  "pipeline-cpu": { src: "/projects/pipeline-cpu/demo.mp4", poster: "/projects/pipeline-cpu/demo-poster.jpg", w: 1920, h: 1080 },
+  algorithmx: { src: "/projects/algorithmx/demo.mp4", poster: "/projects/algorithmx/demo-poster.jpg", w: 1920, h: 1080 },
+  "toast-turn": { src: "/projects/toast-turn/demo.mp4", poster: "/projects/toast-turn/demo-poster.jpg", w: 1920, h: 1080 },
+};

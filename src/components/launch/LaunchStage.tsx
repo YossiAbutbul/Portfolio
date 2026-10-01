@@ -65,7 +65,10 @@ export default function LaunchStage() {
 
   return (
     <>
-      <div className={styles.backdrop} data-backdrop={backdrop} aria-hidden="true" />
+      <div className={styles.backdrop} data-backdrop={backdrop} aria-hidden="true">
+        {/* Slow drifting glows and a grain, so the dark room breathes instead of sitting flat. */}
+        <i className={styles.glow} /><i className={styles.glow} /><i className={styles.glow} /><i className={styles.grain} />
+      </div>
       {/* The giant word slides between the backdrop and the device; the scene moves it. */}
       <div className={styles.word} id="launch-word" aria-hidden="true">it ships.</div>
       <canvas ref={canvas} className={styles.canvas} data-ready={ready} data-grade={backdrop === "desk"} aria-hidden="true" />
