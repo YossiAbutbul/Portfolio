@@ -19,7 +19,6 @@ export default function LaunchEditorial({ featured }: { featured: Project[] }) {
     <section className={styles.editorial} id="changelog" aria-labelledby="changelog-title" data-nav="light">
       <span className={styles.cap}>Release history</span>
       <h2 className={styles.big} id="changelog-title">experience</h2>
-      <p className={styles.lede}>Every version was field-tested before the next one shipped. No versions were skipped.</p>
       <ol className={styles.tiles}>
         {RELEASES.map((r) => (
           <li key={r.version} className={styles.tile} data-tone={r.tone}>
