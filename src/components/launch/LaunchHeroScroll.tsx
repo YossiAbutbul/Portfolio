@@ -7,8 +7,8 @@ import { useEffect } from "react";
  * back reverses it exactly:
  * - the big name shrinks and glides into the top bar's corner, then hands over to the bar's own
  *   link (same font, size, colour and shadow, so the swap is invisible). At the top the bar shows no name.
- * - the line under it and the card's lines slide down out of sight, each behind its own mask,
- *   one after another, and then the card itself fades away; the scroll cue fades as soon as you scroll.
+ * - the card's lines (its headline, then its sentence) slide down out of sight, each behind its own mask,
+ *   one after another, while the card itself holds still on screen and fades away; the scroll cue fades as soon as you scroll.
  * Reduced motion: nothing moves; the bar's name simply appears once the hero is half gone.
  */
 export default function LaunchHeroScroll() {
@@ -20,7 +20,7 @@ export default function LaunchHeroScroll() {
     brand.dataset.dock = "";
 
     /* ---- Text that leaves line by line: each line gets a clipping box with the words inside. ---- */
-    const card = document.querySelector<HTMLElement>("#top p[data-lines]");
+    const card = document.querySelector<HTMLElement>("#top [data-card]");
     const cue = document.querySelector<HTMLElement>("#top a[href='#intro']");
     const blocks = reduce ? [] : [...document.querySelectorAll<HTMLElement>("#top [data-lines]")].map((el) => ({ el, text: el.textContent ?? "", lines: [] as HTMLElement[] }));
     const split = () => {
@@ -76,7 +76,7 @@ export default function LaunchHeroScroll() {
       // name is exactly the bar's link, so one simply replaces the other.
       const docked = p >= 1;
       show(name, docked ? 0 : 1); show(brand, docked ? 1 : 0);
-      // Lines drop out of their masks in turn: the line under the name first, then the card's.
+      // Lines drop out of their masks in turn: the card's headline first, then its sentence.
       let i = 0;
       for (const b of blocks) for (const line of b.lines) {
         const t = clamp((p - i * .07) / .32), q = t * t * (3 - 2 * t);
@@ -86,7 +86,8 @@ export default function LaunchHeroScroll() {
       // The scroll cue has done its job as soon as scrolling starts.
       if (cue) { const c = clamp(p / .2); cue.style.opacity = String(1 - c); cue.style.visibility = c > .98 ? "hidden" : ""; }
       // Once its words have gone, the glass card goes too.
-      if (card) { const c = clamp((p - .45) / .35); card.style.opacity = String(1 - c); card.style.translate = `0 ${c * 16}px`; card.style.visibility = c > .98 ? "hidden" : ""; }
+      // It stays exactly where it is on screen (held against the scroll) and simply fades there.
+      if (card) { const c = clamp((p - .45) / .35); card.style.opacity = String(1 - c); card.style.translate = `0 ${scrollY}px`; card.style.visibility = c > .98 ? "hidden" : ""; }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
     const onResize = () => { measure(); schedule(); };

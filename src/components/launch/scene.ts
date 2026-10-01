@@ -58,6 +58,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   renderer.shadowMap.enabled = true;
   // Variance shadows blur properly, which is what makes a soft window light look like one.
   renderer.shadowMap.type = THREE.VSMShadowMap;
+  // Some drivers (ANGLE on Direct3D) attach harmless precision notes to every compiled program, which
+  // three prints as warnings. Only speak up when a program actually fails to link.
+  renderer.debug.onShaderError = (gl, program, vs, fs) => {
+    if (gl.getProgramParameter(program, gl.LINK_STATUS)) return;
+    console.error("Shader failed to link:", gl.getProgramInfoLog(program), gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs));
+  };
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, .1, 100);
   camera.position.set(0, 0, 12);
@@ -143,6 +149,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const W = 3, H = 1.9, D = .75, FRONT = D / 2;
   // How high the device has risen off the desk by the time the hero has scrolled away.
   const LIFT = 2;
+  // The device is drawn at 90% of its modelled size in every pose.
+  const SIZE = .9;
   // Desktop draws the device in its own pass on top of the blurred desk (see the composer).
   const DEVICE_LAYER = 1;
   const shell = phys({ color: 0xe6dccb, roughness: .66, sheen: .2, sheenRoughness: .8 });
@@ -203,8 +211,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const scr = { mode: "spec" as "spec" | "heat", text: "", cursor: true };
   let presses = 0, pressT = 0, spec = 0;
   let introAt = -1, lean = 0;
-  // The knob tunes the screen's ink: turned away from where it was last reset, the text takes on a
-  // hue that follows the knob round; a press sets the current position back to plain cream.
+  // The knob tunes the screen's ink: turned away from upright, the text takes on a hue that follows
+  // the knob round; a click on the knob turns it back upright and the ink back to plain cream.
   let inkRef = 0, inkKey = 0;
   const ink = (light: number) => {
     const d = knobA - inkRef;
@@ -232,7 +240,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   document.fonts?.ready.then(() => { if (!disposed) drawScreen(); });
   function press() {
     presses++; pressT = 1;
-    spec = presses % SPECS.length; inkRef = knobT;
+    spec = presses % SPECS.length;
     if (presses === 25) hooks.say?.("25 presses. Same energy goes into debugging.");
     show("spec");
     hooks.onPress?.(presses);
@@ -248,8 +256,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const onHeat = () => { heatManual = true; kick(); };
   heat?.addEventListener("input", onHeat);
 
-  type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number; s: number; veil: number; spot: number; show: number };
-  const cur: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: small() ? .72 : 1, veil: 0, spot: 0, show: 1 };
+  type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number; s: number; veil: number; spot: number; show: number; spin: number };
+  const cur: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: small() ? .72 : 1, veil: 0, spot: 0, show: 1, spin: 0 };
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   const onPointer = (e: PointerEvent) => { pointer.tx = e.clientX / innerWidth * 2 - 1; pointer.ty = e.clientY / innerHeight * 2 - 1; kick(); };
   addEventListener("pointermove", onPointer, { passive: true });
@@ -257,7 +265,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   function choreograph() {
     const intro = byId("intro"), ships = byId("ships"), work = byId("work"), therm = byId("thermal"), pressSec = byId("press"), after = byId("changelog");
     const vh = innerHeight, mob = small(), base = mob ? .72 : 1;
-    const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1 };
+    const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1, spin: 0 };
     let backdrop: "desk" | "void" | "thermal" = "desk", thermalMode = false;
     if (rect(intro).top > 0) {
       // On the desk. The room goes dark while the hero's words leave and the hero scrolls away, so the
@@ -267,6 +275,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       // veil and stays bright and sharp while the desk falls away out of focus behind it.
       t.z = lerp(FRONT, LIFT, smooth(0, .85, q));
       t.veil = smooth(.08, .85, q); t.spot = t.veil;
+      // The desk turns a few degrees under the rising device, like a camera drifting round it.
+      t.spin = -.075 * smooth(0, 1, q);
       backdrop = t.veil > .7 ? "void" : "desk";
       // The next beat's words wait until the room has gone dark and the device lifts.
       intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.setAttribute("data-off", ""));
@@ -336,23 +346,25 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // The desk is playable only while it is lit and the device is lying on it.
     const onDesk = desk.visible && cur.veil < .05 && lifted < .03;
     const halfH = camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), halfW = halfH * camera.aspect;
-    const obstacles: [number, number, number][] = onDesk ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s, cur.y, .95 * cur.s] as [number, number, number]) : [];
+    const obstacles: [number, number, number][] = onDesk ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s * SIZE, cur.y, .95 * cur.s * SIZE] as [number, number, number]) : [];
     // The mat is the edge: tools can be nudged partly out of frame, and their home spring brings them back.
     const edge = { w: 6.2, h: 4.2 };
     const deskMoving = desk.visible ? deskSet.update(dt, edge, obstacles) : false;
-    if (!onDesk) deskSet.hover(null);
+    if (!onDesk) { deskSet.hover(null); showHint(null); }
     canvas.style.pointerEvents = onDesk ? "auto" : "none";
     // Lying on the desk, and while it rises through the hero, the device ignores the pointer so the
     // lift stays clean; from the next beat on it leans toward the pointer and floats, eased in.
     lean = lerp(lean, hero ? 0 : lifted, 1 - Math.exp(-dt * 3));
-    device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lean), cur.z);
+    // Scaled down, it is lowered by what it lost, so lying on the desk it still rests on the mat.
+    device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lean), cur.z - FRONT * (1 - SIZE * cur.s));
     device.rotation.set(cur.rx + pointer.y * .12 * lean, cur.ry + pointer.x * .25 * lean, cur.rz);
-    device.scale.setScalar(Math.max(.0001, cur.s * cur.show));
-    devicePad.visible = desk.visible && lifted < .5; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
+    device.scale.setScalar(Math.max(.0001, cur.s * cur.show * SIZE));
+    devicePad.visible = desk.visible && lifted < .5; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s * SIZE); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
     device.visible = cur.show > .02;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     veil.visible = desk.visible = cur.veil < .985;
+    desk.rotation.z = cur.spin;
     // The dark has to cover everything on the desk evenly, the tall mug included. Desktop draws the
     // device in its own pass on top, so the veil can sit above the mug; elsewhere it stays just under
     // the device as it rises, so the device itself never goes under it.
@@ -375,12 +387,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const key = Math.round((knobA - inkRef) * 40);
     if (key !== inkKey) { inkKey = key; drawScreen(); }
     const controlsMoving = held || btnDepth > .002 || Math.abs(knobT - knobA) > .001;
-    // On the desk the camera leans back and turns a touch, like a photo taken standing over a table;
-    // it straightens up as the room goes dark so every later pose is shot square on.
+    // Over the desk the camera stands a little toward the viewer and looks down at the device, a
+    // gentle symmetric tilt (the desk reads as a trapezoid, no roll); it straightens to square on as
+    // the room goes dark, so every later pose is shot straight.
     const tilt = 1 - cur.veil;
-    camera.position.set(0, -5.2 * tilt, 12 + 1.1 * tilt);
-    camera.up.set(Math.sin(.035 * tilt), Math.cos(.035 * tilt), 0);
-    camera.lookAt(0, .7 * tilt, 0);
+    camera.position.set(0, -2.4 * tilt, 12 + .25 * tilt);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(0, 0, 0);
     placeSteam();
     if (composer && desk.visible) {
       if (bokeh) {
@@ -402,6 +415,21 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
   function kick() { if (!raf && !disposed) { if (idleFrames >= 30) last = performance.now(); raf = requestAnimationFrame(frame); } }
   addEventListener("scroll", kick, { passive: true });
+
+  /* ---------- Pointer hint ---------- */
+  // A dotted ring with a label that follows the mouse over the desk and says what the thing under it
+  // does. The system cursor stays as it is; null hides the hint.
+  const hintEl = document.getElementById("launch-hint");
+  let hintText = "";
+  function showHint(text: string | null, x = 0, y = 0) {
+    if (!hintEl) return;
+    if (!text) { if (hintText) { hintText = ""; hintEl.dataset.on = "false"; } return; }
+    if (text !== hintText) {
+      if (!hintEl.firstChild) hintEl.append(document.createElement("span"));
+      hintText = text; hintEl.firstChild!.textContent = text; hintEl.dataset.on = "true";
+    }
+    hintEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+  }
 
   /* ---------- Steam ---------- */
   // The steam is CSS over the canvas (it never stops moving, and the scene should be free to go
@@ -425,6 +453,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   /* ---------- Playing with the desk ---------- */
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  // The device sits on its own layer on desktop (drawn sharp over the blur); the pointer has to see it.
+  ray.layers.enable(DEVICE_LAYER);
   const rayAt = (x: number, y: number) => { const r = canvas.getBoundingClientRect(); ndc.set((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; };
   // The desk reacts to the pointer; a tap or click gives the nearby tools a push. Nothing is dragged,
   // so touch never has to fight the page's own scrolling.
@@ -453,6 +483,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const onMove = (e: PointerEvent) => {
     if (turning && e.pointerId === turning.id) {
       // Follow the pointer round the knob's centre; screen y runs down, so clockwise is negative z.
+      if (e.pointerType === "mouse") showHint("Drag to rotate", e.clientX, e.clientY);
       const a = knobAngleAt(e.clientX, e.clientY);
       let d = a - turning.angle; d = Math.atan2(Math.sin(d), Math.cos(d));
       turning.angle = a; turning.travel += Math.abs(d); knobT -= d; knobA = knobT;
@@ -462,14 +493,16 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const c = control(e.clientX, e.clientY);
     const ray = c ? null : rayAt(e.clientX, e.clientY);
     canvas.style.cursor = c === "button" || (ray && deskSet.over(ray)) ? "pointer" : c === "knob" ? "grab" : "";
+    showHint(c === "button" ? "Click to press" : c === "knob" ? "Drag to rotate" : ray ? deskSet.hint(ray) : null, e.clientX, e.clientY);
     deskSet.hover(ray); kick();
   };
   const onUp = (e: PointerEvent) => {
     if (held) { held = false; kick(); }
     if (turning && e.pointerId === turning.id) {
-      // A click without a drag turns it one detent; either way it settles on the nearest detent.
-      if (turning.travel < .05 && e.type === "pointerup") knobT -= DETENT * 2;
-      knobT = Math.round(knobT / DETENT) * DETENT;
+      // A click without a drag puts it back upright (the short way round) and the ink back to cream;
+      // after a drag it settles on the nearest detent.
+      if (turning.travel < .05 && e.type === "pointerup") { knobT = Math.round(knobT / (Math.PI * 2)) * Math.PI * 2; inkRef = knobT; }
+      else knobT = Math.round(knobT / DETENT) * DETENT;
       turning = null; canvas.style.cursor = e.pointerType === "mouse" ? "grab" : ""; kick();
     }
   };
@@ -477,7 +510,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   canvas.addEventListener("pointercancel", onUp);
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
-  const onLeave = () => { deskSet.hover(null); if (!turning) canvas.style.cursor = ""; };
+  const onLeave = () => { deskSet.hover(null); showHint(null); if (!turning) canvas.style.cursor = ""; };
   // The entrance plays as the loading sheet lifts (or as soon as the scene is ready, if the sheet has
   // already gone or is on its way out). Reduced motion and snapshot mode get the finished desk.
   const onRevealed = () => {

@@ -71,6 +71,8 @@ export default function LaunchStage() {
       <canvas ref={canvas} className={styles.canvas} data-ready={ready} data-grade={backdrop === "desk"} aria-hidden="true" />
       {/* Steam off the mug: the scene pins it to the rim; CSS does the drifting. */}
       <div className={styles.steam} id="launch-steam" aria-hidden="true"><i /><i /><i /></div>
+      {/* Pointer hint over the desk: the scene sets its text and follows the mouse. */}
+      <div className={styles.hint} id="launch-hint" data-on="false" aria-hidden="true" />
       {/* Lens: vignette, grain and soft focus at the edges, only over the desk. */}
       <div className={styles.lens} data-on={backdrop === "desk"} aria-hidden="true" />
     </>

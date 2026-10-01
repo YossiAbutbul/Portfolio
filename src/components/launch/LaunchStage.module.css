@@ -101,6 +101,63 @@
   transition: opacity 0.6s var(--ease-out);
 }
 
+/* The pointer hint, in the hero's own language: a dotted ring around the pointer (like the scroll
+   cue's circle) and a label beside it set like the top bar, cream with the same soft shadow. Mouse
+   only (the scene never shows it for touch). */
+.hint {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  color: var(--cream);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+.hint::before {
+  content: "";
+  position: absolute;
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px dotted currentColor;
+  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45));
+  scale: 0.4;
+  transition: scale 0.25s var(--ease-out);
+}
+
+.hint span {
+  position: absolute;
+  left: 24px;
+  top: 0;
+  translate: -6px -50%;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
+  transition: translate 0.25s var(--ease-out);
+}
+
+.hint[data-on="true"] {
+  opacity: 1;
+}
+
+.hint[data-on="true"]::before {
+  scale: 1;
+}
+
+.hint[data-on="true"] span {
+  translate: 0 -50%;
+}
+
 /* Three soft wisps that rise off the rim, widen, drift and fade, out of step with each other. */
 .steam i {
   position: absolute;

@@ -45,6 +45,8 @@ interface Tool {
   held: boolean;
   /** Coming in from its entrance: not tethered or kept in bounds until it is close to home. */
   free: boolean;
+  /** Pointer hint shown while hovering the tool. */
+  hint?: string;
   /** Round tools only roll: they move across their own axis and spin on it, never slide or turn. */
   roll?: { obj: THREE.Object3D; radius: number };
 }
@@ -63,6 +65,8 @@ export interface Desk {
   enter: () => void;
   /** Whether the ray is over something that answers a click (the notebook, the mug). */
   over: (ray: THREE.Ray) => boolean;
+  /** What the thing under the ray does, as a short label for the pointer hint; null if nothing. */
+  hint: (ray: THREE.Ray) => string | null;
   /** A click on the notebook turns its page, on the mug ripples the coffee; false when it missed both. */
   press: (ray: THREE.Ray) => boolean;
   /** The mug's rim in world space, for the steam drawn over the canvas. */
@@ -95,12 +99,63 @@ export function buildDesk(kit: DeskKit): Desk {
   const N = makeNoise(7);
 
   /* ---------- Wood table: planks with warped grain, a colour shift per plank, dark seams ---------- */
+  // The table's finish, tried one at a time: the generated planks' colour (base + grain range, RGB)
+  // and the tint laid over the photographed oak on desktop.
+  type Finish = { kind: "wood" | "concrete" | "terrazzo"; base: number[]; range: number[]; tint: number };
+  const FINISHES: Record<string, Finish> = {
+    oak: { kind: "wood", base: [172, 112, 56], range: [48, 38, 26], tint: 0xf2dcc0 },
+    walnut: { kind: "wood", base: [74, 46, 30], range: [46, 30, 18], tint: 0x8a5e40 },
+    concrete: { kind: "concrete", base: [150, 138, 124], range: [34, 30, 26], tint: 0xffffff },
+    terrazzo: { kind: "terrazzo", base: [214, 202, 184], range: [14, 12, 10], tint: 0xffffff },
+    blackAsh: { kind: "wood", base: [30, 26, 23], range: [36, 30, 26], tint: 0x3f3631 },
+  };
+  const FINISH = FINISHES.blackAsh;
   const W = Math.round(2048 * TEX), H = Math.round(2048 * TEX);
   const woodData = (() => {
     const c = document.createElement("canvas"); c.width = W; c.height = H;
     const x = c.getContext("2d")!; const img = x.createImageData(W, H);
     const bump = new Uint8ClampedArray(W * H);
     const plank = H / 4;
+    if (FINISH.kind === "terrazzo") {
+      // Terrazzo: a warm stone base with a little cloud in it, then chips in the site's palette from
+      // big shards down to fine flecks. Polished flat, so the relief map stays level.
+      for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+        const t = Math.min(1, Math.max(0, .5 + N.fbm(px / W * 5, py / H * 5, 3) * .6));
+        const i = (py * W + px) * 4;
+        img.data[i] = FINISH.base[0] + t * FINISH.range[0]; img.data[i + 1] = FINISH.base[1] + t * FINISH.range[1]; img.data[i + 2] = FINISH.base[2] + t * FINISH.range[2]; img.data[i + 3] = 255;
+        bump[py * W + px] = 128;
+      }
+      x.putImageData(img, 0, 0);
+      const chips = ["#c46f35", "#d98a4e", "#4d5a36", "#6b7a4a", "#3a2418", "#5a3a26", "#efe5d2", "#a89a86"];
+      const k = W / 2048;
+      for (const [count, min, max] of [[260, 14, 34], [900, 6, 14], [5200, 1.5, 5]] as [number, number, number][]) {
+        for (let n = 0; n < count; n++) {
+          const cx = N.rand() * W, cy = N.rand() * H, r = (min + N.rand() * (max - min)) * k, sides = 4 + Math.floor(N.rand() * 4), rot = N.rand() * Math.PI;
+          x.fillStyle = chips[Math.floor(N.rand() * chips.length)]; x.globalAlpha = .82 + N.rand() * .18;
+          x.beginPath();
+          for (let j = 0; j < sides; j++) { const a = rot + j / sides * Math.PI * 2, rr = r * (.55 + N.rand() * .55); if (j) x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else x.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
+          x.closePath(); x.fill();
+        }
+      }
+      x.globalAlpha = 1;
+      return { canvas: c, bump };
+    }
+    if (FINISH.kind === "concrete") {
+      // Micro-cement: soft cloudy mottling, faint trowel sweeps, and tiny dark pores.
+      for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+        const u = px / W * 6, v = py / H * 6;
+        const cloud = N.fbm(u * .9, v * .9, 4) * .55 + N.fbm(u * 3.2, v * 3.2, 3) * .25;
+        const sweep = Math.sin((u * .8 + v * .35 + N.fbm(u * .5, v * .5, 2) * 2.2) * 5) * .06;
+        const grit = N.noise(u * 160, v * 160) * .08;
+        const t = Math.min(1, Math.max(0, .5 + cloud + sweep + grit - .35));
+        const pore = N.rand() < .0016 ? .55 : 1;
+        const i = (py * W + px) * 4;
+        img.data[i] = (FINISH.base[0] + t * FINISH.range[0]) * pore; img.data[i + 1] = (FINISH.base[1] + t * FINISH.range[1]) * pore; img.data[i + 2] = (FINISH.base[2] + t * FINISH.range[2]) * pore; img.data[i + 3] = 255;
+        bump[py * W + px] = 128 + (grit * 300 + sweep * 200) * (pore < 1 ? -2 : 1);
+      }
+      x.putImageData(img, 0, 0);
+      return { canvas: c, bump };
+    }
     for (let py = 0; py < H; py++) {
       const pi = Math.floor(py / plank), shade = [0, .06, -.04, .03][pi % 4];
       for (let px = 0; px < W; px++) {
@@ -111,7 +166,7 @@ export function buildDesk(kit: DeskKit): Desk {
         const t = Math.min(1, Math.max(0, grain * .55 + fine + N.fbm(u * 2, v * .5, 2) * .3 + shade));
         const seam = (py % plank) < 2 ? .7 : 1;
         const i = (py * W + px) * 4;
-        img.data[i] = (172 + t * 48) * seam; img.data[i + 1] = (112 + t * 38) * seam; img.data[i + 2] = (56 + t * 26) * seam; img.data[i + 3] = 255;
+        img.data[i] = (FINISH.base[0] + t * FINISH.range[0]) * seam; img.data[i + 1] = (FINISH.base[1] + t * FINISH.range[1]) * seam; img.data[i + 2] = (FINISH.base[2] + t * FINISH.range[2]) * seam; img.data[i + 3] = 255;
         bump[py * W + px] = 255 * (1 - grain * .6 - fine) * seam;
       }
     }
@@ -121,7 +176,7 @@ export function buildDesk(kit: DeskKit): Desk {
   const woodMap = new THREE.CanvasTexture(woodData.canvas); woodMap.colorSpace = THREE.SRGBColorSpace;
   const woodBump = tex(W, H, (x) => { const img = x.createImageData(W, H); for (let i = 0; i < W * H; i++) { const b = woodData.bump[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } x.putImageData(img, 0, 0); });
   for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
-  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: 2.2, roughness: .78 }), false);
+  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: FINISH.kind === "wood" ? 2.2 : .7, roughness: { wood: .78, concrete: .88, terrazzo: .42 }[FINISH.kind] }), false);
   table.position.z = -.06; group.add(table);
 
   // Desktop: photographed oak (Poly Haven oak_veneer_01, CC0) replaces the generated wood once loaded.
@@ -133,13 +188,13 @@ export function buildDesk(kit: DeskKit): Desk {
     if (color) t.colorSpace = THREE.SRGBColorSpace;
     return t;
   };
-  if (photo) {
+  if (photo && FINISH.kind === "wood") {
     const m = table.material as THREE.MeshStandardMaterial;
     const rep: [number, number] = [2.4, 1.6];
     m.map = photoTex("/textures/oak-color.webp", true, rep, Math.PI / 2);
     m.normalMap = photoTex("/textures/oak-normal.webp", false, rep, Math.PI / 2); m.normalScale.set(.8, .8);
     m.roughnessMap = photoTex("/textures/oak-rough.webp", false, rep, Math.PI / 2); m.roughness = 1;
-    m.bumpMap = null; m.color.set(0xf2dcc0); m.needsUpdate = true;
+    m.bumpMap = null; m.color.set(FINISH.tint); m.needsUpdate = true;
   }
 
   /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
@@ -202,14 +257,14 @@ export function buildDesk(kit: DeskKit): Desk {
   // The notebook is not a loose tool: it stays put and answers hover and clicks with its pages.
   // The mug is static too; a click on it ripples the coffee.
   let mug: { over: (ray: THREE.Ray) => boolean; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; top: () => { at: THREE.Vector3; radius: number; fade: number } } | null = null;
-  let notebook: { over: (ray: THREE.Ray) => boolean; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void } | null = null;
-  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number] }) {
+  let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void } | null = null;
+  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number]; hint?: string }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
     const inertia = o.mass * o.circles.reduce((s, [cx, cy, r]) => s + cx * cx + cy * cy + r * r / 2, 0) / Math.max(1, o.circles.length);
     // Phones are portrait, so each tool has its own place there (or a squeezed copy of the desktop one).
     const [x, y, a] = phone ? o.onPhone ?? [o.x * .42, o.y * 1.3, o.a] : [o.x, o.y, o.a];
-    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a, hx: x, hy: y, ha: a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, held: false, free: false, enter: o.enter && { dx: o.enter[0], dy: o.enter[1], at: o.enter[2] }, roll: o.roll ? { obj, radius: o.roll } : undefined });
+    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a, hx: x, hy: y, ha: a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, held: false, free: false, hint: o.hint, enter: o.enter && { dx: o.enter[0], dy: o.enter[1], at: o.enter[2] }, roll: o.roll ? { obj, radius: o.roll } : undefined });
   }
   const line = (n: number, len: number, r: number): [number, number, number][] => Array.from({ length: n }, (_, i) => [-len / 2 + len * i / (n - 1), 0, r]);
 
@@ -255,7 +310,7 @@ export function buildDesk(kit: DeskKit): Desk {
     body.add(mesh(geo(new THREE.LatheGeometry(fProf.map(([r, y]) => new THREE.Vector2(r, y)), 48)), std({ color: 0xc8b383, metalness: .95, roughness: .3, envMapIntensity: .7 })));
     const eProf: [number, number][] = [[0, Y0 - .33], [.1, Y0 - .33], [.1, Y0 - .5], [.094, Y0 - .55], [.075, Y0 - .58], [.04, Y0 - .595], [0, Y0 - .6]];
     body.add(mesh(geo(new THREE.LatheGeometry(eProf.map(([r, y]) => new THREE.Vector2(r, y)), 40)), std({ color: 0xd48a7e, roughness: .9 })));
-    addTool(g, { x: -5.2, y: -2.35, a: .55, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [-2.9, -2.65, .55], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85] });
+    addTool(g, { x: -5.2, y: -2.35, a: .55, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [-2.9, -2.65, .55], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
   }
   { // Coffee mug: glazed stoneware with a cream inside, coffee in it, and a ring it left on the mat.
     const g = new THREE.Group();
@@ -289,7 +344,7 @@ export function buildDesk(kit: DeskKit): Desk {
     });
     const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .32, envMapIntensity: .25 }), false);
     coffee.position.z = H2 - .22; g.add(coffee);
-    const drops: { x: number; y: number; t: number }[] = [];
+    const drops: { x: number; y: number; t: number; a: number }[] = [];
     const ripple = (dt: number) => {
       for (const d of drops) d.t += dt;
       while (drops.length && drops[0].t > 3) drops.shift();
@@ -298,7 +353,7 @@ export function buildDesk(kit: DeskKit): Desk {
         let h = 0;
         for (const d of drops) {
           const r = Math.hypot(vx - d.x, vy - d.y), front = d.t * .32, u = r - front;
-          h += .011 * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
+          h += d.a * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
         }
         // Calm at the rim, where the cup holds the coffee still.
         sp.setZ(i, h * Math.min(1, (CR - Math.hypot(vx, vy)) / .05));
@@ -306,13 +361,60 @@ export function buildDesk(kit: DeskKit): Desk {
       sp.needsUpdate = true; surface.computeVertexNormals();
       return drops.length > 0;
     };
+    // Teaspoon: only its handle shows, rising out of the coffee near the middle and leaning out over
+    // the rim; the bowl is under the surface. It turns on the cup's axis, so a stir is a turn of this group.
+    const spoon = new THREE.Group(); g.add(spoon);
+    const steelSpoon = std({ color: 0xcfcac2, metalness: 1, roughness: .28, envMapIntensity: .8 });
+    const SZ = H2 - .22;
+    // From below the surface, standing fairly upright and leaning just past the rim.
+    const from = new THREE.Vector3(.12, 0, SZ - .35), to = new THREE.Vector3(.64, 0, SZ + 1.35);
+    // Where the handle meets the coffee: the stir's ripples start there.
+    const SR = from.x + (to.x - from.x) * (-from.z + SZ) / (to.z - from.z);
+    // The handle is a thin flat strip, as on a real teaspoon: a narrow neck widening into a rounded
+    // paddle at the end, edges softened by a small bevel. Its broad face turns toward the camera.
+    const len = from.distanceTo(to);
+    const outline = new THREE.Shape();
+    const neck = .026, paddle = .085, swell = len * .52, end = len - paddle;
+    outline.moveTo(-neck, 0);
+    outline.lineTo(-neck, swell);
+    outline.bezierCurveTo(-neck, swell + (end - swell) * .45, -paddle, end - (end - swell) * .25, -paddle, end);
+    outline.absarc(0, end, paddle, Math.PI, 0, true);
+    outline.bezierCurveTo(paddle, end - (end - swell) * .25, neck, swell + (end - swell) * .45, neck, swell);
+    outline.lineTo(neck, 0);
+    outline.closePath();
+    const strip = new THREE.ExtrudeGeometry(outline, { depth: .012, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 3, curveSegments: 24 });
+    strip.translate(0, 0, -.006);
+    const stem = mesh(geo(strip), steelSpoon);
+    // Length along from→to, width across the cup's tangent, so the flat face looks up and outward.
+    const along = to.clone().sub(from).normalize(), across = new THREE.Vector3(0, 1, 0), face = new THREE.Vector3().crossVectors(across, along);
+    stem.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, along, face));
+    stem.position.copy(from); spoon.add(stem);
+    // Set once the mug's own turn is known (below): the rest angle is chosen on screen, not on the cup.
+    let spoonRest = 0;
+    // A stir, the way a hand does it: two calm turns with a soft start and stop, the handle tipping a
+    // little as it goes round, and small ripples trailing from where it meets the coffee.
+    let stir = -1, trail = 0;
+    const STIR = 4, TURNS = 2;
+    const stirring = (dt: number) => {
+      stir += dt;
+      const t = Math.min(1, stir / STIR), e = (1 - Math.cos(t * Math.PI)) / 2;
+      spoon.rotation.z = spoonRest + e * Math.PI * 2 * TURNS;
+      const sway = Math.sin(t * Math.PI) * .06;
+      spoon.rotation.x = Math.sin(stir * 3.1) * sway; spoon.rotation.y = Math.cos(stir * 2.3) * sway;
+      trail -= dt;
+      if (trail <= 0 && t < .95) {
+        trail = .1;
+        const a = spoon.rotation.z;
+        drops.push({ x: Math.cos(a) * SR, y: Math.sin(a) * SR, t: 0, a: .0035 });
+      }
+      if (t >= 1) { stir = -1; spoon.rotation.set(0, 0, spoonRest); }
+    };
     const rim = new THREE.Vector3();
     mug = {
       press(ray) {
         raycaster.ray.copy(ray);
         if (!raycaster.intersectObject(g, true).length) return false;
-        // Always from the middle, like something dropped into the cup.
-        drops.push({ x: 0, y: 0, t: 0 });
+        if (stir < 0) { stir = 0; trail = 0; }
         return true;
       },
       over(ray) { raycaster.ray.copy(ray); return raycaster.intersectObject(g, true).length > 0; },
@@ -320,6 +422,7 @@ export function buildDesk(kit: DeskKit): Desk {
         let busy = false;
         if (enterT >= 0 && enterT < 1.7) { mugAt(backOut(Math.min(1, Math.max(0, (enterT - .2) / 1.1)))); busy = true; }
         else if (enterT >= 1.7 && g.position.x !== MX) mugAt(1);
+        if (stir >= 0) { stirring(dt); busy = true; }
         return (drops.length ? ripple(dt) : false) || busy;
       },
       // Where the steam leaves the cup, in world space, the cup's radius there, and how much steam
@@ -335,6 +438,9 @@ export function buildDesk(kit: DeskKit): Desk {
     g.scale.setScalar(1.6);
     // Static for now: it sits where it is, with its own contact shadow.
     const [MX, MY, MA] = phone ? [-1.45, 2.35, .5] : [4.95, 2.2, 2.4];
+    // The spoon rests leaning toward the upper right of the screen, where a right hand leaves it,
+    // whatever way the mug itself is turned.
+    spoonRest = .35 - MA; spoon.rotation.z = spoonRest;
     g.position.set(MX, MY, 0); g.rotation.z = MA; group.add(g);
     const mugPad = new THREE.Mesh(padGeo, padMat); mugPad.scale.set(2.5, 2.3, 1); mugPad.position.set(MX, MY, .004); mugPad.rotation.z = MA; mugPad.renderOrder = 1; group.add(mugPad);
     // Entrance: slides in from beyond the top right corner and settles with a small overshoot.
@@ -604,6 +710,7 @@ export function buildDesk(kit: DeskKit): Desk {
     document.fonts?.load(`700 80px ${HAND}`).then(paintAll).catch(() => {});
     notebook = {
       over: (ray) => !!local(ray),
+      hint: (ray) => { const p = local(ray); return p ? (p.lx >= 0 ? "Click to turn page" : "Click to go back") : null; },
       hover(ray) {
         if (turning) return;
         const p = ray && local(ray);
@@ -789,6 +896,13 @@ export function buildDesk(kit: DeskKit): Desk {
       notebook?.enter();
     },
     over: (ray) => (notebook?.over(ray) || mug?.over(ray)) ?? false,
+    hint(ray) {
+      const n = notebook?.hint(ray); if (n) return n;
+      if (mug?.over(ray)) return "Click to stir";
+      raycaster.ray.copy(ray);
+      for (const t of tools) if (t.hint && raycaster.intersectObject(t.group, true).length) return t.hint;
+      return null;
+    },
     mugTop: () => mug?.top() ?? null,
     press: (ray) => (notebook?.press(ray) || mug?.press(ray)) ?? false,
     hover(ray) {
