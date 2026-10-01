@@ -8,8 +8,8 @@ export default function LaunchIntro() {
   return (
     <>
       <section className={styles.hero} id="top" aria-labelledby="hero-name">
-        <span className={`${styles.kicker} ${styles.cap}`}>Takes a problem in. Ships software out.</span>
-        <h1 className={styles.word} id="hero-name">Yossi<br />Abutbul</h1>
+        <span className={styles.kicker}>Takes a problem in. Ships software out.</span>
+        <h1 className={styles.word} id="hero-name">Yossi Abutbul</h1>
         <p className={styles.side}>
           I take a problem apart and ship what fixes it, so the slow part of someone&apos;s day
           disappears.

@@ -39,6 +39,8 @@ interface Tool {
   near: number;
   /** Seconds until this tool's one-off hop; negative once done. */
   hop: number;
+  /** Round tools only roll: they move across their own axis and spin on it, never slide or turn. */
+  roll?: { obj: THREE.Object3D; radius: number };
 }
 
 export interface Desk {
@@ -182,139 +184,170 @@ export function buildDesk(kit: DeskKit): Desk {
   const padGeo = geo(new THREE.PlaneGeometry(1, 1));
 
   const tools: Tool[] = [];
-  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean }) {
+  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number] }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
     const inertia = o.mass * o.circles.reduce((s, [cx, cy, r]) => s + cx * cx + cy * cy + r * r / 2, 0) / Math.max(1, o.circles.length);
-    const x = phone ? o.x * .42 : o.x, y = phone ? o.y * 1.3 : o.y;
-    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a: o.a, hx: x, hy: y, ha: o.a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, hop: Infinity });
+    // Phones are portrait, so each tool has its own place there (or a squeezed copy of the desktop one).
+    const [x, y, a] = phone ? o.onPhone ?? [o.x * .42, o.y * 1.3, o.a] : [o.x, o.y, o.a];
+    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a, hx: x, hy: y, ha: a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, hop: Infinity, roll: o.roll ? { obj, radius: o.roll } : undefined });
   }
   const line = (n: number, len: number, r: number): [number, number, number][] => Array.from({ length: n }, (_, i) => [-len / 2 + len * i / (n - 1), 0, r]);
 
-  { // Pencil: one turned surface, so barrel, sharpened wood and graphite flow into each other
-    // like a real pencil, coloured along its length rather than built from separate parts.
-    const K = 1, R = .105 * K; // K thickens the whole profile evenly
-    const profile: [number, number][] = [
-      [0, -2.36], [.04, -2.355], [.075, -2.34], [.095, -2.315], [.104, -2.28], [R, -2.24],
-      [R, 1.78], [.1, 1.86], [.082, 2.0], [.062, 2.16], [.044, 2.3], [.032, 2.4],
-      [.024, 2.47], [.014, 2.55], [.006, 2.6], [0, 2.62],
-    ];
-    // Dense rows where the paint meets the wood, so the colour change follows the scallop instead of
-    // being smeared into spikes across long triangles.
-    const rows: THREE.Vector2[] = [];
-    profile.forEach(([r, y], i) => {
-      const v = new THREE.Vector2(r === .105 ? R : r * K, y), next = profile[i + 1];
-      rows.push(v);
-      if (!next || y < 1.7 || y > 2.05) return;
-      const n = Math.ceil((next[1] - y) / .008), w = new THREE.Vector2(next[0] === .105 ? R : next[0] * K, next[1]);
-      for (let k = 1; k < n; k++) rows.push(v.clone().lerp(w, k / n));
-    });
-    const pencilGeo = geo(new THREE.LatheGeometry(rows, 96));
+  { // Pencil, built the way one is made: a hexagonal painted barrel, sharpened by a cone cutting
+    // through it, which is what leaves the scalloped paint edge, bare wood with grain, a graphite
+    // point, a gold stamp on the top face, a crimped ferrule and an eraser.
+    const AP = .1, CR = AP / Math.cos(Math.PI / 6); // hex apothem and corner radius
+    const Y0 = -1.2, CUT = 1.62, TIP = 2.62;          // barrel start, where the cone starts, the point: a used pencil
+    const hexR = (th: number) => {
+      // Facets centred on +z (the face the camera sees), corners rounded off a little like real paint.
+      const f = ((th - Math.PI / 2 + Math.PI / 6) % (Math.PI / 3) + Math.PI / 3) % (Math.PI / 3) - Math.PI / 6;
+      return Math.min(AP / Math.cos(f), CR * .965);
+    };
+    const coneR = (y: number) => y <= CUT ? Infinity : CR * Math.pow((TIP - y) / (TIP - CUT), 1.08);
+    const ys: number[] = [Y0, Y0];
+    for (let y = Y0 + .25; y < CUT - .1; y += .25) ys.push(y);
+    for (let y = CUT - .1; y < TIP; y += .008) ys.push(y);
+    ys.push(TIP);
+    // A unit-radius lathe whose radius is then set per vertex from the hex and the cone.
+    const pencilGeo = geo(new THREE.LatheGeometry(ys.map((y, i) => new THREE.Vector2(i === 0 || i === ys.length - 1 ? 0 : 1, y)), 120));
     const pos = pencilGeo.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color();
-    const paint = new THREE.Color(0x2c3322), band = new THREE.Color(0xc9a878), wood = new THREE.Color(0xdcbd8e), lead = new THREE.Color(0x2b2a28);
+    const paint = new THREE.Color(0x2c3322), woodA = new THREE.Color(0xe2c497), woodB = new THREE.Color(0xc9a06c), lead = new THREE.Color(0x2a2a2c);
     for (let i = 0; i < pos.count; i++) {
-      const y = pos.getY(i), r = Math.hypot(pos.getX(i), pos.getZ(i));
-      if (y > 2.43 || (y > 1.8 && r < .03 * K)) c.copy(lead);
-      // A round pencil sharpens to a clean ring where the paint ends.
-      else if (y > 1.8) c.copy(y < 1.87 ? paint : wood);
-      else if (y < -2.0 && y > -2.14) c.copy(band);
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), unit = Math.hypot(x, z);
+      const th = Math.atan2(z, x), hr = hexR(th), cr = coneR(y), r = unit * Math.min(hr, cr);
+      if (unit > 0) pos.setXYZ(i, x / unit * r, y, z / unit * r);
+      if (cr < .03) c.copy(lead);
+      else if (cr < hr) c.copy(woodA).lerp(woodB, .5 + .5 * Math.sin(th * 9 + y * 2.3 + Math.sin(th * 23) * .8) * .6);
       else c.copy(paint);
       col.set([c.r, c.g, c.b], i * 3);
     }
     pencilGeo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     pencilGeo.computeVertexNormals();
     const g = new THREE.Group();
-    const body = mesh(pencilGeo, std({ vertexColors: true, roughness: .72 }));
-    body.rotation.z = -Math.PI / 2; g.add(body);
-    addTool(g, { x: 3.9, y: 2.4, a: .22, rest: R, circles: line(7, 4.8, .13), mass: .3, foot: [5.1, .45] });
+    // Centre the pencil (eraser to point) on the tool's origin; its length runs along x once turned.
+    const body = new THREE.Group(); body.rotation.z = -Math.PI / 2; body.position.x = -(Y0 - .6 + TIP) / 2; g.add(body);
+    body.add(mesh(pencilGeo, std({ vertexColors: true, roughness: .5, envMapIntensity: .6 })));
+    // Gold foil stamp on the face toward the camera, running along the barrel.
+    const stamp = mesh(geo(new THREE.PlaneGeometry(1.9, .1)), new THREE.MeshStandardMaterial({ transparent: true, metalness: .8, roughness: .35, color: 0xd8b25a, map: tex(1024, 54, (x) => { x.fillStyle = "#fff"; x.font = `700 34px ${MONO}`; x.fillText("ABUTBUL  ·  HB  ·  No. 2", 10, 40); }) }), false);
+    stamp.rotation.z = Math.PI / 2; stamp.position.set(0, .1, AP + .002); body.add(stamp);
+    // Ferrule: crimped metal with two raised bands, then the eraser.
+    const fProf: [number, number][] = [[0, Y0 + .02], [.107, Y0 + .02], [.107, Y0 - .06], [.113, Y0 - .08], [.113, Y0 - .1], [.105, Y0 - .12], [.105, Y0 - .2], [.113, Y0 - .22], [.113, Y0 - .24], [.107, Y0 - .26], [.107, Y0 - .34], [0, Y0 - .34]];
+    body.add(mesh(geo(new THREE.LatheGeometry(fProf.map(([r, y]) => new THREE.Vector2(r, y)), 48)), std({ color: 0xc8b383, metalness: .95, roughness: .3, envMapIntensity: .7 })));
+    const eProf: [number, number][] = [[0, Y0 - .33], [.1, Y0 - .33], [.1, Y0 - .5], [.094, Y0 - .55], [.075, Y0 - .58], [.04, Y0 - .595], [0, Y0 - .6]];
+    body.add(mesh(geo(new THREE.LatheGeometry(eProf.map(([r, y]) => new THREE.Vector2(r, y)), 40)), std({ color: 0xd48a7e, roughness: .9 })));
+    addTool(g, { x: 5.2, y: -2.6, a: 2.59, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [2.9, -2.65, 2.59] });
   }
-  { // Box cutter, built like a real snap-off knife: a tapered orange body, a rubber overmould over
-    // the back half, a brushed steel channel with the thumb slider running in its slot, a steel nose
-    // guide, a blade with a bright ground edge and snap lines, and a dark end cap.
+  { // Coffee mug: glazed stoneware with a cream inside, coffee in it, and a ring it left on the mat.
     const g = new THREE.Group();
-    const L = 3.1, back = .29, front = .23, nose = L / 2;
-    const orange = std({ color: 0xe57a22, roughness: .5, envMapIntensity: .5 });
-    const rubber = std({ color: 0x242120, roughness: .92 });
-    const steel = std({ color: 0xb4b4b2, metalness: 1, roughness: .38, envMapIntensity: .55 });
-    const darkSteel = std({ color: 0x5c5c5a, metalness: 1, roughness: .5, envMapIntensity: .4 });
-
-    // Body: wider at the grip, tapering to the nose, the nose cut back at an angle.
-    const body = new THREE.Shape();
-    body.moveTo(-L / 2 + .2, -back);
-    body.lineTo(nose - .2, -front);
-    body.quadraticCurveTo(nose - .06, -front, nose - .04, -front + .08);
-    body.lineTo(nose - .22, front);
-    body.lineTo(-L / 2 + .2, back);
-    body.quadraticCurveTo(-L / 2, back, -L / 2, back - .2);
-    body.lineTo(-L / 2, -back + .2);
-    body.quadraticCurveTo(-L / 2, -back, -L / 2 + .2, -back);
-    const bodyGeo = geo(new THREE.ExtrudeGeometry(body, { depth: .14, bevelEnabled: true, bevelThickness: .055, bevelSize: .05, bevelSegments: 6, curveSegments: 20 }));
-    bodyGeo.translate(0, 0, -.07);
-    g.add(mesh(bodyGeo, orange));
-
-    // Rubber overmould: a raised pad over the back half, with fine cross ribs for the thumb.
-    const pad = new THREE.Shape();
-    const px0 = -L / 2 + .16, px1 = -.05, pw = back - .07, pr = .14;
-    pad.moveTo(px0 + pr, -pw); pad.lineTo(px1, -pw + .03); pad.quadraticCurveTo(px1 + .08, 0, px1, pw - .03); pad.lineTo(px0 + pr, pw);
-    pad.quadraticCurveTo(px0, pw, px0, pw - pr); pad.lineTo(px0, -pw + pr); pad.quadraticCurveTo(px0, -pw, px0 + pr, -pw);
-    const padGeo = geo(new THREE.ExtrudeGeometry(pad, { depth: .02, bevelEnabled: true, bevelThickness: .02, bevelSize: .02, bevelSegments: 3, curveSegments: 12 }));
-    const padMesh = mesh(padGeo, rubber); padMesh.position.z = .1; g.add(padMesh);
-    const ribs = new THREE.InstancedMesh(geo(new RoundedBoxGeometry(.028, pw * 1.5, .02, 1, .008)), rubber, 16);
-    const m = new THREE.Object3D();
-    for (let i = 0; i < 16; i++) { m.position.set(px0 + .2 + i * .075, 0, .145); m.updateMatrix(); ribs.setMatrixAt(i, m.matrix); }
-    ribs.castShadow = true; g.add(ribs);
-
-    // Steel channel along the front half, with the dark slot the slider rides in.
-    const chan = mesh(geo(new RoundedBoxGeometry(nose - .3 - px1, .3, .03, 2, .012)), steel);
-    chan.position.set((px1 + nose - .3) / 2 + .02, 0, .125); g.add(chan);
-    const slot = mesh(geo(new THREE.BoxGeometry(nose - .5 - px1, .045, .01)), std({ color: 0x141312, roughness: 1 }), false);
-    slot.position.set((px1 + nose - .5) / 2 + .1, 0, .142); g.add(slot);
-    // Slider: a ridged thumb button sitting proud of the channel.
-    const slider = mesh(geo(new RoundedBoxGeometry(.36, .22, .09, 3, .035)), rubber); slider.position.set(.32, 0, .18); g.add(slider);
-    for (let i = 0; i < 5; i++) { const rdg = mesh(geo(new RoundedBoxGeometry(.03, .2, .03, 1, .01)), rubber); rdg.position.set(.2 + i * .06, 0, .23); g.add(rdg); }
-
-    // Steel nose guide that the blade slides out of.
-    const guide = mesh(geo(new RoundedBoxGeometry(.3, front * 2 + .02, .24, 3, .04)), darkSteel); guide.position.set(nose - .26, 0, -.005); g.add(guide);
-    const screw = mesh(geo(new THREE.CylinderGeometry(.045, .045, .02, 20)), steel); screw.rotation.x = Math.PI / 2; screw.position.set(nose - .26, 0, .12); g.add(screw);
-
-    // Blade: extended past the nose, point forward, ground edge along the bottom, snap lines parallel
-    // to the tip.
-    const bh = .17, tipRun = .22, ext = .62;
-    const bs = new THREE.Shape(); bs.moveTo(0, -bh); bs.lineTo(ext + tipRun, -bh); bs.lineTo(ext, bh); bs.lineTo(0, bh);
-    const blade = mesh(geo(new THREE.ExtrudeGeometry(bs, { depth: .012, bevelEnabled: false })), std({ color: 0xd4d4d2, metalness: .95, roughness: .26, envMapIntensity: .6 }));
-    blade.position.set(nose - .15, 0, .02); g.add(blade);
-    const edge = mesh(geo(new THREE.BoxGeometry(ext + tipRun - .02, .035, .004)), std({ color: 0xf2f2f0, metalness: 1, roughness: .12 }), false);
-    edge.position.set(nose - .15 + (ext + tipRun) / 2 - .01, -bh + .02, .034); g.add(edge);
-    const ang = Math.atan2(2 * bh, -tipRun), len = Math.hypot(2 * bh, tipRun);
-    for (let i = 1; i <= 2; i++) {
-      const sl = mesh(geo(new THREE.BoxGeometry(len, .007, .004)), std({ color: 0x6f6f6d, roughness: .5 }), false);
-      sl.rotation.z = ang; sl.position.set(nose - .15 + ext + tipRun / 2 - i * .2, 0, .034); g.add(sl);
+    const H2 = 1.0, RO = .52;
+    const prof: [number, number][] = [[0, .005], [RO - .06, 0], [RO - .01, .02], [RO, .07], [RO + .01, H2 - .05], [RO, H2], [RO - .025, H2 + .012], [RO - .05, H2], [RO - .055, .14], [RO - .1, .1], [0, .1]];
+    const cup = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 72);
+    cup.rotateX(Math.PI / 2);
+    // Outside glaze vs. the cream inside: split by which side of the wall a vertex is on.
+    const cp = cup.attributes.position, cc = new Float32Array(cp.count * 3), glaze = new THREE.Color(0x9d3f27), inside = new THREE.Color(0xeee4d2), cl = new THREE.Color();
+    for (let i = 0; i < cp.count; i++) {
+      const r = Math.hypot(cp.getX(i), cp.getY(i)), z = cp.getZ(i);
+      cl.copy(r < RO - .04 && z > .09 ? inside : glaze); cc.set([cl.r, cl.g, cl.b], i * 3);
     }
-
-    // End cap with the snapper slot.
-    const cap = mesh(geo(new RoundedBoxGeometry(.18, back * 2 + .03, .27, 3, .07)), rubber); cap.position.set(-L / 2 + .04, 0, 0); g.add(cap);
-    const capSlot = mesh(geo(new THREE.BoxGeometry(.02, .3, .01)), std({ color: 0x0c0b0b, roughness: 1 }), false); capSlot.position.set(-L / 2 + .04, 0, .137); g.add(capSlot);
-
-    addTool(g, { x: 3.9, y: -2.2, a: .5, rest: .13, circles: [...line(6, 3.6, .28)], mass: .6, foot: [4.3, 1] });
+    cup.setAttribute("color", new THREE.BufferAttribute(cc, 3)); cup.computeVertexNormals();
+    g.add(mesh(geo(cup), std({ vertexColors: true, roughness: .28, envMapIntensity: .7, side: THREE.DoubleSide })));
+    const coffee = mesh(geo(new THREE.CircleGeometry(RO - .052, 48)), std({ color: 0x24120a, roughness: .9, envMapIntensity: .15 }), false);
+    coffee.position.z = .8; g.add(coffee);
+    const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: 0x9d3f27, roughness: .28, envMapIntensity: .7 }));
+    handle.rotation.set(Math.PI / 2, 0, -Math.PI / 2); handle.position.set(RO - .01, 0, .52); handle.scale.set(1, 1, 1.15); g.add(handle);
+    addTool(g, { x: -2.6, y: -1.8, a: .5, rest: 0, circles: [[0, 0, .56], [.72, 0, .14]], mass: 1.4, foot: [1.5, 1.4], onPhone: [-1.55, 2.1, .5] });
+    // The ring it left earlier, printed on the mat (it does not move with the mug).
+    const ring = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.25, 1.25)), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, map: tex(256, 256, (x, w) => {
+      x.strokeStyle = "rgba(92,52,22,.3)"; x.lineWidth = 6; x.beginPath(); x.arc(w / 2, w / 2, w * .43, .3, Math.PI * 1.85); x.stroke();
+      x.strokeStyle = "rgba(92,52,22,.14)"; x.lineWidth = 3; x.beginPath(); x.arc(w / 2 + 3, w / 2 - 2, w * .41, 0, Math.PI * 2); x.stroke();
+    }) }));
+    ring.position.set(phone ? -.4 : -.9, phone ? 2.55 : -2.35, .006); ring.renderOrder = 1; group.add(ring);
   }
-  { // SMA torque wrench: rubber grip, chrome shaft, the break-over joint, and the 8 mm open jaw
+  { // Ergonomic mouse in the MX Master manner: an asymmetric graphite shell with a low thumb rest
+    // flaring out on the left and the palm hump at the back right, a steel wheel deep in its slot,
+    // the button split and the seam where the buttons end, a small mode button, a status light, a
+    // ridged thumb panel, and the steel thumb wheel with its gesture tab. Local +x is forward, +y is
+    // the thumb side.
     const g = new THREE.Group();
-    const chrome = std({ color: 0x9a9a98, metalness: 1, roughness: .48, envMapIntensity: .45 });
-    const grip = mesh(geo(new RoundedBoxGeometry(1.7, .36, .28, 4, .12)), std({ color: 0x1d1c1c, roughness: .9 })); grip.position.x = -1.1; g.add(grip);
-    const rings = new THREE.InstancedMesh(geo(new THREE.BoxGeometry(.035, .38, .3)), std({ color: 0x111111, roughness: .95 }), 9); const m = new THREE.Object3D();
-    for (let i = 0; i < 9; i++) { m.position.set(-1.8 + i * .17, 0, 0); m.updateMatrix(); rings.setMatrixAt(i, m.matrix); } rings.castShadow = true; g.add(rings);
-    const shaft = mesh(geo(new RoundedBoxGeometry(1.2, .2, .14, 3, .05)), chrome); shaft.position.x = .3; g.add(shaft);
-    const joint = mesh(geo(new THREE.CylinderGeometry(.15, .15, .2, 32)), chrome); joint.rotation.x = Math.PI / 2; joint.position.x = .95; g.add(joint);
-    // Head with an open hex jaw.
-    const head = new THREE.Shape(); head.absarc(0, 0, .34, .55, Math.PI * 2 - .55, false);
-    const jaw = .16; head.lineTo(.34, -jaw / 1.2); head.lineTo(.06, -jaw); head.lineTo(-.06, 0); head.lineTo(.06, jaw); head.lineTo(.34, jaw / 1.2);
-    const headGeo = geo(new THREE.ExtrudeGeometry(head, { depth: .09, bevelEnabled: true, bevelSize: .02, bevelThickness: .02, bevelSegments: 2 }));
-    headGeo.translate(0, 0, -.045);
-    const headMesh = mesh(headGeo, chrome); headMesh.position.x = 1.38; g.add(headMesh);
-    const neck = mesh(geo(new RoundedBoxGeometry(.3, .22, .1, 2, .04)), chrome); neck.position.x = 1.12; g.add(neck);
-    const decal = mesh(geo(new THREE.PlaneGeometry(1.0, .12)), new THREE.MeshBasicMaterial({ transparent: true, map: tex(512, 64, (x) => { x.fillStyle = "#3a3a3a"; x.font = `700 34px ${MONO}`; x.fillText("SMA · 8 IN-LB", 8, 46); }) }), false);
-    decal.position.set(.3, 0, .072); g.add(decal);
-    addTool(g, { x: -2.2, y: -1.95, a: .1, rest: .14, circles: [[-1.7, 0, .2], [-1.1, 0, .2], [-.5, 0, .2], [.1, 0, .15], [.6, 0, .15], [1.38, 0, .36]], mass: .9, foot: [3.9, 1] });
+    const outline = new THREE.CatmullRomCurve3([
+      [1.03, -.47], [1.12, .03], [1.09, .47], [.55, .53], [.28, .52], [.2, .72], [-.07, .93], [-.38, 1.0],
+      [-.76, .91], [-.9, .6], [-1.14, .12], [-1.07, -.29], [-.69, -.53], [-.21, -.6], [.34, -.57], [.76, -.53],
+    ].map(([x, y]) => new THREE.Vector3(x, y, 0)), true, "centripetal");
+    const C = new THREE.Vector2(-.05, .2);
+    // Outline radius by angle round C (the outline is star-shaped about C), from dense samples.
+    const samples = outline.getSpacedPoints(720).map((p) => ({ a: Math.atan2(p.y - C.y, p.x - C.x), r: Math.hypot(p.x - C.x, p.y - C.y) })).sort((p, q) => p.a - q.a);
+    const radiusAt = (a: number) => {
+      let i = samples.findIndex((p) => p.a >= a); if (i <= 0) i = i === 0 ? 0 : samples.length - 1;
+      const p = samples[(i - 1 + samples.length) % samples.length], q = samples[i];
+      const span = Math.atan2(Math.sin(q.a - p.a), Math.cos(q.a - p.a)) || 1, t = Math.atan2(Math.sin(a - p.a), Math.cos(a - p.a)) / span;
+      return p.r + (q.r - p.r) * Math.min(1, Math.max(0, t));
+    };
+    const E = .55, BASE = .035;
+    // Peak height over the top: highest at the palm, lower at the buttons, low over the thumb rest.
+    const hMax = (x: number, y: number) => .17 + .45 * Math.exp(-(((x + .25) / 1.25) ** 2) - (((y + .08) / .5) ** 2));
+    const surfaceZ = (x: number, y: number) => {
+      const a = Math.atan2(y - C.y, x - C.x), rho = Math.min(1, Math.hypot(x - C.x, y - C.y) / radiusAt(a));
+      const rxy = Math.pow(rho, 1 / E);
+      return hMax(x, y) * Math.pow(Math.max(0, 1 - rxy * rxy), .25) + BASE;
+    };
+    const shell = new THREE.SphereGeometry(1, 160, 96);
+    const sp = shell.attributes.position, uv = shell.attributes.uv;
+    // Top-down UVs over this box, so the surface detail is painted in plan, like the photo.
+    const X0 = -1.2, XW = 2.4, Y0 = -.7, YH = 1.8;
+    for (let i = 0; i < sp.count; i++) {
+      const u = sp.getX(i), w = sp.getY(i), v = -sp.getZ(i);
+      const rxy = Math.hypot(u, v), a = Math.atan2(v, u), R = radiusAt(a) * Math.pow(rxy, E);
+      const x = C.x + Math.cos(a) * R, y = C.y + Math.sin(a) * R;
+      sp.setXYZ(i, x, y, w > 0 ? hMax(x, y) * Math.pow(w, .5) + BASE : w * .035 + BASE);
+      uv.setXY(i, (x - X0) / XW, (y - Y0) / YH);
+    }
+    shell.computeVertexNormals();
+    // Plan drawing: graphite, with the thumb panel darker, ridged in rings round the thumb wheel and
+    // edged by a seam.
+    const skin = tex(1536, 1152, (c, w, h) => {
+      const P = (x: number, y: number): [number, number] => [(x - X0) / XW * w, (1 - (y - Y0) / YH) * h];
+      c.fillStyle = "#4b4844"; c.fillRect(0, 0, w, h);
+      const panel: [number, number][] = [[.3, .52], [.3, 1.3], [-1.3, 1.3], [-1.3, .62], [-.88, .57], [-.5, .5], [-.1, .49], [.18, .5]];
+      c.save(); c.beginPath(); panel.forEach(([x, y], i) => { const [px, py] = P(x, y); if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.closePath();
+      c.fillStyle = "#3b3835"; c.fill(); c.clip();
+      const [cx, cy] = P(.12, .75);
+      for (let r = 14; r < w * .5; r += 9) { c.strokeStyle = `rgba(0,0,0,${.4 - r / w * .3})`; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
+      c.restore();
+      c.strokeStyle = "#1c1a18"; c.lineWidth = 5; c.beginPath();
+      panel.slice(3).concat([[.3, .52]]).forEach(([x, y], i) => { const [px, py] = P(x, y); if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.stroke();
+    });
+    // The same drawing doubles as a bump map, so the ridges and seam catch the light.
+    const graphite = std({ map: skin, bumpMap: skin, bumpScale: 1.2, roughness: .6, envMapIntensity: .45 });
+    g.add(mesh(geo(shell), graphite));
+    const seamMat = std({ color: 0x151413, roughness: 1 });
+    const onTop = (pts: [number, number][], r: number) => {
+      const curve = new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, surfaceZ(x, y) + .003)));
+      g.add(mesh(geo(new THREE.TubeGeometry(curve, 64, r, 6)), seamMat, false));
+    };
+    // Split between the buttons, and the near-straight seam where they end.
+    onTop(Array.from({ length: 10 }, (_, i) => [1.1 - i * .085, .03] as [number, number]), .009);
+    onTop(Array.from({ length: 13 }, (_, i) => { const y = .5 - i * (1.04 / 12); return [.34 + .03 * Math.cos(y * 2.2), y] as [number, number]; }), .007);
+    // Main wheel: big, brushed steel with a knurled tread, set deep in a rounded dark slot.
+    const knurl = tex(256, 32, (x, w, h) => { x.fillStyle = "#d4cdc1"; x.fillRect(0, 0, w, h); x.fillStyle = "#6b665e"; for (let i = 0; i < w; i += 5) x.fillRect(i, 0, 2, h); });
+    const steel = std({ color: 0xc9c2b6, metalness: 1, roughness: .3, envMapIntensity: .8 });
+    const tread = std({ map: knurl, metalness: 1, roughness: .35, envMapIntensity: .8 });
+    const wx = .72, wy = .03, wz = surfaceZ(wx, wy);
+    const slot = mesh(geo(new RoundedBoxGeometry(.6, .28, .12, 3, .06)), seamMat, false); slot.position.set(wx, wy, wz - .045); g.add(slot);
+    const wheel = mesh(geo(new THREE.CylinderGeometry(.2, .2, .16, 64)), [tread, steel, steel]); wheel.position.set(wx, wy, wz - .03); g.add(wheel);
+    // Mode button and the status light below it.
+    const mode = mesh(geo(new RoundedBoxGeometry(.12, .12, .05, 3, .025)), std({ color: 0x33302d, roughness: .45 }));
+    mode.position.set(.15, .03, surfaceZ(.15, .03) + .004); g.add(mode);
+    const led = new THREE.Mesh(geo(new THREE.SphereGeometry(.016, 12, 8)), new THREE.MeshBasicMaterial({ color: 0x3dff6e }));
+    led.position.set(.0, .03, surfaceZ(0, .03) + .003); g.add(led);
+    // Thumb wheel on the left flank: two knurled discs, axis front to back, and the gesture tab below.
+    for (const x of [.12, -.01]) {
+      const d = mesh(geo(new THREE.CylinderGeometry(.085, .085, .1, 40)), [tread, steel, steel]);
+      d.rotation.z = Math.PI / 2; d.position.set(x, .53, surfaceZ(x, .5) - .01); g.add(d);
+    }
+    const tab = mesh(geo(new THREE.ConeGeometry(.06, .26, 24)), std({ color: 0x5a5651, roughness: .5 }));
+    tab.rotation.z = Math.PI / 2; tab.scale.set(1, 1, .6); tab.position.set(-.2, .53, surfaceZ(-.2, .5) - .015); g.add(tab);
+    addTool(g, { x: 4.3, y: .55, a: 1.35, rest: 0, circles: [[-.6, -.05, .6], [.25, 0, .6], [.85, 0, .45], [-.4, .7, .35]], mass: .6, foot: [2.6, 1.9], onPhone: [1.3, 2.05, 1.4] });
   }
   /* ---------- Physics ---------- */
   const raycaster = new THREE.Raycaster();
@@ -354,9 +387,14 @@ export function buildDesk(kit: DeskKit): Desk {
         }
         // Sliding friction on the mat.
         t.vx *= Math.exp(-h * 9); t.vy *= Math.exp(-h * 9); t.va *= Math.exp(-h * 9);
+        if (t.roll) {
+          // Keep only the motion across the pencil's axis; it cannot slide lengthways or turn.
+          const ux = Math.cos(t.ha), uy = Math.sin(t.ha), along = t.vx * ux + t.vy * uy;
+          t.vx -= along * ux; t.vy -= along * uy; t.va = 0;
+        }
         t.x += t.vx * h; t.y += t.vy * h; t.a += t.va * h;
         // Tethered: a tool may shift a little and turn a little, never wander off.
-        const ox = t.x - t.hx, oy = t.y - t.hy, off = Math.hypot(ox, oy), MAX = .22;
+        const ox = t.x - t.hx, oy = t.y - t.hy, off = Math.hypot(ox, oy), MAX = t.roll ? .4 : .22;
         if (off > MAX) { t.x = t.hx + ox / off * MAX; t.y = t.hy + oy / off * MAX; t.vx *= .3; t.vy *= .3; }
         const oa = Math.atan2(Math.sin(t.a - t.ha), Math.cos(t.a - t.ha));
         if (Math.abs(oa) > .09) { t.a = t.ha + Math.sign(oa) * .09; t.va *= .3; }
@@ -404,10 +442,16 @@ export function buildDesk(kit: DeskKit): Desk {
       // One hop each when the desk first appears, staggered, so touch users see the tools are loose.
       let hop = 0;
       if (t.hop > -1) { t.hop -= dt; if (t.hop < 0 && t.hop > -.45) hop = Math.sin(-t.hop / .45 * Math.PI) * .22; }
-      const target = t.near * .18 + hop;
+      // Rolling tools stay on the mat: the hover cue is the roll itself, not a lift.
+      const target = (t.roll ? 0 : t.near * .18) + hop;
       t.lift += (target - t.lift) * (1 - Math.exp(-dt * 14));
       t.group.position.set(t.x, t.y, t.rest + t.lift);
       t.group.rotation.z = t.a;
+      if (t.roll) {
+        // Rolled distance across the axis turns into spin about it (no slipping).
+        const across = (t.x - t.hx) * -Math.sin(t.ha) + (t.y - t.hy) * Math.cos(t.ha);
+        t.roll.obj.rotation.x = -across / t.roll.radius;
+      }
       t.shadow.position.set(t.x + t.lift * .35, t.y - t.lift * .35, .004);
       t.shadow.rotation.z = t.a;
       const spread = 1 + t.lift * 1.4;

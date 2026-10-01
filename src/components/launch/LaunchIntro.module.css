@@ -25,9 +25,11 @@
   top: 11svh;
   margin: 0;
   font-weight: 800;
-  font-size: clamp(3.4rem, 9.5vw, 10rem);
-  line-height: 0.86;
+  /* One row: sized so "Yossi Abutbul" fits the width at every breakpoint. */
+  font-size: clamp(2.5rem, 14vw, 18rem);
+  line-height: 0.9;
   letter-spacing: -0.05em;
+  white-space: nowrap;
   text-transform: none;
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25);
 }
@@ -35,20 +37,35 @@
 .kicker {
   position: absolute;
   left: var(--gutter);
-  top: calc(11svh + clamp(3.4rem, 9.5vw, 10rem) * 1.8);
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
+  top: calc(11svh + clamp(2.5rem, 14vw, 18rem) * 1.05);
+  font-size: clamp(1rem, 1.5vw, 1.4rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
 }
 
 .side {
   position: absolute;
-  right: var(--gutter);
-  top: 44svh;
+  left: var(--gutter);
+  top: 46svh;
   width: min(24rem, 32vw);
   margin: 0;
+  padding: clamp(1rem, 1.6vw, 1.5rem);
   font-size: clamp(1.1rem, 1.6vw, 1.5rem);
   font-weight: 600;
   line-height: 1.25;
-  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.35);
+  /* Frosted glass over the desk: the blur keeps the text readable whatever lies under it. */
+  background: rgba(23, 17, 14, 0.28);
+  border: 1px solid rgba(242, 230, 212, 0.22);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  backdrop-filter: blur(16px) saturate(1.3);
+}
+
+/* Without backdrop blur the card needs a solid enough tint to keep the text legible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .side { background: rgba(23, 17, 14, 0.72); }
 }
 
 .scroll {
@@ -126,9 +143,10 @@
 }
 
 @media (max-width: 720px) {
-  .side { top: auto; bottom: 34svh; left: var(--gutter); width: auto; font-size: 1.05rem; }
-  .kicker { top: calc(13svh + clamp(3.4rem, 9.5vw, 10rem) * 1.8); }
-  .word { top: 13svh; }
+  .side { top: auto; bottom: 11svh; left: var(--gutter); right: var(--gutter); width: auto; font-size: 1.05rem; }
+  .kicker { top: calc(13svh + 15vw * 1.05); }
+  /* The name fills the phone's width on one row. */
+  .word { top: 13svh; font-size: 15vw; }
   .duo { grid-template-columns: 1fr; align-content: space-between; padding-block: 16svh 10svh; }
   .duo p { justify-self: start; }
 }
