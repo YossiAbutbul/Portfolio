@@ -5,8 +5,8 @@ export default function LaunchShips() {
   return (
     <section className={`${styles.pin} ${styles.shipsPin}`} id="ships" aria-label="It ships">
       <div className={styles.frame}>
-        <span className={`${styles.shipsKick} ${styles.fade}`} data-fade>So complete,</span>
-        <p className={styles.srOnly}>So complete, it ships.</p>
+        <span className={`${styles.shipsKick} ${styles.fade}`} data-fade>Built, tested, then</span>
+        <p className={styles.srOnly}>Built, tested, then it ships.</p>
       </div>
     </section>
   );

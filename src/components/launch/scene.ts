@@ -283,8 +283,14 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     } else if (rect(ships).top > 0) {
       const p = prog(intro);
       t.veil = 1; t.spot = 1;
-      t.z = lerp(LIFT, 2.4, smooth(.05, .5, p)); t.rx = lerp(0, -.35, smooth(.1, .6, p));
-      t.ry = lerp(0, Math.PI * 2 - .5, smooth(.1, 1, p)); t.rz = lerp(0, .08, p); t.s = base * lerp(1, .92, p);
+      // A slow 3D tumble, like Oryzo's coaster: it tips back to show its edge and depth, turning a
+      // little on its face as it goes, then settles into the angle the next beat starts from.
+      const tip = smooth(.05, .55, p), settle = smooth(.5, 1, p);
+      t.z = lerp(LIFT, 2.4, smooth(.05, .5, p));
+      t.rx = -1.15 * tip + .8 * settle;
+      t.ry = -.5 * smooth(.1, 1, p) + .35 * Math.sin(Math.PI * p);
+      t.rz = .08 * p + .5 * Math.sin(Math.PI * smooth(0, 1, p));
+      t.s = base * lerp(1, .92, p);
       backdrop = "void";
       intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .35));
     } else if (rect(work).top > vh * .2) {

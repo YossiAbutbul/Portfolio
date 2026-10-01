@@ -1,5 +1,5 @@
 .cap {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -14,11 +14,11 @@
   white-space: nowrap;
 }
 
-/* Tall enough that each card gets most of a screen of scrolling. */
+/* Each project gets more than a screen of scrolling, part of it resting in the window. */
 .pin {
   position: relative;
   z-index: 2;
-  height: calc(var(--cards, 6) * 85svh + 100svh);
+  height: calc(var(--cards, 6) * 120svh + 100svh);
   scroll-margin-top: 0;
 }
 
@@ -29,121 +29,260 @@
   overflow: hidden;
 }
 
+/* Two-tone heading, top left: the muted lead-in, then the bold line. */
 .head {
   position: absolute;
   left: var(--gutter);
-  top: 9svh;
-  z-index: 1;
-  color: var(--cream);
-}
-
-.head .cap {
-  color: var(--ink-faint);
-}
-
-.head h2 {
+  top: 11svh;
+  z-index: 3;
   margin: 0;
-  font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+  color: var(--cream);
+  font-size: clamp(1.3rem, 2.2vw, 2rem);
   font-weight: 800;
   line-height: 1;
-  text-transform: uppercase;
-}
-
-.reel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  gap: 2vw;
-  margin: 0;
-  padding: 12svh 0 0;
-  list-style: none;
-  will-change: transform;
-}
-
-.card {
-  flex: 0 0 auto;
-  width: min(64vw, 60rem);
-  height: min(66svh, 36rem);
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  overflow: hidden;
-  transition: transform 0.5s var(--ease-out), filter 0.5s var(--ease-out);
-}
-
-.card[data-far] {
-  transform: scale(0.9);
-  filter: saturate(0.6) brightness(0.7);
-}
-
-.txt {
-  padding: clamp(1.2rem, 2.4vw, 2.4rem);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-width: 0;
-}
-
-.txt h3 {
-  margin: 0.8rem 0 0;
-  font-size: clamp(1.8rem, 3.2vw, 3.2rem);
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-}
-
-.txt p {
-  margin: 1rem 0 0;
-  font-weight: 500;
-}
-
-.metric {
-  font-weight: 800;
-  font-size: clamp(1.2rem, 2vw, 1.8rem);
   letter-spacing: -0.02em;
 }
 
-.metric s {
-  opacity: 0.8;
-  font-weight: 600;
+.head span {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
 }
 
-.stack {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+/* The strip of small frames running across the middle. */
+.strip {
+  --gap: 16px;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: 15svh;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  translate: 0 -50%;
+}
+
+/* Each tile is placed (and trimmed at the window's edges) by the script. */
+.strip li {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform, clip-path;
+}
+
+.thumb {
+  display: block;
+  /* The same shape as the window, so the window reads as a magnifier over the strip. */
+  height: 15svh;
+  width: calc(15svh * 16 / 9);
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: #1c1410;
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.85) brightness(0.8);
+  transition: filter 0.3s;
+}
+
+.thumb:hover img,
+.thumb:focus-visible img {
+  filter: none;
+}
+
+.thumb:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 3px;
+}
+
+/* The window in the middle, in a dotted frame: the strip seen enlarged, edge to edge. */
+.stage {
+  --w: min(46vw, calc(60svh * 16 / 9));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: var(--w);
+  height: calc(var(--w) * 9 / 16);
+  translate: -50% -50%;
+}
+
+.stage::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border: 1px dashed rgba(242, 230, 212, 0.45);
+  pointer-events: none;
+}
+
+.window {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  height: 100%;
+  will-change: transform;
+}
+
+.item {
+  flex: 0 0 100%;
+  background: #0b0806;
+}
+
+.media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #0b0806;
+}
+
+/* Recordings keep their own shape: shown whole inside the 16:9 opening. */
+.media video,
+.media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The projects that can't run without their lab hardware: a slow pan across the screenshot while
+   it is shown, like a camera reading the screen; the opening clips it. */
+.item:not([data-off]) .pan {
+  animation: pan 16s ease-in-out infinite alternate;
+}
+
+@keyframes pan {
+  from { transform: scale(1.02) translate(0, 0); }
+  to { transform: scale(1.1) translate(-3%, -2%); }
+}
+
+/* The project in the window, as a label at the top left, in the heading's two tones: the muted
+   number line, the name large and bold, the links small underneath. */
+.labels {
+  position: absolute;
+  left: var(--gutter);
+  top: 24svh;
+  z-index: 3;
+  width: min(20vw, 22rem);
+  color: var(--cream);
+}
+
+.label {
+  position: absolute;
+  inset: 0 0 auto;
+  transition: opacity 0.35s var(--ease-out);
+}
+
+.label[data-off] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.label .cap {
+  font-size: clamp(0.8rem, 1.1vw, 1rem);
+  font-weight: 800;
+  color: var(--ink-faint);
+}
+
+.label h3 {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+
+.label .act {
+  align-items: flex-start;
+  margin-top: 0.6rem;
+}
+
+.inlineCap {
+  display: none;
+}
+
+.about {
+  min-width: 0;
+}
+
+.about .cap {
+  color: var(--ink-faint);
+}
+
+.about h3 {
+  margin: 0.25rem 0 0;
+  font-size: clamp(1rem, 1.4vw, 1.3rem);
+  font-weight: 800;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.about p {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: rgba(242, 230, 212, 0.75);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex: none;
+}
+
+.metric {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 1.2vw, 1.15rem);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.metric s {
+  opacity: 0.7;
+  font-weight: 600;
 }
 
 .links {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0 1.4rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .links a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  font-size: 0.8rem;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.links a {
   text-decoration: underline;
   text-underline-offset: 4px;
-}
-
-.pic {
-  position: relative;
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.pic img {
-  position: absolute;
-  inset: 1.2rem 1.2rem 1.2rem 0;
-  width: calc(100% - 1.2rem);
-  height: calc(100% - 2.4rem);
-  object-fit: cover;
-  object-position: left top;
-  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.5);
 }
 
 .count {
@@ -158,29 +297,26 @@
 }
 
 @media (max-width: 720px) {
-  .card {
-    width: 86vw;
-    height: 76svh;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-  .pic img {
-    inset: 0 1rem 1rem;
-    width: calc(100% - 2rem);
-    height: calc(100% - 1rem);
-  }
-  .count {
-    bottom: 2svh;
-  }
+  .head { top: 12svh; }
+  .stage { --w: 92vw; top: 52%; }
+  .thumb { height: 12svh; width: calc(12svh * 16 / 9); }
+  .strip { height: 12svh; }
+  .labels { top: 17svh; width: auto; right: var(--gutter); }
+  .act { align-items: flex-start; }
+  .count { bottom: 2svh; }
 }
 
-/* No pinned sideways travel: the cards stack as an ordinary list. */
+/* No pinned sliding: the strip goes and the projects stack as an ordinary list. */
 @media (prefers-reduced-motion: reduce) {
   .pin { height: auto; }
   .frame { position: relative; height: auto; overflow: visible; padding: 9svh var(--gutter) 6svh; }
   .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
-  .reel { position: relative; flex-direction: column; height: auto; gap: 1.5rem; padding: 0; transform: none !important; }
-  .card { width: 100%; height: auto; min-height: 24rem; transition: none; }
-  .card[data-far] { transform: none; filter: none; }
-  .count { display: none; }
+  .strip, .count { display: none; }
+  .stage { position: relative; left: auto; top: auto; width: 100%; height: auto; translate: none; }
+  .stage::before { display: none; }
+  .window { position: relative; overflow: visible; }
+  .row { flex-direction: column; gap: 2rem; transform: none !important; }
+  .labels { display: none; }
+  .inlineCap { display: flex; justify-content: space-between; gap: 2rem; padding-top: 0.8rem; color: var(--cream); }
+  .item:not([data-off]) .pan { animation: none; }
 }
