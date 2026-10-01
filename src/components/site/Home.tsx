@@ -3,8 +3,7 @@ import LaunchStage from "@/components/launch/LaunchStage";
 import LaunchIntro from "@/components/launch/LaunchIntro";
 import LaunchShips from "@/components/launch/LaunchShips";
 import LaunchBrowser from "@/components/launch/LaunchBrowser";
-import LaunchThermal from "@/components/launch/LaunchThermal";
-import LaunchPress from "@/components/launch/LaunchPress";
+import LaunchNotebook from "@/components/launch/LaunchNotebook";
 import LaunchEditorial from "@/components/launch/LaunchEditorial";
 import LaunchContact from "@/components/launch/LaunchContact";
 import LaunchToast from "@/components/launch/LaunchToast";
@@ -12,7 +11,7 @@ import LaunchLoader from "@/components/launch/LaunchLoader";
 import LaunchHeroScroll from "@/components/launch/LaunchHeroScroll";
 
 /**
- * The home page is one launch: the desk, the spotlight, the reel, the thermal test, the button,
+ * The home page is one launch: the desk, the spotlight, the projects, the notebook of more work on the desk,
  * the cream release history and the contact panels. The scene behind it is driven by these
  * sections' ids (see launch/scene.ts).
  */
@@ -27,9 +26,8 @@ export default function Home() {
       <LaunchHeroScroll />
       <LaunchShips />
       <LaunchBrowser projects={FEATURED_PROJECTS} />
-      <LaunchThermal />
-      <LaunchPress />
-      <LaunchEditorial featured={FEATURED_PROJECTS} other={OTHER_PROJECTS} />
+      <LaunchNotebook projects={OTHER_PROJECTS} />
+      <LaunchEditorial featured={FEATURED_PROJECTS} />
       <LaunchContact />
       <LaunchToast />
     </div>

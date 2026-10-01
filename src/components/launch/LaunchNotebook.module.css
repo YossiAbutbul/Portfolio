@@ -1,0 +1,557 @@
+/* A screen of scrolling per page turn. */
+.pin {
+  position: relative;
+  z-index: 2;
+  height: calc(var(--spreads, 6) * 90svh + 60svh);
+  color: var(--cream);
+  /* The desk behind stays playable; only the book takes the pointer (see .book). */
+  pointer-events: none;
+}
+
+.frame {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  /* The desk around the notebook stays playable: only the book takes the pointer. */
+  pointer-events: none;
+  /* Matches the scene's camera (30° vertical field of view): the eye stands 1.866 screen heights
+     away, so the notebook lies on the same table plane the desk is drawn on. */
+  perspective: calc(100svh * 1.866);
+}
+
+.head {
+  position: absolute;
+  left: var(--gutter);
+  top: 12svh;
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  /* It sits on the lit desk now, so it carries its own shadow to read over the mat. */
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+.head span {
+  display: block;
+  color: var(--sand);
+  transition: color 0.4s;
+  font-size: 0.72em;
+  text-transform: uppercase;
+}
+
+/* Over the pale 3D wall: dark ink. */
+.pin[data-nav="light"] .head {
+  color: var(--ink-dark);
+  text-shadow: none;
+}
+
+.pin[data-nav="light"] .head span {
+  color: #7a6450;
+}
+
+/* The open notebook: two pages on a dark cover, tilted a touch like it was put down by hand. Sizes
+   inside are in container units so the handwriting scales with the book. */
+.book {
+  --w: min(64vw, 56rem, calc(72svh * 1.55));
+  --rise: 1;
+  /* How high the paper block stands off the cover. */
+  --thick: 3.2cqw;
+  position: relative;
+  width: var(--w);
+  aspect-ratio: 1.55;
+  container-type: inline-size;
+  transform: rotateX(11deg) rotateZ(-3deg);
+  transform-style: preserve-3d;
+  will-change: transform;
+  pointer-events: auto;
+  border-radius: 6px;
+  background: #2b1f18;
+  /* The cover's rim, a tight contact shadow on the mat and a wide soft one. */
+  box-shadow: 0 0 0 0.8cqw #2b1f18, 0 0.8cqw 1.4cqw 0.6cqw rgba(0, 0, 0, 0.55), 0 4cqw 9cqw 1cqw rgba(0, 0, 0, 0.45);
+}
+
+.page {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  padding: 4.5cqw 4cqw 3.5cqw 4.5cqw;
+  overflow: hidden;
+  color: #2a2420;
+  font-family: var(--font-caveat), "Segoe Print", cursive;
+  background:
+    radial-gradient(circle, rgba(42, 36, 32, 0.16) 0.09cqw, transparent 0.12cqw) 0 0 / 2.2cqw 2.2cqw,
+    #f3ead8;
+}
+
+/* The two pages lying open sit on top of the paper block. */
+.book > .page {
+  transform: translateZ(var(--thick));
+}
+
+.left {
+  left: 0;
+  box-shadow: inset -3cqw 0 3cqw -2.4cqw rgba(60, 40, 20, 0.35);
+}
+
+.right {
+  right: 0;
+  box-shadow: inset 3cqw 0 3cqw -2.4cqw rgba(60, 40, 20, 0.35);
+}
+
+/* A leaf turns on the spine: its front is a right page, its back the next spread's left page. */
+.leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 50%;
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leaf .page {
+  inset: 0;
+  width: auto;
+  backface-visibility: hidden;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+/* A turning page darkens as it lifts toward the spine. */
+.leaf .page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(50, 30, 15, 0.55), rgba(50, 30, 15, 0.15));
+  opacity: var(--turn, 0);
+  pointer-events: none;
+}
+
+.back::after {
+  background: linear-gradient(to left, rgba(50, 30, 15, 0.55), rgba(50, 30, 15, 0.15));
+}
+
+/* The paper block's edges: fine page lines, standing between the cover and the open pages. */
+.edge {
+  position: absolute;
+  background:
+    repeating-linear-gradient(to bottom, #efe4cf 0 0.13cqw, #cdbfa5 0.13cqw 0.2cqw),
+    #e6dac3;
+  pointer-events: none;
+}
+
+/* The cover's own board, a dark band just under the paper on the near side. */
+.book::after {
+  content: "";
+  position: absolute;
+  left: -0.8cqw;
+  right: -0.8cqw;
+  top: calc(100% + 0.8cqw);
+  height: 0.9cqw;
+  transform-origin: 50% 0;
+  transform: rotateX(90deg);
+  background: #1c140f;
+  pointer-events: none;
+}
+
+.edgeNear {
+  left: 0.6%;
+  right: 0.6%;
+  top: 100%;
+  height: var(--thick);
+  transform-origin: 50% 0;
+  transform: rotateX(90deg);
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.18), transparent 8%, transparent 46%, rgba(0, 0, 0, 0.3) 50%, transparent 54%, transparent 92%, rgba(0, 0, 0, 0.18)),
+    repeating-linear-gradient(to bottom, #efe4cf 0 0.13cqw, #cdbfa5 0.13cqw 0.2cqw);
+}
+
+.edgeSide {
+  top: 0.6%;
+  bottom: 0.6%;
+  left: 100%;
+  width: var(--thick);
+  transform-origin: 0 50%;
+  transform: rotateY(-90deg);
+  background: repeating-linear-gradient(to right, #efe4cf 0 0.13cqw, #c9b99c 0.13cqw 0.2cqw);
+}
+
+.edgeLeft {
+  left: auto;
+  right: 100%;
+  transform-origin: 100% 50%;
+  transform: rotateY(90deg);
+}
+
+/* Where the hologram's beam meets the far edge of the pages. */
+.pool {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  top: -4%;
+  height: 22%;
+  transform: translateZ(calc(var(--thick) + 0.05cqw));
+  background: radial-gradient(50% 50% at 50% 20%, rgba(255, 190, 110, 0.45), rgba(255, 190, 110, 0) 70%);
+  opacity: var(--rise);
+  /* No blend mode here: one on any child flattens the book's 3D (the hologram and the paper edges
+     would collapse into the page). A plain warm gradient reads the same on cream paper. */
+  pointer-events: none;
+}
+
+/* ---------- Handwriting ---------- */
+.date {
+  display: block;
+  font-size: 1.9cqw;
+  color: #7a6a5a;
+}
+
+.title {
+  margin: 0.4cqw 0 0;
+  font-family: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 4.2cqw;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: underline;
+  text-decoration-thickness: 0.15cqw;
+  text-underline-offset: 0.6cqw;
+}
+
+.big {
+  font-size: 6.4cqw;
+}
+
+.note {
+  margin: 1.6cqw 0 0;
+  font-size: 2.15cqw;
+  line-height: 1.3;
+}
+
+.ticks {
+  margin: 1.8cqw 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 2.2cqw;
+}
+
+.ticks li::before {
+  content: "☑";
+  margin-right: 0.8cqw;
+}
+
+.arrow {
+  position: absolute;
+  right: 4cqw;
+  bottom: 3.5cqw;
+  font-size: 2.2cqw;
+  color: #a4552a;
+  transform: rotate(-4deg);
+}
+
+.index {
+  margin: 1.4cqw 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 2.5cqw;
+}
+
+.index li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8cqw;
+  padding: 0.55cqw 0;
+}
+
+.index li::after {
+  content: "";
+  order: 1;
+  flex: 1;
+  border-bottom: 0.15cqw dotted #7a6a5a;
+}
+
+.index b {
+  order: 2;
+  font-weight: 700;
+}
+
+/* The stack, sketched: boxes down the page, joined by drawn arrows. */
+.flow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4.2cqw;
+  margin-top: 1.5cqw;
+}
+
+.box {
+  position: relative;
+  margin-left: var(--shift);
+  padding: 0.8cqw 2cqw;
+  border: 0.22cqw solid #2a2420;
+  border-radius: 0.4cqw;
+  font-size: 2.3cqw;
+  transform: rotate(var(--tilt));
+}
+
+.box:not(:last-child)::after {
+  content: "↓";
+  position: absolute;
+  left: 40%;
+  top: 100%;
+  font-size: 3cqw;
+  line-height: 1.3;
+}
+
+.aside {
+  position: absolute;
+  right: 4cqw;
+  top: 5cqw;
+  font-size: 2.1cqw;
+  color: #a4552a;
+  transform: rotate(6deg);
+}
+
+.go {
+  position: absolute;
+  left: 4.5cqw;
+  right: 4cqw;
+  bottom: 3.5cqw;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 3cqw;
+  font-size: 2.4cqw;
+}
+
+.go a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #a4552a;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.5cqw;
+}
+
+.go a:focus-visible {
+  outline: 2px solid #a4552a;
+  outline-offset: 2px;
+}
+
+/* ---------- With the 3D notebook ----------
+   Once the scene is drawing (its canvas is ready), the 3D notebook and hologram on the desk take
+   over: the drawn book here steps aside and the caption carries the open project's links. */
+:global(html:has(canvas[data-ready="true"])) .book {
+  visibility: hidden;
+}
+
+.caps {
+  display: none;
+}
+
+:global(html:has(canvas[data-ready="true"])) .caps {
+  display: block;
+}
+
+.caps {
+  position: absolute;
+  left: var(--gutter);
+  bottom: 7svh;
+  width: min(21rem, 84vw);
+  pointer-events: auto;
+}
+
+.cap {
+  position: absolute;
+  inset: auto 0 0;
+  opacity: 0;
+  transform: translateY(0.6rem);
+  transition: opacity 0.4s var(--ease-out), transform 0.5s var(--ease-out);
+  pointer-events: none;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55);
+}
+
+.cap[data-on] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.capMeta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--sand);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.capName {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.capText {
+  margin: 0.5rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(242, 230, 212, 0.88);
+}
+
+.capLinks {
+  display: flex;
+  gap: 1.2rem;
+  margin-top: 0.3rem;
+}
+
+.capLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---------- The hologram ---------- */
+/* Stands upright on the far edge of the book (perpendicular to the page), rising as the book lands.
+   Warm light, scanlines, a soft beam down to the paper; the open project's slot flickers in. */
+.holo {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 100%;
+  height: 24cqw;
+  transform-origin: 50% 100%;
+  transform: translateZ(var(--thick)) rotateX(-90deg) scaleY(var(--rise));
+  transform-style: preserve-3d;
+  opacity: var(--rise);
+  pointer-events: none;
+}
+
+.beam {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 100%;
+  clip-path: polygon(0 0, 100% 0, 62% 100%, 38% 100%);
+  background: linear-gradient(to top, rgba(255, 196, 120, 0.55), rgba(255, 196, 120, 0.04) 85%);
+  filter: blur(0.4cqw);
+}
+
+.panel {
+  position: absolute;
+  inset: 0 0 26% 0;
+  border: 0.15cqw solid rgba(255, 214, 160, 0.55);
+  border-radius: 0.8cqw;
+  background:
+    repeating-linear-gradient(to bottom, rgba(255, 220, 170, 0.09) 0 0.15cqw, transparent 0.15cqw 0.5cqw),
+    linear-gradient(rgba(255, 186, 110, 0.16), rgba(255, 186, 110, 0.05));
+  box-shadow: 0 0 3cqw rgba(255, 170, 90, 0.35), inset 0 0 2cqw rgba(255, 190, 120, 0.25);
+  color: #ffe2b8;
+  text-shadow: 0 0 1cqw rgba(255, 170, 90, 0.8);
+  overflow: hidden;
+}
+
+.slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.6cqw;
+  padding: 0 3cqw;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.slot[data-on] {
+  opacity: 0.95;
+  animation: flicker 0.45s steps(1) both;
+}
+
+@keyframes flicker {
+  0% { opacity: 0; }
+  15% { opacity: 0.8; }
+  25% { opacity: 0.15; }
+  40% { opacity: 0.9; }
+  55% { opacity: 0.5; }
+  100% { opacity: 0.95; }
+}
+
+.hk {
+  font-family: var(--font-mono);
+  font-size: 1.25cqw;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.hn {
+  font-size: 3.6cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.hr {
+  font-family: var(--font-mono);
+  font-size: 1.2cqw;
+  opacity: 0.85;
+}
+
+.hs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6cqw;
+  margin-top: 0.4cqw;
+}
+
+.hs i {
+  padding: 0.25cqw 0.8cqw;
+  border: 0.12cqw solid rgba(255, 214, 160, 0.5);
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 1.05cqw;
+  font-style: normal;
+}
+
+/* Phones: a wider book, so the writing stays legible at the low angle. */
+@media (max-width: 720px) {
+  .book { --w: 100vw; }
+  .holo { left: 8%; right: 8%; height: 34cqw; }
+  .hn { font-size: 5cqw; }
+  .hk, .hr, .hs i { font-size: 2.2cqw; }
+  .head { top: 10svh; }
+}
+
+/* Reduced motion: no turning; the pages lie flat, two to a row, in reading order. */
+@media (prefers-reduced-motion: reduce) {
+  .pin { height: auto; }
+  .frame { position: relative; height: auto; overflow: visible; display: block; padding: 9svh var(--gutter) 6svh; perspective: none; }
+  .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
+  .holo, .edge, .pool, .caps { display: none !important; }
+  .book { visibility: visible !important; }
+  .pin, .frame { pointer-events: auto; }
+  .book { --w: 100%; aspect-ratio: auto; transform: none !important; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6cqw; background: none; box-shadow: none; }
+  .leaf { display: contents; }
+  .page, .leaf .page { position: relative; inset: auto; width: auto; aspect-ratio: 0.775; transform: none; }
+}

@@ -19,7 +19,8 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
-// Handwriting for the notebook on the desk. Only the 3D scene draws with it, so it is not preloaded.
+// Handwriting for the notebooks: the one on the desk and the More work section. Below the fold, so it
+// is not preloaded.
 const caveat = Caveat({
   subsets: ["latin"],
   variable: "--font-caveat",

@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { buildDesk } from "./desk";
+import { buildDesk, type MoreWork } from "./desk";
 
 /**
- * The launch scene: the device on a desk, then lifted into a spotlight, turned under a thermal camera,
- * and set back down. Everything is derived from scroll position each frame, so scrolling back
+ * The launch scene: the device on a desk, then lifted into a spotlight and turned through the dark;
+ * at the end the lights come back up on the desk, without it, for the notebook of more work. Everything is derived from scroll position each frame, so scrolling back
  * reverses it exactly. Sections are found by id; any that are missing are simply skipped.
  */
 export interface LaunchScene {
@@ -20,10 +20,8 @@ export interface SceneHooks {
   onPress?: (count: number) => void;
   /** Setup progress from 0 to 1, for the loading screen. */
   onProgress?: (value: number) => void;
-  /** Called when scrolling moves the thermal slider, so its readout can follow. */
-  onHeat?: (value: number) => void;
   /** The scene decides which backdrop the page should show behind it. */
-  onBackdrop?: (backdrop: "desk" | "void" | "thermal") => void;
+  onBackdrop?: (backdrop: "desk" | "void") => void;
 }
 
 const clamp = (v: number, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -82,6 +80,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const keep = <T extends { dispose: () => void }>(x: T) => { disposables.push(x); return x; };
 
   const sunExtras: THREE.Light[] = [];
+
+  // The window pane's light, dimmed out for More work: its straight edge would cut across the wall.
+  let paneLight: THREE.SpotLight | null = null;
+  // Present from the start (at zero) so More work never recompiles the lit materials by adding it.
+  const wallFill = new THREE.DirectionalLight(0xfff0dc, 0);
+  wallFill.position.set(1, -12, 7); wallFill.target.position.set(0, 5, 1.5);
   // Late-afternoon daylight: a warm sun with real direction, a modest fill so shadows keep their
   // depth, and the window light below carrying the dappled pattern.
   const SUN = 1.65;
@@ -91,7 +95,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6, near: 1, far: 30 });
   sun.shadow.bias = -.0006; sun.shadow.radius = 11; sun.shadow.blurSamples = 16;
-  scene.add(sun, new THREE.HemisphereLight(0xffe4c8, 0x3a2414, .4));
+  scene.add(sun, new THREE.HemisphereLight(0xffe4c8, 0x3a2414, .4), wallFill, wallFill.target);
   // Late sun through a window: a spot light carrying a blurred pane pattern across the desk.
   if (!small()) {
     const panes = document.createElement("canvas"); panes.width = panes.height = 256;
@@ -105,7 +109,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     windowLight.position.set(-9, 7, 11); windowLight.target.position.set(1.5, -1, 0);
     windowLight.map = paneTex; windowLight.castShadow = true; windowLight.shadow.mapSize.set(1024, 1024); windowLight.shadow.radius = 13; windowLight.shadow.blurSamples = 16; windowLight.shadow.bias = -.0006;
     scene.add(windowLight, windowLight.target);
-    sunExtras.push(windowLight);
+    sunExtras.push(windowLight); paneLight = windowLight;
   }
   const spot = new THREE.SpotLight(0xffd9b0, 0, 30, .45, .8, 1.2);
   spot.position.set(2, 5, 10); scene.add(spot, spot.target);
@@ -177,27 +181,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const devicePadTex = tex(256, 160, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.7)"); g.addColorStop(.6, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const devicePad = new THREE.Mesh(geo(new THREE.PlaneGeometry(W * 1.25, H * 1.35)), keep(new THREE.MeshBasicMaterial({ map: devicePadTex, transparent: true, depthWrite: false, toneMapped: false })));
   devicePad.position.z = .006; devicePad.renderOrder = 1; scene.add(devicePad);
-  const deviceMeshes: THREE.Mesh[] = [];
-  device.traverse((o) => { if ((o as THREE.Mesh).isMesh && o !== screen) deviceMeshes.push(o as THREE.Mesh); });
-  const originals = new Map(deviceMeshes.map((o) => [o, o.material]));
 
-  // Thermal camera: facing and distance from the core, mapped through an ironbow ramp.
-  const thermal = keep(new THREE.ShaderMaterial({
-    uniforms: { uHeat: { value: 1 }, uTime: { value: 0 } },
-    vertexShader: "varying vec3 vN; varying vec3 vP; void main(){ vN = normalize(normalMatrix * normal); vP = (modelMatrix * vec4(position,1.)).xyz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }",
-    fragmentShader: `uniform float uHeat, uTime; varying vec3 vN; varying vec3 vP;
-    vec3 ramp(float t){ t = clamp(t,0.,1.);
-      vec3 a = vec3(.10,.03,.25), b = vec3(.55,.07,.55), c = vec3(.92,.22,.18), d = vec3(1.,.66,.16), e = vec3(1.,.96,.72);
-      return t < .25 ? mix(a,b,t/.25) : t < .5 ? mix(b,c,(t-.25)/.25) : t < .75 ? mix(c,d,(t-.5)/.25) : mix(d,e,(t-.75)/.25); }
-    void main(){ float facing = max(vN.z, 0.); float core = 1. - clamp(length(vP.xy) / 2.2, 0., 1.);
-      float t = uHeat * (.35 + .45 * core + .25 * facing) + .12 * facing + .015 * sin(vP.y * 9. + uTime * 2.);
-      gl_FragColor = vec4(ramp(t), 1.); }`,
-  }));
-  let thermalOn = false;
-  const setThermal = (on: boolean) => {
-    if (on === thermalOn) return; thermalOn = on;
-    deviceMeshes.forEach((o) => { o.material = on ? thermal : originals.get(o)!; });
-  };
 
   /* ---------- Screen ---------- */
   // The device's spec sheet is about its maker: one entry per press, round and round.
@@ -208,7 +192,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     ["FULL\nSTACK", "PYTHON  ·  FASTAPI  ·  REACTR  ·  C  ·  FIREBASE"],
     ["RF &\nWIRELESS", "BLE  ·  LORA  ·  LTE  ·  SPECTRUM"],
   ];
-  const scr = { mode: "spec" as "spec" | "heat", text: "", cursor: true };
+  const scr = { cursor: true };
   let presses = 0, pressT = 0, spec = 0;
   let introAt = -1, lean = 0;
   // The knob tunes the screen's ink: turned away from upright, the text takes on a hue that follows
@@ -225,48 +209,60 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   function drawScreen() {
     const x = sx; x.setTransform(2, 0, 0, 2, 0, 0); x.fillStyle = "#0e0b09"; x.fillRect(0, 0, 640, 384);
     x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`; x.fillText("YOSSI ABUTBUL  ·  FW 2.1", 22, 38);
-    const [title, detail] = scr.mode === "heat" ? [scr.text, ""] : SPECS[spec];
+    const [title, detail] = SPECS[spec];
     x.fillStyle = ink(88); x.font = `800 58px ${SANS}`;
     title.split("\n").forEach((l, i) => x.fillText(l, 22, 140 + i * 64));
     x.fillStyle = ink(84); x.font = `600 22px ${MONO}`;
     if (detail) x.fillText(detail, 22, 262);
     if (scr.cursor) { x.fillStyle = ink(88); x.fillRect(22, 290, 26, 6); }
     x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`;
-    if (scr.mode !== "heat") x.fillText(`SPEC ${String(spec + 1).padStart(2, "0")}/${String(SPECS.length).padStart(2, "0")}   ·   PRESS ●`, 22, 356);
+    x.fillText(`SPEC ${String(spec + 1).padStart(2, "0")}/${String(SPECS.length).padStart(2, "0")}   ·   PRESS ●`, 22, 356);
     screenTex.needsUpdate = true;
   }
-  const show = (mode: typeof scr.mode, text = "") => { scr.mode = mode; scr.text = text; drawScreen(); };
   drawScreen();
   document.fonts?.ready.then(() => { if (!disposed) drawScreen(); });
   function press() {
     presses++; pressT = 1;
     spec = presses % SPECS.length;
     if (presses === 25) hooks.say?.("25 presses. Same energy goes into debugging.");
-    show("spec");
+    drawScreen();
     hooks.onPress?.(presses);
     kick();
   }
 
   /* ---------- Scroll choreography ---------- */
+  // The low camera's angle above the table.
+  const LOW_ELEV = THREE.MathUtils.degToRad(20);
+  // The More work projects, read once from the section (it carries them as JSON for the scene).
+  let moreList: MoreWork[] | null = null;
+  const moreWork = () => {
+    if (!moreList) {
+      try { moreList = JSON.parse(byId("notebook")?.dataset.projects ?? "[]") as MoreWork[]; } catch { moreList = []; }
+      deskSet.setMoreWork(moreList);
+    }
+    return moreList;
+  };
   const byId = (id: string) => document.getElementById(id);
   const prog = (el: HTMLElement | null) => { if (!el) return 0; const r = el.getBoundingClientRect(); return clamp(-r.top / Math.max(1, r.height - innerHeight)); };
   const rect = (el: HTMLElement | null) => el?.getBoundingClientRect() ?? { top: Infinity, bottom: Infinity } as DOMRect;
-  const heat = byId("launch-heat") as HTMLInputElement | null;
-  let heatManual = false;
-  const onHeat = () => { heatManual = true; kick(); };
-  heat?.addEventListener("input", onHeat);
 
-  type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number; s: number; veil: number; spot: number; show: number; spin: number };
-  const cur: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: small() ? .72 : 1, veil: 0, spot: 0, show: 1, spin: 0 };
+  // low: 0 looks down at the desk from above; 1 is the low camera across the table for More work.
+  // crane: extra height for the camera, so More work opens as a crane shot coming down onto the desk.
+  type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number; s: number; veil: number; spot: number; show: number; spin: number; low: number; crane: number };
+  const cur: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: small() ? .72 : 1, veil: 0, spot: 0, show: 1, spin: 0, low: 0, crane: 0 };
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   const onPointer = (e: PointerEvent) => { pointer.tx = e.clientX / innerWidth * 2 - 1; pointer.ty = e.clientY / innerHeight * 2 - 1; kick(); };
   addEventListener("pointermove", onPointer, { passive: true });
 
   function choreograph() {
-    const intro = byId("intro"), ships = byId("ships"), work = byId("work"), therm = byId("thermal"), pressSec = byId("press"), after = byId("changelog");
+    const intro = byId("intro"), ships = byId("ships"), work = byId("work"), book = byId("notebook"), after = byId("changelog");
     const vh = innerHeight, mob = small(), base = mob ? .72 : 1;
-    const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1, spin: 0 };
-    let backdrop: "desk" | "void" | "thermal" = "desk", thermalMode = false;
+    const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1, spin: 0, low: 0, crane: 0 };
+    let backdrop: "desk" | "void" = "desk";
+    // Each beat's words show only inside that beat's own stretch, decided afresh every frame, so a
+    // beat sliding into view from below (or left behind above) never shows its words early or late.
+    let introOn = false, shipsOn = false, bookOn = false;
+    let book_: { enter: number; rise: number; u: number } | null = null;
     if (rect(intro).top > 0) {
       // On the desk. The room goes dark while the hero's words leave and the hero scrolls away, so the
       // next beat opens straight in the dark rather than on an empty desk.
@@ -278,8 +274,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       // The desk turns a few degrees under the rising device, like a camera drifting round it.
       t.spin = -.075 * smooth(0, 1, q);
       backdrop = t.veil > .7 ? "void" : "desk";
-      // The next beat's words wait until the room has gone dark and the device lifts.
-      intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.setAttribute("data-off", ""));
+      // (The next beat's words stay off here: they wait until the room has gone dark and the device lifts.)
     } else if (rect(ships).top > 0) {
       const p = prog(intro);
       t.veil = 1; t.spot = 1;
@@ -292,29 +287,33 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       t.rz = .08 * p + .5 * Math.sin(Math.PI * smooth(0, 1, p));
       t.s = base * lerp(1, .92, p);
       backdrop = "void";
-      intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .35));
+      introOn = p >= .35;
     } else if (rect(work).top > vh * .2) {
       const p = prog(ships);
       t.veil = 1; t.spot = 1; t.z = 2.4; t.rx = -.35 + Math.sin(p * Math.PI) * .2; t.ry = -.5 + p * Math.PI; t.rz = .08; t.s = mob ? .62 : .92;
       t.show = 1 - smooth(.82, .98, p); backdrop = "void";
-      ships?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .08 || p > .92));
-    } else if (rect(therm).top > vh * .4) {
+      shipsOn = p >= .08 && p <= .92;
+    } else if (rect(book).top > vh) {
       t.veil = 1; t.show = 0; t.z = 2.4; t.s = .2; backdrop = "void";
-    } else if (rect(pressSec).top > vh * .4) {
-      const p = prog(therm); thermalMode = true; backdrop = "thermal";
-      t.veil = 1; t.z = 2; t.rx = -.25; t.ry = -.6 + p * 1.4; t.rz = .05; t.s = mob ? .66 : .95;
-      therm?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .1));
-      if (heat && !heatManual) {
-        const next = Math.round(smooth(.15, .85, p) * 100);
-        if (+heat.value !== next) { heat.value = String(next); hooks.onHeat?.(next); }
-      }
     } else {
-      const p = prog(pressSec);
-      t.veil = 1 - smooth(0, .3, p); t.spot = t.veil;
-      t.z = lerp(2.2, FRONT, smooth(0, .35, p)); t.rx = lerp(-.3, 0, smooth(0, .35, p)); t.ry = lerp(.8, 0, smooth(0, .35, p));
+      /* More work. As the section rises into view (q 0 to 1) the lights come up on the desk, the
+         notebook already in its place, while the camera cranes down from high above and tilts low
+         across the table, the desk turning a little under it; the hologram rises as it settles. So
+         by the time the section pins (where the nav's "More work" lands) the shot is complete, and
+         scrolling on only turns the pages. The device stays away. */
+      const q = clamp(1 - rect(book).top / vh), p = prog(book);
+      t.veil = 1 - smooth(.05, .7, q); t.spot = t.veil;
+      t.crane = (1 - smooth(0, .8, q)) * 7;
+      t.spin = -.16 * (1 - smooth(0, .9, q));
+      t.show = 0; t.s = .2;
       backdrop = t.veil > .5 ? "void" : "desk";
+      bookOn = true;
+      t.low = smooth(.25, 1, q);
+      book_ = { enter: 1, rise: smooth(.8, 1, q), u: p * moreWork().length };
     }
     if (rect(after).top < vh * .6) t.show = 0;
+    ([[intro, introOn], [ships, shipsOn]] as const).forEach(([beat, on]) =>
+      beat?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", !on)));
     // The giant word crosses the ships beat from right to left, behind the device.
     const word = byId("launch-word");
     if (word) {
@@ -322,7 +321,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       word.style.opacity = onScreen ? "1" : "0";
       if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth, prog(ships))}px, 0, 0)`;
     }
-    return { t, backdrop, thermalMode, hero: rect(intro).top > 0 };
+    // Reduced motion lists More work as a page instead; the desk's notebook stays put.
+    deskSet.book(bookOn && !reduce.matches ? book_ : null);
+    return { t, backdrop, hero: rect(intro).top > 0 };
   }
 
   function resize() {
@@ -341,7 +342,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // <html data-snap> (set by the screenshot harness) skips easing so captures show the exact pose.
     const still = reduce.matches || document.documentElement.hasAttribute("data-snap");
     if (!still) time += dt;
-    const { t, backdrop, thermalMode, hero } = choreograph();
+    const { t, backdrop, hero } = choreograph();
     if (backdrop !== lastBackdrop) { lastBackdrop = backdrop; hooks.onBackdrop?.(backdrop); }
     const k = still ? 1 : 1 - Math.exp(-dt * 5);
     let moving = 0;
@@ -350,9 +351,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     moving += Math.abs(pointer.tx - pointer.x) + Math.abs(pointer.ty - pointer.y);
     const lifted = clamp((cur.z - FRONT) / 1.5);
     // The desk is playable only while it is lit and the device is lying on it.
-    const onDesk = desk.visible && cur.veil < .05 && lifted < .03;
+    // Playable whenever it is lit and the device is either lying on it or gone (More work).
+    const onDesk = desk.visible && cur.veil < .05 && (lifted < .03 || cur.show < .05);
     const halfH = camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), halfW = halfH * camera.aspect;
-    const obstacles: [number, number, number][] = onDesk ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s * SIZE, cur.y, .95 * cur.s * SIZE] as [number, number, number]) : [];
+    const obstacles: [number, number, number][] = onDesk && cur.show > .5 ? [-1, 0, 1].map((k) => [cur.x + k * .95 * cur.s * SIZE, cur.y, .95 * cur.s * SIZE] as [number, number, number]) : [];
     // The mat is the edge: tools can be nudged partly out of frame, and their home spring brings them back.
     const edge = { w: 6.2, h: 4.2 };
     const deskMoving = desk.visible ? deskSet.update(dt, edge, obstacles) : false;
@@ -369,7 +371,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     device.visible = cur.show > .02;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
-    veil.visible = desk.visible = cur.veil < .985;
+    desk.visible = cur.veil < .985;
+    // Fully clear, the veil is dropped too: invisible as it is, the ambient-occlusion pass still sees
+    // it as a solid sheet, and from More work's low camera it would slice across the wall as a band
+    // and shade everything under it.
+    veil.visible = cur.veil > .003 && cur.veil < .985;
     desk.rotation.z = cur.spin;
     // The dark has to cover everything on the desk evenly, the tall mug included. Desktop draws the
     // device in its own pass on top, so the veil can sit above the mug; elsewhere it stays just under
@@ -377,12 +383,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     veil.position.z = composer ? 2.15 : clamp(cur.z - FRONT * cur.s - .05, .3, 2.15);
     spot.intensity = cur.spot * 90; sun.intensity = SUN * (1 - cur.veil * .8);
     sunExtras.forEach((l) => { l.visible = desk.visible; });
+    if (paneLight) paneLight.intensity = 115 * (1 - cur.low);
+    // More work: the sun stands behind the wall, so a soft light from the camera's side fills its face.
+    wallFill.intensity = 2.2 * cur.low; wallFill.visible = desk.visible;
     canvas.style.opacity = cur.show < .05 && cur.veil > .98 ? "0" : "1";
-    setThermal(thermalMode);
-    const heatValue = heat ? +heat.value : 0;
-    thermal.uniforms.uHeat.value = 1 - heatValue / 100; thermal.uniforms.uTime.value = time;
-    if (thermalMode && scr.mode !== "heat") show("heat", "4,320 MIN\n→ 8 MIN");
-    else if (!thermalMode && scr.mode === "heat") show("spec");
     pressT = Math.max(0, pressT - dt * 5);
     // The button stays down while it is held, then springs back; a press from elsewhere dips it once.
     btnDepth = lerp(btnDepth, held ? 1 : 0, 1 - Math.exp(-dt * (held ? 40 : 18)));
@@ -397,9 +401,14 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // gentle symmetric tilt (the desk reads as a trapezoid, no roll); it straightens to square on as
     // the room goes dark, so every later pose is shot straight.
     const tilt = 1 - cur.veil;
-    camera.position.set(0, -2.4 * tilt, 12 + .25 * tilt);
+    // More work drops the camera to LOW_ELEV above the table, the same 12 units out, after craning
+    // down from cur.crane units higher.
+    camera.position.set(0, lerp(-2.4 * tilt, -12 * Math.cos(LOW_ELEV), cur.low), lerp(12 + .25 * tilt, 12 * Math.sin(LOW_ELEV), cur.low) + cur.crane);
     camera.up.set(0, 1, 0);
-    camera.lookAt(0, 0, 0);
+    // From the low camera it looks a little up, over the book, so the wall behind the desk fills the
+    // top of the frame instead of more table.
+    camera.lookAt(0, 1.2 * cur.low, 1 * cur.low);
+    deskSet.setWall(cur.low);
     placeSteam();
     if (composer && desk.visible) {
       if (bokeh) {
@@ -415,7 +424,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
     const floating = !still && lean > .05 && device.visible;
-    idleFrames = moving > .0005 || floating || pressT > 0 || controlsMoving || thermalMode || deskMoving ? 0 : idleFrames + 1;
+    idleFrames = moving > .0005 || floating || pressT > 0 || controlsMoving || deskMoving ? 0 : idleFrames + 1;
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
   // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
@@ -528,10 +537,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   canvas.addEventListener("pointerleave", onLeave);
   const onVisibility = () => { if (!document.hidden) kick(); };
   document.addEventListener("visibilitychange", onVisibility);
-  const blink = window.setInterval(() => { if (scr.mode !== "heat" && !document.hidden) { scr.cursor = !scr.cursor; drawScreen(); kick(); } }, 530);
+  const blink = window.setInterval(() => { if (!document.hidden) { scr.cursor = !scr.cursor; drawScreen(); kick(); } }, 530);
 
-  // Compile every material up front, off the main thread where the driver allows it, so neither the
-  // first frame nor the thermal switch stalls on shader compilation.
+  // Compile every material up front, off the main thread where the driver allows it, so the first
+  // frame does not stall on shader compilation.
   hooks.onProgress?.(.75);
   // Desktop: ambient occlusion so things darken where they meet the mat, and a shallow depth of field
   // focused on the device. The dark scenes draw straight to the screen and keep their transparency.
@@ -585,7 +594,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   }
   await renderer.compileAsync(scene, camera).catch(() => {});
   hooks.onProgress?.(.9);
-  setThermal(true); await renderer.compileAsync(scene, camera).catch(() => {}); setThermal(false);
+  await renderer.compileAsync(scene, camera).catch(() => {});
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
   frame();
@@ -599,7 +608,6 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       removeEventListener("pointermove", onPointer); removeEventListener("resize", resize); removeEventListener("scroll", kick);
       canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerleave", onLeave); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); window.removeEventListener("launch:revealed", onRevealed);
       document.removeEventListener("visibilitychange", onVisibility);
-      heat?.removeEventListener("input", onHeat);
       disposables.forEach((d) => d.dispose());
       renderer.dispose();
     },

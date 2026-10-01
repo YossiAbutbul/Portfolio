@@ -45,7 +45,7 @@
   position: absolute;
   left: var(--gutter);
   top: 50%;
-  width: min(30vw, 26rem);
+  width: min(25vw, 24rem);
   translate: 0 -50%;
 }
 
@@ -60,7 +60,6 @@
 
 .item[data-off] {
   opacity: 0;
-  transform: translateY(1rem);
   pointer-events: none;
 }
 
@@ -81,7 +80,7 @@
 
 .item h3 {
   margin: 0.5rem 0 0;
-  font-size: clamp(2rem, 3.8vw, 3.8rem);
+  font-size: clamp(1.8rem, 3.2vw, 3.4rem);
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: -0.03em;
@@ -123,26 +122,16 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   white-space: nowrap;
-}
-
-.links a:not(.pill) {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
-.pill {
-  padding: 0 1.3rem;
-  border-radius: 999px;
-  background: var(--mark);
-  color: var(--ink-dark);
-}
-
 /* ---------- The browser window ---------- */
 .window {
-  --w: min(58vw, calc((80svh - 5.4rem) * 16 / 9));
+  --w: min(66vw, calc((86svh - 5.4rem) * 16 / 9));
   position: absolute;
   right: var(--gutter);
-  top: 50%;
+  top: 53%;
   width: var(--w);
   translate: 0 -50%;
   overflow: hidden;
@@ -296,7 +285,7 @@
 .window[data-state="loading"] .progress {
   opacity: 1;
   transform: scaleX(1);
-  transition: transform 0.65s cubic-bezier(0.3, 0.6, 0.4, 1);
+  transition: transform 0.45s cubic-bezier(0.3, 0.6, 0.4, 1);
 }
 
 .window[data-state="done"] .progress {
@@ -316,16 +305,11 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 0.45s var(--ease-out);
+  transition: opacity 0.5s var(--ease-out), transform 0.7s var(--ease-out);
 }
 
 .shot[data-on] {
   opacity: 1;
-}
-
-/* While the next address is typed and loads, the old page dims like a page about to change. */
-.window:not([data-state="done"]) .shot[data-on] {
-  opacity: 0.35;
 }
 
 .shot video,
@@ -335,61 +319,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-}
-
-.shot[data-on] .pan {
-  animation: pan 16s ease-in-out infinite alternate;
-}
-
-@keyframes pan {
-  from { transform: scale(1.02) translate(0, 0); }
-  to { transform: scale(1.1) translate(-3%, -2%); }
-}
-
-/* Counter and numbers, bottom left. */
-.rail {
-  position: absolute;
-  left: var(--gutter);
-  bottom: 6svh;
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.count {
-  font-weight: 800;
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.dots {
-  display: flex;
-  gap: 0.2rem;
-}
-
-.dots button {
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ink-faint);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.dots button:hover,
-.dots button[data-on] {
-  color: var(--mark);
-}
-
-.dots button:focus-visible {
-  outline: 2px solid var(--mark);
-  outline-offset: 2px;
 }
 
 /* Phones: the window across the top, the label underneath. */
@@ -402,8 +331,6 @@
   .item h3 { font-size: clamp(1.7rem, 8.5vw, 2.4rem); }
   .summary { font-size: 0.85rem; }
   .metric { display: none; }
-  .rail { bottom: 2.5svh; }
-  .dots { display: none; }
 }
 
 /* Reduced motion: no pinning or typing; the labels list, the window shows the first project. */
@@ -416,6 +343,4 @@
   .item, .item:not(:first-child) { position: relative; inset: auto; transition: none; }
   .item[data-off] { opacity: 1; transform: none; pointer-events: auto; }
   .shot, .window .progress { transition: none; }
-  .shot[data-on] .pan { animation: none; }
-  .rail { display: none; }
 }

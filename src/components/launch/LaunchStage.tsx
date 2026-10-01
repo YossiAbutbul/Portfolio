@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { LaunchScene } from "./scene";
 import styles from "./LaunchStage.module.css";
 
-type Backdrop = "desk" | "void" | "thermal";
+type Backdrop = "desk" | "void";
 
 /**
  * The fixed layers behind the page: a backdrop glow that matches the scene's veil, then the WebGL
@@ -32,7 +32,6 @@ export default function LaunchStage() {
         onBackdrop: setBackdrop,
         say: (message) => window.dispatchEvent(new CustomEvent("launch:say", { detail: message })),
         onPress: (count) => window.dispatchEvent(new CustomEvent("launch:press", { detail: count })),
-        onHeat: (value) => window.dispatchEvent(new CustomEvent("launch:heat", { detail: value })),
         onProgress: (value) => window.dispatchEvent(new CustomEvent("launch:progress", { detail: value })),
       }, abort.signal);
       if (!scene) return;

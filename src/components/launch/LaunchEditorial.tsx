@@ -8,8 +8,8 @@ const RELEASES = [
   { version: "v2.0 · 2022", big: "BSc CS", role: "The Open University", detail: "Systems programming, algorithms, architecture, software engineering.", tone: "cork" },
 ] as const;
 
-/** The cream page: release history, the rest of the work, and the seminar as a paper. */
-export default function LaunchEditorial({ featured, other }: { featured: Project[]; other: Project[] }) {
+/** The cream page: release history, the stack, and the seminar as a paper. */
+export default function LaunchEditorial({ featured }: { featured: Project[] }) {
   // The stack card lists what the projects actually use, most used first.
   const counts = new Map<string, number>();
   featured.forEach((p) => p.stack.forEach((s) => counts.set(s, (counts.get(s) ?? 0) + 1)));
@@ -36,25 +36,6 @@ export default function LaunchEditorial({ featured, other }: { featured: Project
           <p className={styles.stackText}>{stack.join(" · ")}</p>
         </li>
       </ol>
-
-      <div className={styles.also}>
-        <div>
-          <span className={styles.cap}>Also shipped</span>
-          <h3 className={styles.sectionHead}>More work</h3>
-        </div>
-        <ul>
-          {other.map((p) => {
-            const body = <><strong>{p.title}</strong><span>{p.summary}</span></>;
-            return (
-              <li key={p.slug}>
-                {p.noCase
-                  ? <a href={p.links[0]?.href} target="_blank" rel="noreferrer">{body}</a>
-                  : <Link href={`/projects/${p.slug}`}>{body}</Link>}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
 
       <div className={styles.paper} id="paper">
         <div>

@@ -9,8 +9,7 @@
   background: radial-gradient(circle at 50% 50%, #3a271b 0, #1d1410 38%, #17110e 70%);
 }
 
-.backdrop::before,
-.backdrop::after {
+.backdrop::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -20,10 +19,6 @@
 
 .backdrop::before {
   background: radial-gradient(circle at 50% 45%, #6e4629 0, #4a2e1b 45%, #2a1b12 100%);
-}
-
-.backdrop::after {
-  background: radial-gradient(circle at 50% 50%, #5a1f63 0, #2a0f38 40%, #16061f 75%);
 }
 
 /* The dark room's light: three large soft glows drifting on long, out-of-step loops (warm cork low
@@ -115,10 +110,6 @@
   opacity: 1;
 }
 
-.backdrop[data-backdrop="thermal"]::after {
-  opacity: 1;
-}
-
 .word {
   position: fixed;
   top: 50%;
@@ -152,8 +143,8 @@
   opacity: 1;
 }
 
-/* The desk shot gets just a hint of warmth on top. Only over the desk; the dark room and the
-   thermal scene stay as rendered. */
+/* The desk shot gets just a hint of warmth on top. Only over the desk; the dark room stays as
+   rendered. */
 .canvas[data-grade="true"] {
   filter: sepia(0.05) saturate(1.04);
 }
