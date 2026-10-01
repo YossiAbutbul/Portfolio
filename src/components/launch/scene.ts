@@ -156,15 +156,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const grille = new THREE.InstancedMesh(geo(new THREE.CircleGeometry(.018, 10)), dark, 60); const m4 = new THREE.Object3D();
   for (let i = 0; i < 60; i++) { m4.position.set(-1.28 + (i % 20) * .088, -.62 - Math.floor(i / 20) * .085, FRONT + .002); m4.updateMatrix(); grille.setMatrixAt(i, m4.matrix); }
   device.add(grille);
-  const labelTex = tex(512, 64, (x) => { x.fillStyle = "#8a7c6a"; x.font = `800 34px ${SANS}`; x.fillText("YOSSI ABUTBUL", 0, 44); x.font = `400 20px ${MONO}`; x.fillText("YA-26", 290, 43); });
-  const label = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.2, .15)), keep(new THREE.MeshBasicMaterial({ transparent: true, map: labelTex })));
-  label.position.set(-.73, -.82, FRONT + .002); device.add(label);
   // Contact shadow under the device while it lies on the desk: what makes it sit rather than hover.
   const devicePadTex = tex(256, 160, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.7)"); g.addColorStop(.6, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const devicePad = new THREE.Mesh(geo(new THREE.PlaneGeometry(W * 1.25, H * 1.35)), keep(new THREE.MeshBasicMaterial({ map: devicePadTex, transparent: true, depthWrite: false, toneMapped: false })));
   devicePad.position.z = .006; devicePad.renderOrder = 1; scene.add(devicePad);
   const deviceMeshes: THREE.Mesh[] = [];
-  device.traverse((o) => { if ((o as THREE.Mesh).isMesh && o !== screen && o !== label) deviceMeshes.push(o as THREE.Mesh); });
+  device.traverse((o) => { if ((o as THREE.Mesh).isMesh && o !== screen) deviceMeshes.push(o as THREE.Mesh); });
   const originals = new Map(deviceMeshes.map((o) => [o, o.material]));
 
   // Thermal camera: facing and distance from the core, mapped through an ironbow ramp.
@@ -188,6 +185,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* ---------- Screen ---------- */
   const scr = { mode: "boot" as "boot" | "msg" | "heat", text: "", cursor: true };
   let presses = 0, pressT = 0;
+  let held = false, btnDepth = 0, knobA = 0, knobT = 0;
+  const DETENT = Math.PI / 12;
   function drawScreen() {
     const x = sx; x.fillStyle = "#0e0b09"; x.fillRect(0, 0, 640, 384);
     x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`; x.fillText("YOSSI ABUTBUL  ·  FW 2.1", 22, 38);
@@ -325,7 +324,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     if (thermalMode && scr.mode !== "heat") show("heat", "4,320 MIN\n→ 8 MIN");
     else if (!thermalMode && scr.mode === "heat") show(presses ? "msg" : "boot", "READY");
     pressT = Math.max(0, pressT - dt * 5);
-    button.position.z = FRONT + .07 - Math.sin(pressT * Math.PI) * .06;
+    // The button stays down while it is held, then springs back; a press from elsewhere dips it once.
+    btnDepth = lerp(btnDepth, held ? 1 : 0, 1 - Math.exp(-dt * (held ? 40 : 18)));
+    button.position.z = FRONT + .07 - Math.max(btnDepth, Math.sin(pressT * Math.PI)) * .06;
+    knobA = lerp(knobA, knobT, 1 - Math.exp(-dt * 20));
+    knob.rotation.z = knobA;
+    const controlsMoving = held || btnDepth > .002 || Math.abs(knobT - knobA) > .001;
     // On the desk the camera leans back and turns a touch, like a photo taken standing over a table;
     // it straightens up as the room goes dark so every later pose is shot square on.
     const tilt = 1 - cur.veil;
@@ -339,7 +343,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
     const floating = !still && lifted > .05 && device.visible;
-    idleFrames = moving > .0005 || floating || pressT > 0 || thermalMode || deskMoving ? 0 : idleFrames + 1;
+    idleFrames = moving > .0005 || floating || pressT > 0 || controlsMoving || thermalMode || deskMoving ? 0 : idleFrames + 1;
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
   // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
@@ -351,11 +355,55 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const rayAt = (x: number, y: number) => { const r = canvas.getBoundingClientRect(); ndc.set((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); return ray.ray; };
   // The desk reacts to the pointer; a tap or click gives the nearby tools a push. Nothing is dragged,
   // so touch never has to fight the page's own scrolling.
-  const onDown = (e: PointerEvent) => { deskSet.poke(rayAt(e.clientX, e.clientY)); kick(); };
-  const onMove = (e: PointerEvent) => { if (e.pointerType !== "mouse") return; deskSet.hover(rayAt(e.clientX, e.clientY)); kick(); };
+  // The device's own controls come first: the button clicks down and presses, the knob turns.
+  const control = (x: number, y: number) => {
+    rayAt(x, y);
+    const hit = ray.intersectObjects([button, knobBody], false)[0]?.object;
+    return hit === button ? "button" : hit === knobBody ? "knob" : null;
+  };
+  const knobScreen = new THREE.Vector3();
+  const knobAngleAt = (x: number, y: number) => {
+    knob.getWorldPosition(knobScreen).project(camera);
+    const r = canvas.getBoundingClientRect();
+    return Math.atan2(y - (r.top + (1 - knobScreen.y) / 2 * r.height), x - (r.left + (knobScreen.x + 1) / 2 * r.width));
+  };
+  let turning: { id: number; angle: number; travel: number } | null = null;
+  const onDown = (e: PointerEvent) => {
+    const c = control(e.clientX, e.clientY);
+    if (c === "button") { held = true; press(); canvas.setPointerCapture(e.pointerId); }
+    else if (c === "knob") {
+      turning = { id: e.pointerId, angle: knobAngleAt(e.clientX, e.clientY), travel: 0 };
+      canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing";
+    } else deskSet.poke(rayAt(e.clientX, e.clientY));
+    kick();
+  };
+  const onMove = (e: PointerEvent) => {
+    if (turning && e.pointerId === turning.id) {
+      // Follow the pointer round the knob's centre; screen y runs down, so clockwise is negative z.
+      const a = knobAngleAt(e.clientX, e.clientY);
+      let d = a - turning.angle; d = Math.atan2(Math.sin(d), Math.cos(d));
+      turning.angle = a; turning.travel += Math.abs(d); knobT -= d; knobA = knobT;
+      kick(); return;
+    }
+    if (e.pointerType !== "mouse") return;
+    const c = control(e.clientX, e.clientY);
+    canvas.style.cursor = c === "button" ? "pointer" : c === "knob" ? "grab" : "";
+    deskSet.hover(c ? null : rayAt(e.clientX, e.clientY)); kick();
+  };
+  const onUp = (e: PointerEvent) => {
+    if (held) { held = false; kick(); }
+    if (turning && e.pointerId === turning.id) {
+      // A click without a drag turns it one detent; either way it settles on the nearest detent.
+      if (turning.travel < .05 && e.type === "pointerup") knobT -= DETENT * 2;
+      knobT = Math.round(knobT / DETENT) * DETENT;
+      turning = null; canvas.style.cursor = e.pointerType === "mouse" ? "grab" : ""; kick();
+    }
+  };
+  canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointercancel", onUp);
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
-  const onLeave = () => deskSet.hover(null);
+  const onLeave = () => { deskSet.hover(null); if (!turning) canvas.style.cursor = ""; };
   // The tools hop once, as soon as the loading sheet has lifted (or straight away if there is none).
   const onRevealed = () => { deskSet.hop(); kick(); };
   window.addEventListener("launch:revealed", onRevealed);
@@ -409,7 +457,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       disposed = true;
       cancelAnimationFrame(raf); clearInterval(blink);
       removeEventListener("pointermove", onPointer); removeEventListener("resize", resize); removeEventListener("scroll", kick);
-      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerleave", onLeave); window.removeEventListener("launch:revealed", onRevealed);
+      canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerleave", onLeave); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); window.removeEventListener("launch:revealed", onRevealed);
       document.removeEventListener("visibilitychange", onVisibility);
       heat?.removeEventListener("input", onHeat);
       disposables.forEach((d) => d.dispose());
