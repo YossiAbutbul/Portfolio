@@ -9,9 +9,16 @@
 html {
   background: var(--paper);
   scroll-behavior: auto;
+  /* No scrollbar for now: the loading sheet locks scrolling, and a bar that appears afterwards
+     shifts the whole page sideways. A custom one that overlays the page comes later. */
+  scrollbar-width: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 html,

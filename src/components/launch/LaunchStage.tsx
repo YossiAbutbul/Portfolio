@@ -68,7 +68,9 @@ export default function LaunchStage() {
       <div className={styles.backdrop} data-backdrop={backdrop} aria-hidden="true" />
       {/* The giant word slides between the backdrop and the device; the scene moves it. */}
       <div className={styles.word} id="launch-word" aria-hidden="true">it ships.</div>
-      <canvas ref={canvas} className={styles.canvas} data-ready={ready} aria-hidden="true" />
+      <canvas ref={canvas} className={styles.canvas} data-ready={ready} data-grade={backdrop === "desk"} aria-hidden="true" />
+      {/* Steam off the mug: the scene pins it to the rim; CSS does the drifting. */}
+      <div className={styles.steam} id="launch-steam" aria-hidden="true"><i /><i /><i /></div>
       {/* Lens: vignette, grain and soft focus at the edges, only over the desk. */}
       <div className={styles.lens} data-on={backdrop === "desk"} aria-hidden="true" />
     </>

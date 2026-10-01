@@ -1,12 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="6" fill="#0a0e14"/>
-  <text
-    x="16" y="22"
-    font-family="system-ui, -apple-system, sans-serif"
-    font-size="14"
-    font-weight="700"
-    fill="#2bbd4f"
-    text-anchor="middle"
-    letter-spacing="-0.5"
-  >YA</text>
+  <!-- The desk device in miniature: cream body, dark screen with a cursor, cork knob, olive button. -->
+  <rect width="32" height="32" rx="7" fill="#17110e"/>
+  <rect x="3" y="8" width="26" height="17" rx="4.5" fill="#e6dccb"/>
+  <rect x="5.5" y="10.5" width="14" height="10.5" rx="1.6" fill="#0e0b09"/>
+  <rect x="7.5" y="17" width="3" height="1.4" fill="#f2e6d4"/>
+  <circle cx="24.2" cy="13.3" r="2.6" fill="#c46f35"/>
+  <circle cx="24.2" cy="20" r="2.2" fill="#4d5a36"/>
 </svg>

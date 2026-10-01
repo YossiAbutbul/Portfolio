@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree, JetBrains_Mono } from "next/font/google";
+import { Caveat, Figtree, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 import Nav from "@/components/layout/Nav";
@@ -17,6 +17,14 @@ const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
   display: "swap",
+});
+
+// Handwriting for the notebook on the desk. Only the 3D scene draws with it, so it is not preloaded.
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -69,7 +77,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${figtree.variable} ${jetbrains.variable}`}
+      className={`${figtree.variable} ${caveat.variable} ${jetbrains.variable}`}
       data-theme="dark"
     >
       <body>

@@ -14,15 +14,29 @@
   visibility: hidden;
 }
 
+/* The drawing sits exactly where the 3D device will be, so the sheet can simply fade off it. The
+   scene's camera has a fixed vertical field of view, so the device's place and size on screen are a
+   fixed share of the viewport height (worked out from the camera and the device's pose on the desk):
+   centred 55% down, 41.8% of the height wide. The device body is 420 of the drawing's 1000 units. */
 .drawing {
-  width: min(92vw, 1100px);
+  position: absolute;
+  left: 50%;
+  top: 55vh;
+  top: 54.98dvh;
+  width: 99.5vh;
+  width: 99.5dvh;
   height: auto;
   overflow: visible;
-  transition: transform 0.8s var(--ease-out);
+  translate: calc(-50% + 0.66dvh) -50%;
 }
 
-.sheet[data-phase="leaving"] .drawing {
-  transform: scale(1.12);
+/* Phones use a wider lens and a smaller device. */
+@media (max-width: 720px) {
+  .drawing {
+    top: 53.55dvh;
+    width: 47.1dvh;
+    translate: calc(-50% + 0.34dvh) -50%;
+  }
 }
 
 .construction line {

@@ -78,6 +78,7 @@ export default function LaunchLoader() {
     // Release the page as the sheet lifts, so the desk is already live underneath.
     document.documentElement.style.overflow = "";
     window.__lenis?.start();
+    document.documentElement.setAttribute("data-entering", "");
     window.dispatchEvent(new Event("launch:revealed"));
   }, [phase]);
 

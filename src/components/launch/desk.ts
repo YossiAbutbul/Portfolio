@@ -14,6 +14,8 @@ export interface DeskKit {
   mesh: (g: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], cast?: boolean) => THREE.Mesh;
   SANS: string;
   MONO: string;
+  /** Handwriting, for the notebook. Loaded on demand; pages repaint once it arrives. */
+  HAND: string;
   /** Texture scale: 1 on desktop, .5 on phones. */
   TEX: number;
   /** Phones are portrait: the tools start closer in so they are on screen. */
@@ -37,8 +39,12 @@ interface Tool {
   lift: number;
   /** Hover cue, 0..1, eased. */
   near: number;
-  /** Seconds until this tool's one-off hop; negative once done. */
-  hop: number;
+  /** Entrance: where it starts relative to home, and when (seconds after the reveal) it is let go. */
+  enter?: { dx: number; dy: number; at: number };
+  /** Parked at its entrance start, waiting for its cue. */
+  held: boolean;
+  /** Coming in from its entrance: not tethered or kept in bounds until it is close to home. */
+  free: boolean;
   /** Round tools only roll: they move across their own axis and spin on it, never slide or turn. */
   roll?: { obj: THREE.Object3D; radius: number };
 }
@@ -52,8 +58,15 @@ export interface Desk {
   poke: (ray: THREE.Ray) => void;
   /** Pointer over the desk (mouse): nearby tools lift and shy away; null when it leaves. */
   hover: (ray: THREE.Ray | null) => void;
-  /** Starts the one-off staggered hop that shows the tools are loose. */
-  hop: () => void;
+  /** Plays the entrance once the loading sheet lifts: the mug slides in, the notebook slides in
+   *  riffling its pages, the pencil rolls in. */
+  enter: () => void;
+  /** Whether the ray is over something that answers a click (the notebook, the mug). */
+  over: (ray: THREE.Ray) => boolean;
+  /** A click on the notebook turns its page, on the mug ripples the coffee; false when it missed both. */
+  press: (ray: THREE.Ray) => boolean;
+  /** The mug's rim in world space, for the steam drawn over the canvas. */
+  mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
 }
 
 // Deterministic value noise, so the wood and the mat look the same on every visit.
@@ -77,7 +90,7 @@ function makeNoise(seed: number) {
 }
 
 export function buildDesk(kit: DeskKit): Desk {
-  const { tex, std, geo, mesh, SANS, MONO, TEX, phone, photo } = kit;
+  const { tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone, photo } = kit;
   const group = new THREE.Group();
   const N = makeNoise(7);
 
@@ -184,13 +197,19 @@ export function buildDesk(kit: DeskKit): Desk {
   const padGeo = geo(new THREE.PlaneGeometry(1, 1));
 
   const tools: Tool[] = [];
-  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number] }) {
+  // Seconds since the entrance began; -1 until it does (and for good, if it never does).
+  let enterT = -1;
+  // The notebook is not a loose tool: it stays put and answers hover and clicks with its pages.
+  // The mug is static too; a click on it ripples the coffee.
+  let mug: { over: (ray: THREE.Ray) => boolean; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; top: () => { at: THREE.Vector3; radius: number; fade: number } } | null = null;
+  let notebook: { over: (ray: THREE.Ray) => boolean; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void } | null = null;
+  function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number] }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
     const inertia = o.mass * o.circles.reduce((s, [cx, cy, r]) => s + cx * cx + cy * cy + r * r / 2, 0) / Math.max(1, o.circles.length);
     // Phones are portrait, so each tool has its own place there (or a squeezed copy of the desktop one).
     const [x, y, a] = phone ? o.onPhone ?? [o.x * .42, o.y * 1.3, o.a] : [o.x, o.y, o.a];
-    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a, hx: x, hy: y, ha: a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, hop: Infinity, roll: o.roll ? { obj, radius: o.roll } : undefined });
+    tools.push({ group: g, shadow, circles: o.circles, mass: o.mass, inertia: Math.max(.05, inertia), rest: o.rest, collide: o.collide ?? true, x, y, a, hx: x, hy: y, ha: a, vx: 0, vy: 0, va: 0, lift: 0, near: 0, held: false, free: false, enter: o.enter && { dx: o.enter[0], dy: o.enter[1], at: o.enter[2] }, roll: o.roll ? { obj, radius: o.roll } : undefined });
   }
   const line = (n: number, len: number, r: number): [number, number, number][] => Array.from({ length: n }, (_, i) => [-len / 2 + len * i / (n - 1), 0, r]);
 
@@ -236,118 +255,401 @@ export function buildDesk(kit: DeskKit): Desk {
     body.add(mesh(geo(new THREE.LatheGeometry(fProf.map(([r, y]) => new THREE.Vector2(r, y)), 48)), std({ color: 0xc8b383, metalness: .95, roughness: .3, envMapIntensity: .7 })));
     const eProf: [number, number][] = [[0, Y0 - .33], [.1, Y0 - .33], [.1, Y0 - .5], [.094, Y0 - .55], [.075, Y0 - .58], [.04, Y0 - .595], [0, Y0 - .6]];
     body.add(mesh(geo(new THREE.LatheGeometry(eProf.map(([r, y]) => new THREE.Vector2(r, y)), 40)), std({ color: 0xd48a7e, roughness: .9 })));
-    addTool(g, { x: 5.2, y: -2.6, a: 2.59, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [2.9, -2.65, 2.59] });
+    addTool(g, { x: -5.2, y: -2.35, a: .55, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [-2.9, -2.65, .55], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85] });
   }
   { // Coffee mug: glazed stoneware with a cream inside, coffee in it, and a ring it left on the mat.
     const g = new THREE.Group();
-    const H2 = 1.0, RO = .52;
+    const H2 = 1.2, RO = .52;
     const prof: [number, number][] = [[0, .005], [RO - .06, 0], [RO - .01, .02], [RO, .07], [RO + .01, H2 - .05], [RO, H2], [RO - .025, H2 + .012], [RO - .05, H2], [RO - .055, .14], [RO - .1, .1], [0, .1]];
     const cup = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 72);
     cup.rotateX(Math.PI / 2);
     // Outside glaze vs. the cream inside: split by which side of the wall a vertex is on.
-    const cp = cup.attributes.position, cc = new Float32Array(cp.count * 3), glaze = new THREE.Color(0x9d3f27), inside = new THREE.Color(0xeee4d2), cl = new THREE.Color();
+    const cp = cup.attributes.position, cc = new Float32Array(cp.count * 3), glaze = new THREE.Color(0x3f6283), inside = new THREE.Color(0xeee4d2), cl = new THREE.Color();
     for (let i = 0; i < cp.count; i++) {
       const r = Math.hypot(cp.getX(i), cp.getY(i)), z = cp.getZ(i);
       cl.copy(r < RO - .04 && z > .09 ? inside : glaze); cc.set([cl.r, cl.g, cl.b], i * 3);
     }
     cup.setAttribute("color", new THREE.BufferAttribute(cc, 3)); cup.computeVertexNormals();
     g.add(mesh(geo(cup), std({ vertexColors: true, roughness: .28, envMapIntensity: .7, side: THREE.DoubleSide })));
-    const coffee = mesh(geo(new THREE.CircleGeometry(RO - .052, 48)), std({ color: 0x24120a, roughness: .9, envMapIntensity: .15 }), false);
-    coffee.position.z = .8; g.add(coffee);
-    const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: 0x9d3f27, roughness: .28, envMapIntensity: .7 }));
+    // Coffee: a disc of rings so it can ripple. A click drops a "stone" where it lands; each drop
+    // sends out a ring that fades as it travels, and the surface catches the light as it moves.
+    const CR = RO - .052;
+    const surface = new THREE.RingGeometry(0, CR, 72, 28);
+    const sp = surface.attributes.position, flat = Float32Array.from(sp.array as Float32Array);
+    const coffeeTex = tex(512, 512, (x, w, h) => {
+      const gr = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+      gr.addColorStop(0, "#0d0603"); gr.addColorStop(.6, "#170a04"); gr.addColorStop(.86, "#2a1408"); gr.addColorStop(.95, "#6b4122"); gr.addColorStop(1, "#9a6a3e");
+      x.fillStyle = gr; x.fillRect(0, 0, w, h);
+      // Crema: a thin ring of tiny pale bubbles at the rim; the middle stays dark.
+      for (let i = 0; i < 500; i++) {
+        const a = N.rand() * Math.PI * 2, r = (.86 + N.rand() * .14) * w / 2;
+        x.fillStyle = `rgba(200,150,100,${.12 + N.rand() * .2})`;
+        x.beginPath(); x.arc(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, .6 + N.rand() * 1.6, 0, Math.PI * 2); x.fill();
+      }
+    });
+    const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .32, envMapIntensity: .25 }), false);
+    coffee.position.z = H2 - .22; g.add(coffee);
+    const drops: { x: number; y: number; t: number }[] = [];
+    const ripple = (dt: number) => {
+      for (const d of drops) d.t += dt;
+      while (drops.length && drops[0].t > 3) drops.shift();
+      for (let i = 0; i < sp.count; i++) {
+        const vx = flat[i * 3], vy = flat[i * 3 + 1];
+        let h = 0;
+        for (const d of drops) {
+          const r = Math.hypot(vx - d.x, vy - d.y), front = d.t * .32, u = r - front;
+          h += .011 * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
+        }
+        // Calm at the rim, where the cup holds the coffee still.
+        sp.setZ(i, h * Math.min(1, (CR - Math.hypot(vx, vy)) / .05));
+      }
+      sp.needsUpdate = true; surface.computeVertexNormals();
+      return drops.length > 0;
+    };
+    const rim = new THREE.Vector3();
+    mug = {
+      press(ray) {
+        raycaster.ray.copy(ray);
+        if (!raycaster.intersectObject(g, true).length) return false;
+        // Always from the middle, like something dropped into the cup.
+        drops.push({ x: 0, y: 0, t: 0 });
+        return true;
+      },
+      over(ray) { raycaster.ray.copy(ray); return raycaster.intersectObject(g, true).length > 0; },
+      update(dt) {
+        let busy = false;
+        if (enterT >= 0 && enterT < 1.7) { mugAt(backOut(Math.min(1, Math.max(0, (enterT - .2) / 1.1)))); busy = true; }
+        else if (enterT >= 1.7 && g.position.x !== MX) mugAt(1);
+        return (drops.length ? ripple(dt) : false) || busy;
+      },
+      // Where the steam leaves the cup, in world space, the cup's radius there, and how much steam
+      // to show (none until the mug has landed after its entrance).
+      top: () => {
+        coffee.getWorldPosition(rim); rim.z += .2;
+        return { at: rim, radius: CR * g.scale.x, fade: enterT < 0 ? 1 : Math.min(1, Math.max(0, (enterT - 1.3) / .9)) };
+      },
+    };
+    const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: 0x3f6283, roughness: .28, envMapIntensity: .7 }));
     handle.rotation.set(Math.PI / 2, 0, -Math.PI / 2); handle.position.set(RO - .01, 0, .52); handle.scale.set(1, 1, 1.15); g.add(handle);
-    addTool(g, { x: -2.6, y: -1.8, a: .5, rest: 0, circles: [[0, 0, .56], [.72, 0, .14]], mass: 1.4, foot: [1.5, 1.4], onPhone: [-1.55, 2.1, .5] });
+    // Modelled small and scaled up to a real small mug, about 6 cm across next to the pencil.
+    g.scale.setScalar(1.6);
+    // Static for now: it sits where it is, with its own contact shadow.
+    const [MX, MY, MA] = phone ? [-1.45, 2.35, .5] : [4.95, 2.2, 2.4];
+    g.position.set(MX, MY, 0); g.rotation.z = MA; group.add(g);
+    const mugPad = new THREE.Mesh(padGeo, padMat); mugPad.scale.set(2.5, 2.3, 1); mugPad.position.set(MX, MY, .004); mugPad.rotation.z = MA; mugPad.renderOrder = 1; group.add(mugPad);
+    // Entrance: slides in from beyond the top right corner and settles with a small overshoot.
+    const mugAt = (e: number) => {
+      const k = 1 - e;
+      g.position.set(MX + 3 * k, MY + 2.6 * k, 0); g.rotation.z = MA + .7 * k;
+      mugPad.position.set(g.position.x, g.position.y, .004); mugPad.rotation.z = g.rotation.z;
+    };
+    const backOut = (t: number) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2);
     // The ring it left earlier, printed on the mat (it does not move with the mug).
-    const ring = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.25, 1.25)), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, map: tex(256, 256, (x, w) => {
+    const ring = new THREE.Mesh(geo(new THREE.PlaneGeometry(2, 2)), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, map: tex(256, 256, (x, w) => {
       x.strokeStyle = "rgba(92,52,22,.3)"; x.lineWidth = 6; x.beginPath(); x.arc(w / 2, w / 2, w * .43, .3, Math.PI * 1.85); x.stroke();
       x.strokeStyle = "rgba(92,52,22,.14)"; x.lineWidth = 3; x.beginPath(); x.arc(w / 2 + 3, w / 2 - 2, w * .41, 0, Math.PI * 2); x.stroke();
     }) }));
-    ring.position.set(phone ? -.4 : -.9, phone ? 2.55 : -2.35, .006); ring.renderOrder = 1; group.add(ring);
+    ring.position.set(phone ? -.3 : 3.3, phone ? 1.2 : 2.15, .006); ring.renderOrder = 1; group.add(ring);
   }
-  { // Ergonomic mouse in the MX Master manner: an asymmetric graphite shell with a low thumb rest
-    // flaring out on the left and the palm hump at the back right, a steel wheel deep in its slot,
-    // the button split and the seam where the buttons end, a small mode button, a status light, a
-    // ridged thumb panel, and the steel thumb wheel with its gesture tab. Local +x is forward, +y is
-    // the thumb side.
-    const g = new THREE.Group();
-    const outline = new THREE.CatmullRomCurve3([
-      [1.03, -.47], [1.12, .03], [1.09, .47], [.55, .53], [.28, .52], [.2, .72], [-.07, .93], [-.38, 1.0],
-      [-.76, .91], [-.9, .6], [-1.14, .12], [-1.07, -.29], [-.69, -.53], [-.21, -.6], [.34, -.57], [.76, -.53],
-    ].map(([x, y]) => new THREE.Vector3(x, y, 0)), true, "centripetal");
-    const C = new THREE.Vector2(-.05, .2);
-    // Outline radius by angle round C (the outline is star-shaped about C), from dense samples.
-    const samples = outline.getSpacedPoints(720).map((p) => ({ a: Math.atan2(p.y - C.y, p.x - C.x), r: Math.hypot(p.x - C.x, p.y - C.y) })).sort((p, q) => p.a - q.a);
-    const radiusAt = (a: number) => {
-      let i = samples.findIndex((p) => p.a >= a); if (i <= 0) i = i === 0 ? 0 : samples.length - 1;
-      const p = samples[(i - 1 + samples.length) % samples.length], q = samples[i];
-      const span = Math.atan2(Math.sin(q.a - p.a), Math.cos(q.a - p.a)) || 1, t = Math.atan2(Math.sin(a - p.a), Math.cos(a - p.a)) / span;
-      return p.r + (q.r - p.r) * Math.min(1, Math.max(0, t));
+  { // Open pocket notebook (A7, to scale with the pencil). It stays put. Hovering a page lifts it
+    // toward the pointer; a click turns it, forward on the right page and back on the left. The
+    // spreads are rough thinking about the featured projects: notes on the left, a sketch on the right.
+    const nb = new THREE.Group(); group.add(nb);
+    const PW = 2.05, PH = 2.9, T = .1;
+    const [NX, NY, NA] = phone ? [1.25, 2.55, -.1] : [4.4, -.35, -.18];
+    nb.position.set(NX, NY, 0); nb.rotation.z = NA;
+    const pad = new THREE.Mesh(padGeo, padMat); pad.scale.set(PW * 2 + .9, PH + .8, 1); pad.position.set(NX, NY, .004); pad.rotation.z = NA; pad.renderOrder = 1; group.add(pad);
+    // Height of the page surface at distance d from the spine: low at the gutter, rising to the edge.
+    const top = (d: number) => .035 + T * (.3 + .7 * (1 - Math.exp(-d / .22))) - .015 * Math.pow(d / PW, 6);
+    const cover = mesh(geo(new RoundedBoxGeometry(PW * 2 + .14, PH + .14, .035, 2, .014)), std({ color: 0x1f1d1b, roughness: .7 }));
+    cover.position.z = .018; nb.add(cover);
+
+    /* Pages are drawn into four reusable canvases (left, right, and the two faces of the turning
+       sheet) in a 1024-wide space. Each page has its own seeded wobble, so redrawing the same page
+       gives the same strokes. */
+    type Pen = { line: (pts: [number, number][], w?: number) => void; curve: (x0: number, y0: number, cx: number, cy: number, x1: number, y1: number) => void; text: (s: string, x: number, y: number, size?: number) => void; box: (x: number, y: number, w: number, h: number) => void; ring: (x: number, y: number, r: number) => void; arrow: (x0: number, y0: number, x1: number, y1: number) => void; x: CanvasRenderingContext2D };
+    type Page = (p: Pen) => void;
+    const SCALE = phone ? .5 : .75, CW = 1024, CH = 1448;
+    const page = () => tex(Math.round(CW * SCALE), Math.round(CH * SCALE), () => {});
+    const paint = (t: THREE.CanvasTexture, draw: Page, seed: number) => {
+      let st = seed * 2654435761 >>> 0;
+      const rnd = () => { st = (st + 0x6d2b79f5) >>> 0; let r = Math.imul(st ^ (st >>> 15), 1 | st); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+      const c = t.image as HTMLCanvasElement, x = c.getContext("2d")!;
+      x.setTransform(c.width / CW, 0, 0, c.height / CH, 0, 0);
+      const ink = "#22305e";
+      x.fillStyle = "#f1eadb"; x.fillRect(0, 0, CW, CH);
+      x.fillStyle = "rgba(60,62,90,.3)";
+      for (let py = 60; py < CH - 30; py += 44) for (let px = 52; px < CW - 30; px += 44) { x.beginPath(); x.arc(px, py, 2.6, 0, Math.PI * 2); x.fill(); }
+      const j = (v: number, a = 4) => v + (rnd() - .5) * a;
+      // Every stroke goes down twice, a touch apart, the way a quick pen sketch does.
+      const line = (pts: [number, number][], w = 4.5) => {
+        x.strokeStyle = ink; x.lineCap = x.lineJoin = "round";
+        for (let pass = 0; pass < 2; pass++) {
+          x.lineWidth = pass ? w * .6 : w; x.globalAlpha = pass ? .55 : 1; x.beginPath();
+          pts.forEach(([px, py], i) => { if (i) x.lineTo(j(px), j(py)); else x.moveTo(j(px), j(py)); });
+          x.stroke();
+        }
+        x.globalAlpha = 1;
+      };
+      const curve = (x0: number, y0: number, cx: number, cy: number, x1: number, y1: number) => {
+        const pts: [number, number][] = [];
+        for (let i = 0; i <= 16; i++) { const t2 = i / 16, u = 1 - t2; pts.push([u * u * x0 + 2 * u * t2 * cx + t2 * t2 * x1, u * u * y0 + 2 * u * t2 * cy + t2 * t2 * y1]); }
+        line(pts);
+      };
+      const text = (s: string, px: number, py: number, size = 88) => {
+        x.save(); x.translate(px, py); x.rotate((rnd() - .5) * .04);
+        x.fillStyle = ink; x.font = `700 ${size}px ${HAND}`; x.fillText(s, 0, 0); x.restore();
+      };
+      // Boxes overshoot at the corners; nobody closes a box neatly when thinking.
+      const box = (bx: number, by: number, bw: number, bh: number) => {
+        line([[bx - 12, by], [bx + bw + 10, by + 3]]); line([[bx + bw, by - 10], [bx + bw - 3, by + bh + 12]]);
+        line([[bx + bw + 8, by + bh], [bx - 10, by + bh - 2]]); line([[bx + 2, by + bh + 10], [bx, by - 12]]);
+      };
+      const ring = (cx: number, cy: number, r: number) => {
+        const pts: [number, number][] = [];
+        for (let i = 0; i <= 26; i++) { const a = -.4 + i / 24 * Math.PI * 2; pts.push([cx + Math.cos(a) * r * (1 + (rnd() - .5) * .06), cy + Math.sin(a) * r * (1 + (rnd() - .5) * .06)]); }
+        line(pts);
+      };
+      const arrow = (x0: number, y0: number, x1: number, y1: number) => {
+        line([[x0, y0], [x1, y1]]);
+        const a = Math.atan2(y1 - y0, x1 - x0);
+        line([[x1 - Math.cos(a - .5) * 32, y1 - Math.sin(a - .5) * 32], [x1, y1], [x1 - Math.cos(a + .5) * 32, y1 - Math.sin(a + .5) * 32]]);
+      };
+      draw({ line, curve, text, box, ring, arrow, x });
+      x.setTransform(1, 0, 0, 1, 0, 0);
+      t.needsUpdate = true;
     };
-    const E = .55, BASE = .035;
-    // Peak height over the top: highest at the palm, lower at the buttons, low over the thumb rest.
-    const hMax = (x: number, y: number) => .17 + .45 * Math.exp(-(((x + .25) / 1.25) ** 2) - (((y + .08) / .5) ** 2));
-    const surfaceZ = (x: number, y: number) => {
-      const a = Math.atan2(y - C.y, x - C.x), rho = Math.min(1, Math.hypot(x - C.x, y - C.y) / radiusAt(a));
-      const rxy = Math.pow(rho, 1 / E);
-      return hMax(x, y) * Math.pow(Math.max(0, 1 - rxy * rxy), .25) + BASE;
+    // Notes page for a project: the name, a few dashes of what it does, one line worth underlining,
+    // and the stack in small. Facts only from content/projects.ts.
+    const notes = (title: string, lines: string[], key: string, stack: string): Page => (p) => {
+      p.text(title, 90, 200, 112); p.line([[86, 232], [96 + title.length * 50, 226]], 4);
+      lines.forEach((l, i) => { p.line([[100, 380 + i * 140], [140, 378 + i * 140]], 5); p.text(l, 170, 400 + i * 140, 86); });
+      p.text(key, 100, 1050, 88); p.line([[96, 1080], [110 + key.length * 36, 1074]], 4);
+      p.text(stack, 92, 1330, 58);
     };
-    const shell = new THREE.SphereGeometry(1, 160, 96);
-    const sp = shell.attributes.position, uv = shell.attributes.uv;
-    // Top-down UVs over this box, so the surface detail is painted in plan, like the photo.
-    const X0 = -1.2, XW = 2.4, Y0 = -.7, YH = 1.8;
-    for (let i = 0; i < sp.count; i++) {
-      const u = sp.getX(i), w = sp.getY(i), v = -sp.getZ(i);
-      const rxy = Math.hypot(u, v), a = Math.atan2(v, u), R = radiusAt(a) * Math.pow(rxy, E);
-      const x = C.x + Math.cos(a) * R, y = C.y + Math.sin(a) * R;
-      sp.setXYZ(i, x, y, w > 0 ? hMax(x, y) * Math.pow(w, .5) + BASE : w * .035 + BASE);
-      uv.setXY(i, (x - X0) / XW, (y - Y0) / YH);
+    const spreads: { left: Page; right: Page }[] = [
+      { // The day's list and the system it adds up to.
+        left: ((p) => {
+          p.text("today", 90, 200, 112); p.line([[86, 232], [370, 226]], 4);
+          ([["data model", true], ["API", true], ["UI states", true], ["tests", false], ["deploy", false]] as [string, boolean][]).forEach(([s, done], i) => {
+            const y = 400 + i * 150; p.box(100, y - 56, 56, 56);
+            if (done) p.line([[106, y - 30], [126, y - 6], [176, y - 84]], 6);
+            p.text(s, 200, y, 90);
+          });
+          p.text("check empty states", 100, 1240, 84);
+        }),
+        right: ((p) => {
+          p.box(100, 170, 290, 140); p.text("client", 150, 265, 92);
+          p.arrow(290, 330, 450, 480);
+          p.box(420, 500, 240, 140); p.text("API", 490, 595, 92);
+          p.arrow(540, 660, 540, 830);
+          p.box(420, 850, 240, 140); p.text("DB", 505, 945, 92);
+          p.text("cron?", 740, 260, 84); p.line([[720, 236], [930, 226]], 6);
+          p.text("cache?", 700, 1120, 76);
+        }),
+      },
+      {
+        left: notes("Test Console", ["PA tests", "load pull", "RF sweeps"], "was 3 days, now ~8 min", "React · FastAPI · PyVISA · BLE"),
+        right: ((p) => {
+          p.text("test console", 90, 170, 92);
+          p.box(100, 330, 230, 130); p.text("UI", 180, 420, 88);
+          p.arrow(340, 395, 450, 395);
+          p.box(460, 330, 300, 130); p.text("FastAPI", 490, 420, 84);
+          p.arrow(610, 470, 610, 640);
+          p.box(460, 650, 300, 130); p.text("PyVISA", 495, 740, 84);
+          p.arrow(610, 790, 610, 960);
+          p.text("instruments", 455, 1040, 84);
+          p.text("BLE", 150, 740, 80); p.arrow(250, 715, 450, 715);
+        }),
+      },
+      {
+        left: notes("OPlanner", [".ics import", "courses, deadlines", "exams"], "import, don't retype", "React · Firebase Auth · Firestore"),
+        right: ((p) => {
+          p.text("oplanner", 90, 170, 92);
+          // The calendar file, dog-eared.
+          p.line([[120, 300], [300, 300], [360, 360], [360, 560], [120, 560], [120, 300]]); p.line([[300, 300], [300, 360], [360, 360]]);
+          p.text(".ics", 165, 470, 84);
+          p.arrow(390, 430, 560, 430);
+          p.box(590, 320, 330, 240);
+          [0, 1, 2].forEach((k) => p.line([[600, 390 + k * 60], [910, 390 + k * 60]], 3));
+          p.text("term", 680, 650, 80);
+        }),
+      },
+      {
+        left: notes("Pipeline CPU", ["5 stages", "one cycle per step", "hazards, stalls"], "draw forwarding", "React · TypeScript · Vite"),
+        right: ((p) => {
+          p.text("pipeline", 90, 170, 92);
+          ["IF", "ID", "EX", "MEM", "WB"].forEach((s, i) => { p.box(70 + i * 182, 420, 150, 140); p.text(s, 92 + i * 182, 510, s.length > 2 ? 62 : 80); });
+          // Forwarding: from MEM back into EX.
+          p.curve(690, 580, 600, 760, 500, 590); p.arrow(520, 640, 500, 580);
+          p.text("fwd", 560, 820, 80);
+          p.ring(250, 960, 70); p.text("stall?", 360, 985, 80);
+        }),
+      },
+      {
+        left: notes("Current Logger", ["TX bursts", "battery tests", "trigger on current"], "stop when peak drops", "Python · N6781A · SCPI · WebSocket"),
+        right: ((p) => {
+          p.text("current logger", 90, 170, 92);
+          p.line([[120, 300], [120, 1060], [930, 1060]], 4);
+          p.text("I", 70, 340, 80); p.text("t", 920, 1130, 80);
+          const pts: [number, number][] = [[120, 1000]];
+          [0, 1, 2, 3].forEach((k) => { const x0 = 200 + k * 180, hgt = 600 - k * 140; pts.push([x0, 1000], [x0 + 12, 1000 - hgt], [x0 + 70, 1000 - hgt], [x0 + 82, 1000]); });
+          pts.push([930, 1000]); p.line(pts);
+          p.x.setLineDash([18, 14]); p.line([[120, 680], [930, 680]], 3); p.x.setLineDash([]);
+          p.text("trigger", 780, 650, 72);
+          p.arrow(820, 480, 760, 600); p.text("stop", 790, 450, 80);
+        }),
+      },
+      {
+        left: notes("AlgorithmX", ["9 graph algorithms", "step-by-step playback", "compare side by side"], "show the queue", "TypeScript · React · Cloudflare Workers"),
+        right: ((p) => {
+          p.text("algorithmx", 90, 170, 92);
+          const nodes: [number, number][] = [[260, 360], [580, 320], [820, 560], [260, 720], [560, 760]];
+          ([[0, 1], [0, 3], [1, 2], [1, 4], [3, 4], [2, 4]] as [number, number][]).forEach(([a, b]) => p.line([nodes[a], nodes[b]], 4));
+          nodes.forEach(([nx, ny], i) => { p.x.fillStyle = "#f1eadb"; p.x.beginPath(); p.x.arc(nx, ny, 60, 0, Math.PI * 2); p.x.fill(); p.ring(nx, ny, 60); p.text(String(i + 1), nx - 16, ny + 26, 80); });
+          p.text("BFS / DFS / Dijkstra", 120, 1020, 76);
+          p.text("play / step / back", 120, 1180, 76);
+        }),
+      },
+      {
+        left: notes("ToastTurn", ["whose turn", "log each turn", "all phones at home"], "sync", "React · Firestore · PWA"),
+        right: ((p) => {
+          p.text("toastturn", 90, 170, 92);
+          // Two phones, kept in sync.
+          p.box(120, 330, 250, 460); p.box(640, 330, 250, 460);
+          p.text("turn?", 160, 520, 80); p.text("turn?", 680, 520, 80);
+          p.arrow(400, 520, 610, 520); p.arrow(610, 620, 400, 620);
+          p.text("sync", 450, 700, 76);
+          p.text("one button", 120, 1000, 76);
+          p.text("offline?", 120, 1160, 76);
+        }),
+      },
+    ];
+    const n = spreads.length, mod = (i: number) => ((i % n) + n) % n;
+    const pageOf = (s: number, side: "left" | "right") => spreads[mod(s)][side];
+    const seedOf = (s: number, side: "left" | "right") => mod(s) * 2 + (side === "left" ? 1 : 2);
+    const put = (t: THREE.CanvasTexture, s: number, side: "left" | "right") => paint(t, pageOf(s, side), seedOf(s, side));
+    /* Each side has its own turning sheet lying on top of it, so both can move at once and hover
+       never has to repaint. Under the right sheet is the next spread's right page; under the left
+       sheet, the previous spread's left page. Only a finished turn repaints. */
+    const underLeft = page(), underRight = page();
+    const rFront = page(), rBack = page(), lFront = page(), lBack = page();
+    rBack.channel = lBack.channel = 1;
+    let cur = 0;
+    const paintAll = () => {
+      put(underRight, cur + 1, "right"); put(underLeft, cur - 1, "left");
+      put(rFront, cur, "right"); put(rBack, cur + 1, "left");
+      put(lBack, cur, "left"); put(lFront, cur - 1, "right");
+    };
+    paintAll();
+
+    // Page blocks under each half, cut to the page curve.
+    const blockMat = std({ color: 0xe8dfcc, roughness: .9, side: THREE.DoubleSide });
+    for (const side of [-1, 1]) {
+      const prof = new THREE.Shape(); prof.moveTo(0, .035); prof.lineTo(PW, .035);
+      for (let i = 24; i >= 0; i--) { const d = PW * i / 24; prof.lineTo(d, top(d)); }
+      const block = new THREE.ExtrudeGeometry(prof, { depth: PH, bevelEnabled: false, curveSegments: 1 });
+      block.rotateX(Math.PI / 2); block.translate(0, PH / 2, 0);
+      if (side < 0) block.scale(-1, 1, 1);
+      nb.add(mesh(geo(block), blockMat));
     }
-    shell.computeVertexNormals();
-    // Plan drawing: graphite, with the thumb panel darker, ridged in rings round the thumb wheel and
-    // edged by a seam.
-    const skin = tex(1536, 1152, (c, w, h) => {
-      const P = (x: number, y: number): [number, number] => [(x - X0) / XW * w, (1 - (y - Y0) / YH) * h];
-      c.fillStyle = "#4b4844"; c.fillRect(0, 0, w, h);
-      const panel: [number, number][] = [[.3, .52], [.3, 1.3], [-1.3, 1.3], [-1.3, .62], [-.88, .57], [-.5, .5], [-.1, .49], [.18, .5]];
-      c.save(); c.beginPath(); panel.forEach(([x, y], i) => { const [px, py] = P(x, y); if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.closePath();
-      c.fillStyle = "#3b3835"; c.fill(); c.clip();
-      const [cx, cy] = P(.12, .75);
-      for (let r = 14; r < w * .5; r += 9) { c.strokeStyle = `rgba(0,0,0,${.4 - r / w * .3})`; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
-      c.restore();
-      c.strokeStyle = "#1c1a18"; c.lineWidth = 5; c.beginPath();
-      panel.slice(3).concat([[.3, .52]]).forEach(([x, y], i) => { const [px, py] = P(x, y); if (i) c.lineTo(px, py); else c.moveTo(px, py); }); c.stroke();
-    });
-    // The same drawing doubles as a bump map, so the ridges and seam catch the light.
-    const graphite = std({ map: skin, bumpMap: skin, bumpScale: 1.2, roughness: .6, envMapIntensity: .45 });
-    g.add(mesh(geo(shell), graphite));
-    const seamMat = std({ color: 0x151413, roughness: 1 });
-    const onTop = (pts: [number, number][], r: number) => {
-      const curve = new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, surfaceZ(x, y) + .003)));
-      g.add(mesh(geo(new THREE.TubeGeometry(curve, 64, r, 6)), seamMat, false));
+    const sheetGeo = (side: number) => {
+      const s = new THREE.PlaneGeometry(PW, PH, 32, 1), sp = s.attributes.position;
+      for (let i = 0; i < sp.count; i++) { const d = sp.getX(i) + PW / 2; sp.setXYZ(i, side * d, sp.getY(i), top(d) + .001); }
+      if (side < 0) { const uv = s.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); s.index!.array.reverse(); }
+      s.computeVertexNormals(); return geo(s);
     };
-    // Split between the buttons, and the near-straight seam where they end.
-    onTop(Array.from({ length: 10 }, (_, i) => [1.1 - i * .085, .03] as [number, number]), .009);
-    onTop(Array.from({ length: 13 }, (_, i) => { const y = .5 - i * (1.04 / 12); return [.34 + .03 * Math.cos(y * 2.2), y] as [number, number]; }), .007);
-    // Main wheel: big, brushed steel with a knurled tread, set deep in a rounded dark slot.
-    const knurl = tex(256, 32, (x, w, h) => { x.fillStyle = "#d4cdc1"; x.fillRect(0, 0, w, h); x.fillStyle = "#6b665e"; for (let i = 0; i < w; i += 5) x.fillRect(i, 0, 2, h); });
-    const steel = std({ color: 0xc9c2b6, metalness: 1, roughness: .3, envMapIntensity: .8 });
-    const tread = std({ map: knurl, metalness: 1, roughness: .35, envMapIntensity: .8 });
-    const wx = .72, wy = .03, wz = surfaceZ(wx, wy);
-    const slot = mesh(geo(new RoundedBoxGeometry(.6, .28, .12, 3, .06)), seamMat, false); slot.position.set(wx, wy, wz - .045); g.add(slot);
-    const wheel = mesh(geo(new THREE.CylinderGeometry(.2, .2, .16, 64)), [tread, steel, steel]); wheel.position.set(wx, wy, wz - .03); g.add(wheel);
-    // Mode button and the status light below it.
-    const mode = mesh(geo(new RoundedBoxGeometry(.12, .12, .05, 3, .025)), std({ color: 0x33302d, roughness: .45 }));
-    mode.position.set(.15, .03, surfaceZ(.15, .03) + .004); g.add(mode);
-    const led = new THREE.Mesh(geo(new THREE.SphereGeometry(.016, 12, 8)), new THREE.MeshBasicMaterial({ color: 0x3dff6e }));
-    led.position.set(.0, .03, surfaceZ(0, .03) + .003); g.add(led);
-    // Thumb wheel on the left flank: two knurled discs, axis front to back, and the gesture tab below.
-    for (const x of [.12, -.01]) {
-      const d = mesh(geo(new THREE.CylinderGeometry(.085, .085, .1, 40)), [tread, steel, steel]);
-      d.rotation.z = Math.PI / 2; d.position.set(x, .53, surfaceZ(x, .5) - .01); g.add(d);
-    }
-    const tab = mesh(geo(new THREE.ConeGeometry(.06, .26, 24)), std({ color: 0x5a5651, roughness: .5 }));
-    tab.rotation.z = Math.PI / 2; tab.scale.set(1, 1, .6); tab.position.set(-.2, .53, surfaceZ(-.2, .5) - .015); g.add(tab);
-    addTool(g, { x: 4.3, y: .55, a: 1.35, rest: 0, circles: [[-.6, -.05, .6], [.25, 0, .6], [.85, 0, .45], [-.4, .7, .35]], mass: .6, foot: [2.6, 1.9], onPhone: [1.3, 2.05, 1.4] });
+    const pageMat = (map: THREE.Texture, side: THREE.Side = THREE.FrontSide) => std({ map, roughness: .92, side });
+    nb.add(mesh(sheetGeo(-1), pageMat(underLeft), false));
+    nb.add(mesh(sheetGeo(1), pageMat(underRight), false));
+    // A turning sheet: a right-hand page on its front, the left-hand page it becomes on its back
+    // (uv1, mirrored so it reads correctly once over). phi is 0 lying on the right, PI on the left.
+    const makeSheet = (front: THREE.CanvasTexture, back: THREE.CanvasTexture, rest: number, lag: number) => {
+      const geom = new THREE.PlaneGeometry(PW, PH, 32, 1);
+      const tuv = geom.attributes.uv, uv1 = new Float32Array(tuv.count * 2);
+      for (let i = 0; i < tuv.count; i++) { uv1[i * 2] = 1 - tuv.getX(i); uv1[i * 2 + 1] = tuv.getY(i); }
+      geom.setAttribute("uv1", new THREE.BufferAttribute(uv1, 2));
+      const pos = geom.attributes.position, flat = Float32Array.from(pos.array as Float32Array);
+      geo(geom);
+      nb.add(mesh(geom, pageMat(front), false));
+      nb.add(mesh(geom, pageMat(back, THREE.BackSide), false));
+      const sh = { phi: rest, target: rest, rest, shape() {
+        const up = sh.phi !== sh.rest ? .003 : 0; // a moving sheet rides just above the one at rest
+        for (let i = 0; i < pos.count; i++) {
+          const d = flat[i * 3] + PW / 2, y = flat[i * 3 + 1];
+          // The outer part lags a little behind the spine, so the sheet curls as it turns.
+          const f = sh.phi + lag * .22 * Math.sin(sh.phi) * (d / PW) * Math.min(sh.phi, Math.PI - sh.phi);
+          pos.setXYZ(i, d * Math.cos(f), y, top(d) + .004 + up + d * Math.sin(f) * .96);
+        }
+        pos.needsUpdate = true; geom.computeVertexNormals();
+      } };
+      sh.shape();
+      return sh;
+    };
+    const right = makeSheet(rFront, rBack, 0, -1), left = makeSheet(lFront, lBack, Math.PI, 1);
+    let turning = 0;
+    // A page lifts most where you would take hold of it, at its outer edge, and hardly at all by the
+    // spine, so crossing from one page to the other is a gentle hand-over.
+    const lift = (d: number) => .04 + .5 * Math.pow(Math.min(1, d / PW), 1.6);
+
+    // Pointer in the notebook's own frame, from a ray onto the page height.
+    const pagePlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -(top(PW / 2)));
+    const local = (ray: THREE.Ray) => {
+      if (!ray.intersectPlane(pagePlane, hitPoint)) return null;
+      const dx = hitPoint.x - NX, dy = hitPoint.y - NY, c = Math.cos(-NA), s = Math.sin(-NA);
+      const lx = dx * c - dy * s, ly = dx * s + dy * c;
+      return Math.abs(lx) < PW + .1 && Math.abs(ly) < PH / 2 + .1 ? { lx, ly } : null;
+    };
+    // The handwriting font loads on demand; repaint once it is in.
+    document.fonts?.load(`700 80px ${HAND}`).then(paintAll).catch(() => {});
+    notebook = {
+      over: (ray) => !!local(ray),
+      hover(ray) {
+        if (turning) return;
+        const p = ray && local(ray);
+        right.target = p && p.lx > .05 ? lift(p.lx) : 0;
+        left.target = p && p.lx < -.05 ? Math.PI - lift(-p.lx) : Math.PI;
+      },
+      press(ray) {
+        const p = local(ray);
+        if (!p) return false;
+        if (turning) return true;
+        turning = p.lx >= 0 ? 1 : -1;
+        if (turning > 0) { right.target = Math.PI; left.target = Math.PI; } else { left.target = 0; right.target = 0; }
+        return true;
+      },
+      // Entrance: slides in from beyond the bottom right corner, open on the first spread.
+      enter() {},
+      update(dt) {
+        let moving = false;
+        if (enterT >= 0 && enterT < 1.9) {
+          const e = 1 - Math.pow(1 - Math.min(1, Math.max(0, (enterT - .35) / 1.2)), 3), k = 1 - e;
+          nb.position.set(NX + 3.6 * k, NY - 3.6 * k, 0); nb.rotation.z = NA - .35 * k;
+          pad.position.set(nb.position.x, nb.position.y, .004); pad.rotation.z = nb.rotation.z;
+          moving = true;
+        } else if (enterT >= 1.9 && nb.position.x !== NX) { nb.position.set(NX, NY, 0); nb.rotation.z = NA; pad.position.set(NX, NY, .004); pad.rotation.z = NA; }
+        for (const sh of [right, left]) {
+          if (Math.abs(sh.target - sh.phi) < .0005) { if (sh.phi !== sh.target) { sh.phi = sh.target; sh.shape(); } continue; }
+          sh.phi += (sh.target - sh.phi) * (1 - Math.exp(-dt * (turning ? 7 : 10)));
+          sh.shape(); moving = true;
+        }
+        const done = turning > 0 ? right.phi > Math.PI - .01 : turning < 0 ? left.phi < .01 : false;
+        if (done) {
+          // Landed: the revealed spread becomes current, and both sheets go back to lying flat.
+          cur = mod(cur + turning); turning = 0; paintAll();
+          right.phi = right.target = 0; left.phi = left.target = Math.PI;
+          right.shape(); left.shape();
+        }
+        return moving;
+      },
+    };
+    // Gutter shadow and the elastic band.
+    const gutter = new THREE.Mesh(geo(new THREE.PlaneGeometry(.3, PH)), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, map: tex(64, 8, (x, w, h) => {
+      const gr = x.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, "rgba(40,30,20,0)"); gr.addColorStop(.5, "rgba(40,30,20,.35)"); gr.addColorStop(1, "rgba(40,30,20,0)"); x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    }) }));
+    gutter.position.z = top(0) + .008; gutter.renderOrder = 2; nb.add(gutter);
+    const band = mesh(geo(new THREE.BoxGeometry(.06, PH + .16, .014)), std({ color: 0x141312, roughness: .6 }));
+    band.position.set(PW + .03, 0, .042); nb.add(band);
   }
   /* ---------- Physics ---------- */
   const raycaster = new THREE.Raycaster();
@@ -360,8 +662,13 @@ export function buildDesk(kit: DeskKit): Desk {
   function update(dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) {
     let moving = false;
     const sub = 3, h = dt / sub;
+    if (enterT >= 0) {
+      enterT += dt;
+      for (const t of tools) if (t.held && t.enter && enterT >= t.enter.at) { t.held = false; t.free = true; }
+    }
     for (let step = 0; step < sub; step++) {
       for (const t of tools) {
+        if (t.held) continue;
         // Home: a soft spring back to where the tool was laid out.
         const da = Math.atan2(Math.sin(t.ha - t.a), Math.cos(t.ha - t.a));
         t.vx += (t.hx - t.x) * 30 * h; t.vy += (t.hy - t.y) * 30 * h; t.va += da * 30 * h;
@@ -395,17 +702,18 @@ export function buildDesk(kit: DeskKit): Desk {
         t.x += t.vx * h; t.y += t.vy * h; t.a += t.va * h;
         // Tethered: a tool may shift a little and turn a little, never wander off.
         const ox = t.x - t.hx, oy = t.y - t.hy, off = Math.hypot(ox, oy), MAX = t.roll ? .4 : .22;
+        if (t.free) { if (off < MAX) t.free = false; continue; }
         if (off > MAX) { t.x = t.hx + ox / off * MAX; t.y = t.hy + oy / off * MAX; t.vx *= .3; t.vy *= .3; }
         const oa = Math.atan2(Math.sin(t.a - t.ha), Math.cos(t.a - t.ha));
         if (Math.abs(oa) > .09) { t.a = t.ha + Math.sign(oa) * .09; t.va *= .3; }
       }
       // Tool against tool, and against the device and the edges of the view.
       for (let i = 0; i < tools.length; i++) {
-        const A = tools[i]; if (!A.collide) continue;
+        const A = tools[i]; if (!A.collide || A.held || A.free) continue;
         for (const [ax, ay, ar] of A.circles) {
           const [wx, wy] = worldOf(A, ax, ay);
           for (let j = i + 1; j < tools.length; j++) {
-            const B = tools[j]; if (!B.collide) continue;
+            const B = tools[j]; if (!B.collide || B.held || B.free) continue;
             for (const [bx, by, br] of B.circles) {
               const [vx, vy] = worldOf(B, bx, by);
               const dx = vx - wx, dy = vy - wy, d = Math.hypot(dx, dy), pen = ar + br - d;
@@ -426,6 +734,7 @@ export function buildDesk(kit: DeskKit): Desk {
         }
       }
       for (const t of tools) {
+        if (t.held || t.free) continue;
         for (const [cx, cy, r] of t.circles) {
           const [wx, wy] = worldOf(t, cx, cy);
           const ex = Math.max(0, Math.abs(wx) + r - bounds.w) * Math.sign(wx), ey = Math.max(0, Math.abs(wy) + r - bounds.h) * Math.sign(wy);
@@ -439,11 +748,8 @@ export function buildDesk(kit: DeskKit): Desk {
       let close = 0;
       if (pointer.on) for (const [cx, cy, r] of t.circles) { const [wx, wy] = worldOf(t, cx, cy); close = Math.max(close, 1 - Math.max(0, Math.hypot(pointer.x - wx, pointer.y - wy) - r) / .6); }
       t.near += (Math.max(0, close) - t.near) * (1 - Math.exp(-dt * 10));
-      // One hop each when the desk first appears, staggered, so touch users see the tools are loose.
-      let hop = 0;
-      if (t.hop > -1) { t.hop -= dt; if (t.hop < 0 && t.hop > -.45) hop = Math.sin(-t.hop / .45 * Math.PI) * .22; }
       // Rolling tools stay on the mat: the hover cue is the roll itself, not a lift.
-      const target = (t.roll ? 0 : t.near * .18) + hop;
+      const target = t.roll ? 0 : t.near * .18;
       t.lift += (target - t.lift) * (1 - Math.exp(-dt * 14));
       t.group.position.set(t.x, t.y, t.rest + t.lift);
       t.group.rotation.z = t.a;
@@ -456,10 +762,12 @@ export function buildDesk(kit: DeskKit): Desk {
       t.shadow.rotation.z = t.a;
       const spread = 1 + t.lift * 1.4;
       t.shadow.scale.x = Math.abs(t.shadow.scale.x) / (t.shadow.userData.spread || 1) * spread; t.shadow.scale.y = Math.abs(t.shadow.scale.y) / (t.shadow.userData.spread || 1) * spread; t.shadow.userData.spread = spread;
-      if (Math.abs(t.vx) + Math.abs(t.vy) + Math.abs(t.va) > .002 || Math.abs(t.lift - target) > .002 || (t.hop > -.5 && t.hop < 5)) moving = true;
+      if (Math.abs(t.vx) + Math.abs(t.vy) + Math.abs(t.va) > .002 || Math.abs(t.lift - target) > .002 || t.held || t.free) moving = true;
     }
     pointer.vx *= Math.exp(-dt * 10); pointer.vy *= Math.exp(-dt * 10);
-    return moving || pointer.on;
+    const paging = notebook?.update(dt) ?? false;
+    const rippling = mug?.update(dt) ?? false;
+    return moving || paging || rippling || pointer.on || (enterT >= 0 && enterT < 3);
   }
 
   return {
@@ -474,8 +782,17 @@ export function buildDesk(kit: DeskKit): Desk {
         t.vx += dx / d * k; t.vy += dy / d * k; t.va += (Math.random() - .5) * k * .8;
       }
     },
-    hop() { tools.forEach((t, i) => { if (t.hop === Infinity) t.hop = .35 + i * .16; }); },
+    enter() {
+      if (enterT >= 0) return;
+      enterT = 0;
+      for (const t of tools) if (t.enter) { t.x = t.hx + t.enter.dx; t.y = t.hy + t.enter.dy; t.vx = t.vy = t.va = 0; t.held = true; }
+      notebook?.enter();
+    },
+    over: (ray) => (notebook?.over(ray) || mug?.over(ray)) ?? false,
+    mugTop: () => mug?.top() ?? null,
+    press: (ray) => (notebook?.press(ray) || mug?.press(ray)) ?? false,
     hover(ray) {
+      notebook?.hover(ray);
       if (!ray) { pointer.on = false; return; }
       raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
       const now = performance.now() / 1000, dt = Math.min(.1, Math.max(.001, now - pointer.t));

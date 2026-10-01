@@ -40,7 +40,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   // Loop state lives up here: resize() and the font callback can call kick() during setup.
   let composer: { render: () => void; setSize: (w: number, h: number) => void; setPixelRatio: (r: number) => void } | null = null;
-  let bokeh: { uniforms: { focus: { value: number } } } | null = null;
+  let bokeh: { uniforms: { focus: { value: number }; aperture: { value: number }; maxblur: { value: number } } } | null = null;
   let last = performance.now(), time = 0, lastBackdrop = "", raf = 0, idleFrames = 0, disposed = false;
   const small = () => innerWidth <= 720;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
@@ -48,12 +48,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const rootStyle = getComputedStyle(document.documentElement);
   const SANS = rootStyle.getPropertyValue("--font-figtree").trim() || "sans-serif";
   const MONO = rootStyle.getPropertyValue("--font-jetbrains").trim() || "monospace";
+  const HAND = rootStyle.getPropertyValue("--font-caveat").trim() || "cursive";
 
   // Phones get half-size textures and a smaller shadow map; the scene reads the same at that size.
   const TEX = small() ? .5 : 1;
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small() ? 1.25 : 1.6));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.02;
+  renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
   // Variance shadows blur properly, which is what makes a soft window light look like one.
   renderer.shadowMap.type = THREE.VSMShadowMap;
@@ -66,7 +67,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   room.dispose(); pmrem.dispose();
   scene.environment = envTarget.texture;
   // Low: a bright studio reflection is what made everything read as glossy plastic.
-  scene.environmentIntensity = .16;
+  scene.environmentIntensity = .13;
   hooks.onProgress?.(.25);
   await yieldToMain(); if (signal?.aborted) { envTarget.dispose(); renderer.dispose(); return null; }
 
@@ -75,13 +76,16 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const keep = <T extends { dispose: () => void }>(x: T) => { disposables.push(x); return x; };
 
   const sunExtras: THREE.Light[] = [];
-  const sun = new THREE.DirectionalLight(0xffe0bd, 1.7);
+  // Late-afternoon daylight: a warm sun with real direction, a modest fill so shadows keep their
+  // depth, and the window light below carrying the dappled pattern.
+  const SUN = 1.65;
+  const sun = new THREE.DirectionalLight(0xffd2a2, SUN);
   sun.position.set(-5, 6, 9); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
 
   Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 6, bottom: -6, near: 1, far: 30 });
-  sun.shadow.bias = -.0006; sun.shadow.radius = 9; sun.shadow.blurSamples = 16;
-  scene.add(sun, new THREE.HemisphereLight(0xffe9cf, 0x3a2414, .6));
+  sun.shadow.bias = -.0006; sun.shadow.radius = 11; sun.shadow.blurSamples = 16;
+  scene.add(sun, new THREE.HemisphereLight(0xffe4c8, 0x3a2414, .4));
   // Late sun through a window: a spot light carrying a blurred pane pattern across the desk.
   if (!small()) {
     const panes = document.createElement("canvas"); panes.width = panes.height = 256;
@@ -91,9 +95,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     pc.fillStyle = "#000"; let ls = 5; const lr = () => { ls = (Math.imul(ls, 1664525) + 1013904223) >>> 0; return ls / 4294967296; };
     for (let i = 0; i < 26; i++) { pc.beginPath(); pc.ellipse(120 + (lr() - .5) * 200, 60 + lr() * 150, 8 + lr() * 18, 4 + lr() * 8, lr() * Math.PI, 0, Math.PI * 2); pc.fill(); }
     const paneTex = new THREE.CanvasTexture(panes); paneTex.colorSpace = THREE.SRGBColorSpace; disposables.push(paneTex);
-    const windowLight = new THREE.SpotLight(0xffc98f, 95, 40, .55, .6, 1.2);
+    const windowLight = new THREE.SpotLight(0xffc285, 115, 40, .55, .6, 1.2);
     windowLight.position.set(-9, 7, 11); windowLight.target.position.set(1.5, -1, 0);
-    windowLight.map = paneTex; windowLight.castShadow = true; windowLight.shadow.mapSize.set(1024, 1024); windowLight.shadow.radius = 12; windowLight.shadow.blurSamples = 16; windowLight.shadow.bias = -.0006;
+    windowLight.map = paneTex; windowLight.castShadow = true; windowLight.shadow.mapSize.set(1024, 1024); windowLight.shadow.radius = 13; windowLight.shadow.blurSamples = 16; windowLight.shadow.bias = -.0006;
     scene.add(windowLight, windowLight.target);
     sunExtras.push(windowLight);
   }
@@ -117,7 +121,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
-  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, TEX, phone: small(), photo: !small() });
+  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone: small(), photo: !small() });
   const desk = deskSet.group; scene.add(desk);
   hooks.onProgress?.(.6);
   await yieldToMain(); if (signal?.aborted) return abandon();
@@ -137,15 +141,20 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* ---------- The device ---------- */
   const device = new THREE.Group(); scene.add(device);
   const W = 3, H = 1.9, D = .75, FRONT = D / 2;
+  // How high the device has risen off the desk by the time the hero has scrolled away.
+  const LIFT = 2;
+  // Desktop draws the device in its own pass on top of the blurred desk (see the composer).
+  const DEVICE_LAYER = 1;
   const shell = phys({ color: 0xe6dccb, roughness: .66, sheen: .2, sheenRoughness: .8 });
   const accent = phys({ color: 0xc8692c, roughness: .55, envMapIntensity: .35 });
   const dark = phys({ color: 0x2a221c, roughness: .5 });
   const olive = phys({ color: 0x4d5a36, roughness: .6, envMapIntensity: .35 });
   const glass = phys({ color: 0x0c0a09, roughness: .1, clearcoat: 1 });
   device.add(mesh(geo(new RoundedBoxGeometry(W, H, D, 6, .22)), shell));
-  const sc = document.createElement("canvas"); sc.width = 640; sc.height = 384;
+  // Drawn at twice its 640 x 384 layout size so the small type stays sharp on the screen.
+  const sc = document.createElement("canvas"); sc.width = 1280; sc.height = 768;
   const sx = sc.getContext("2d")!;
-  const screenTex = keep(new THREE.CanvasTexture(sc)); screenTex.colorSpace = THREE.SRGBColorSpace;
+  const screenTex = keep(new THREE.CanvasTexture(sc)); screenTex.colorSpace = THREE.SRGBColorSpace; screenTex.anisotropy = 8;
   const bezel = mesh(geo(new RoundedBoxGeometry(1.86, 1.16, .04, 3, .06)), glass); bezel.position.set(-.45, .14, FRONT); device.add(bezel);
   const screenMat = keep(new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false }));
   const screen = new THREE.Mesh(geo(new THREE.PlaneGeometry(1.72, 1.03)), screenMat); screen.position.set(-.45, .14, FRONT + .023); device.add(screen);
@@ -183,31 +192,49 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   };
 
   /* ---------- Screen ---------- */
-  const scr = { mode: "boot" as "boot" | "msg" | "heat", text: "", cursor: true };
-  let presses = 0, pressT = 0;
+  // The device's spec sheet is about its maker: one entry per press, round and round.
+  const SPECS: [title: string, detail: string][] = [
+    ["BSc\nSTUDENT", "COMPUTER SCIENCE  ·  THE OPEN UNIVERSITY"],
+    ["INOVATION\nWITH AI", "AUTOMATE MANUAL PROCESSES"],
+    ["END\nTO END", "UI  ·  API  ·  DATA  ·  DEVICES"],
+    ["FULL\nSTACK", "PYTHON  ·  FASTAPI  ·  REACTR  ·  C  ·  FIREBASE"],
+    ["RF &\nWIRELESS", "BLE  ·  LORA  ·  LTE  ·  SPECTRUM"],
+  ];
+  const scr = { mode: "spec" as "spec" | "heat", text: "", cursor: true };
+  let presses = 0, pressT = 0, spec = 0;
+  let introAt = -1, lean = 0;
+  // The knob tunes the screen's ink: turned away from where it was last reset, the text takes on a
+  // hue that follows the knob round; a press sets the current position back to plain cream.
+  let inkRef = 0, inkKey = 0;
+  const ink = (light: number) => {
+    const d = knobA - inkRef;
+    if (Math.abs(d) < .02) return light > 80 ? "#f2e6d4" : "#cdbca6";
+    const hue = ((-d / (Math.PI * 2)) * 360 % 360 + 360 + 30) % 360, sat = Math.min(1, Math.abs(d) / (Math.PI / 6)) * 85;
+    return `hsl(${hue.toFixed(0)} ${sat.toFixed(0)}% ${light}%)`;
+  };
   let held = false, btnDepth = 0, knobA = 0, knobT = 0;
   const DETENT = Math.PI / 12;
   function drawScreen() {
-    const x = sx; x.fillStyle = "#0e0b09"; x.fillRect(0, 0, 640, 384);
+    const x = sx; x.setTransform(2, 0, 0, 2, 0, 0); x.fillStyle = "#0e0b09"; x.fillRect(0, 0, 640, 384);
     x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`; x.fillText("YOSSI ABUTBUL  ·  FW 2.1", 22, 38);
-    x.fillStyle = "#f2e6d4"; x.font = `800 58px ${SANS}`;
-    (scr.mode === "boot" ? "READY" : scr.text).split("\n").forEach((l, i) => x.fillText(l, 22, 170 + i * 64));
-    if (scr.cursor) x.fillRect(22, 300, 26, 6);
+    const [title, detail] = scr.mode === "heat" ? [scr.text, ""] : SPECS[spec];
+    x.fillStyle = ink(88); x.font = `800 58px ${SANS}`;
+    title.split("\n").forEach((l, i) => x.fillText(l, 22, 140 + i * 64));
+    x.fillStyle = ink(84); x.font = `600 22px ${MONO}`;
+    if (detail) x.fillText(detail, 22, 262);
+    if (scr.cursor) { x.fillStyle = ink(88); x.fillRect(22, 290, 26, 6); }
     x.fillStyle = "#a08c78"; x.font = `400 18px ${MONO}`;
-    x.fillText(scr.mode === "boot" ? "PRESS THE BUTTON  ●" : `SHIPPED: ${presses}`, 22, 356);
+    if (scr.mode !== "heat") x.fillText(`SPEC ${String(spec + 1).padStart(2, "0")}/${String(SPECS.length).padStart(2, "0")}   ·   PRESS ●`, 22, 356);
     screenTex.needsUpdate = true;
   }
   const show = (mode: typeof scr.mode, text = "") => { scr.mode = mode; scr.text = text; drawScreen(); };
   drawScreen();
   document.fonts?.ready.then(() => { if (!disposed) drawScreen(); });
-  const LINES = ["SHIPPING…", "BUILT\nEND TO END", "3 DAYS\n→ 8 MIN", "NO TOAST\nWAS HARMED", "READY"];
   function press() {
     presses++; pressT = 1;
-    let t = LINES[(presses - 1) % LINES.length];
-    if (presses === 8) t = "YOU CAN\nSTOP NOW";
-    if (presses === 13) t = "FINE.\nKEEP GOING";
-    if (presses === 25) { t = "ACHIEVEMENT:\nPERSISTENT"; hooks.say?.("25 presses. Same energy goes into debugging."); }
-    show("msg", t);
+    spec = presses % SPECS.length; inkRef = knobT;
+    if (presses === 25) hooks.say?.("25 presses. Same energy goes into debugging.");
+    show("spec");
     hooks.onPress?.(presses);
     kick();
   }
@@ -233,13 +260,22 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1 };
     let backdrop: "desk" | "void" | "thermal" = "desk", thermalMode = false;
     if (rect(intro).top > 0) {
-      // On the desk.
+      // On the desk. The room goes dark while the hero's words leave and the hero scrolls away, so the
+      // next beat opens straight in the dark rather than on an empty desk.
+      const q = clamp(1 - rect(intro).top / vh);
+      // The device rises off the table toward the camera, a step ahead of the dark, so it clears the
+      // veil and stays bright and sharp while the desk falls away out of focus behind it.
+      t.z = lerp(FRONT, LIFT, smooth(0, .85, q));
+      t.veil = smooth(.08, .85, q); t.spot = t.veil;
+      backdrop = t.veil > .7 ? "void" : "desk";
+      // The next beat's words wait until the room has gone dark and the device lifts.
+      intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.setAttribute("data-off", ""));
     } else if (rect(ships).top > 0) {
       const p = prog(intro);
-      t.veil = smooth(0, .3, p); t.spot = t.veil;
-      t.z = lerp(FRONT, 2.4, smooth(.05, .5, p)); t.rx = lerp(0, -.35, smooth(.1, .6, p));
+      t.veil = 1; t.spot = 1;
+      t.z = lerp(LIFT, 2.4, smooth(.05, .5, p)); t.rx = lerp(0, -.35, smooth(.1, .6, p));
       t.ry = lerp(0, Math.PI * 2 - .5, smooth(.1, 1, p)); t.rz = lerp(0, .08, p); t.s = base * lerp(1, .92, p);
-      backdrop = p > .3 ? "void" : "desk";
+      backdrop = "void";
       intro?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", p < .35));
     } else if (rect(work).top > vh * .2) {
       const p = prog(ships);
@@ -270,7 +306,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       word.style.opacity = onScreen ? "1" : "0";
       if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth, prog(ships))}px, 0, 0)`;
     }
-    return { t, backdrop, thermalMode };
+    return { t, backdrop, thermalMode, hero: rect(intro).top > 0 };
   }
 
   function resize() {
@@ -289,7 +325,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // <html data-snap> (set by the screenshot harness) skips easing so captures show the exact pose.
     const still = reduce.matches || document.documentElement.hasAttribute("data-snap");
     if (!still) time += dt;
-    const { t, backdrop, thermalMode } = choreograph();
+    const { t, backdrop, thermalMode, hero } = choreograph();
     if (backdrop !== lastBackdrop) { lastBackdrop = backdrop; hooks.onBackdrop?.(backdrop); }
     const k = still ? 1 : 1 - Math.exp(-dt * 5);
     let moving = 0;
@@ -306,29 +342,38 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const deskMoving = desk.visible ? deskSet.update(dt, edge, obstacles) : false;
     if (!onDesk) deskSet.hover(null);
     canvas.style.pointerEvents = onDesk ? "auto" : "none";
-    device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lifted), cur.z);
-    // Lying on the desk the device is still; only once lifted does it lean toward the pointer.
-    device.rotation.set(cur.rx + pointer.y * .12 * lifted, cur.ry + pointer.x * .25 * lifted, cur.rz);
+    // Lying on the desk, and while it rises through the hero, the device ignores the pointer so the
+    // lift stays clean; from the next beat on it leans toward the pointer and floats, eased in.
+    lean = lerp(lean, hero ? 0 : lifted, 1 - Math.exp(-dt * 3));
+    device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lean), cur.z);
+    device.rotation.set(cur.rx + pointer.y * .12 * lean, cur.ry + pointer.x * .25 * lean, cur.rz);
     device.scale.setScalar(Math.max(.0001, cur.s * cur.show));
     devicePad.visible = desk.visible && lifted < .5; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
     device.visible = cur.show > .02;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     veil.visible = desk.visible = cur.veil < .985;
-    spot.intensity = cur.spot * 90; sun.intensity = 1.7 * (1 - cur.veil * .8);
+    // The dark has to cover everything on the desk evenly, the tall mug included. Desktop draws the
+    // device in its own pass on top, so the veil can sit above the mug; elsewhere it stays just under
+    // the device as it rises, so the device itself never goes under it.
+    veil.position.z = composer ? 2.15 : clamp(cur.z - FRONT * cur.s - .05, .3, 2.15);
+    spot.intensity = cur.spot * 90; sun.intensity = SUN * (1 - cur.veil * .8);
     sunExtras.forEach((l) => { l.visible = desk.visible; });
     canvas.style.opacity = cur.show < .05 && cur.veil > .98 ? "0" : "1";
     setThermal(thermalMode);
     const heatValue = heat ? +heat.value : 0;
     thermal.uniforms.uHeat.value = 1 - heatValue / 100; thermal.uniforms.uTime.value = time;
     if (thermalMode && scr.mode !== "heat") show("heat", "4,320 MIN\n→ 8 MIN");
-    else if (!thermalMode && scr.mode === "heat") show(presses ? "msg" : "boot", "READY");
+    else if (!thermalMode && scr.mode === "heat") show("spec");
     pressT = Math.max(0, pressT - dt * 5);
     // The button stays down while it is held, then springs back; a press from elsewhere dips it once.
     btnDepth = lerp(btnDepth, held ? 1 : 0, 1 - Math.exp(-dt * (held ? 40 : 18)));
     button.position.z = FRONT + .07 - Math.max(btnDepth, Math.sin(pressT * Math.PI)) * .06;
     knobA = lerp(knobA, knobT, 1 - Math.exp(-dt * 20));
     knob.rotation.z = knobA;
+    // Repaint the screen as the knob changes its ink (in small steps, not every frame).
+    const key = Math.round((knobA - inkRef) * 40);
+    if (key !== inkKey) { inkKey = key; drawScreen(); }
     const controlsMoving = held || btnDepth > .002 || Math.abs(knobT - knobA) > .001;
     // On the desk the camera leans back and turns a touch, like a photo taken standing over a table;
     // it straightens up as the room goes dark so every later pose is shot square on.
@@ -336,19 +381,47 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     camera.position.set(0, -5.2 * tilt, 12 + 1.1 * tilt);
     camera.up.set(Math.sin(.035 * tilt), Math.cos(.035 * tilt), 0);
     camera.lookAt(0, .7 * tilt, 0);
+    placeSteam();
     if (composer && desk.visible) {
-      if (bokeh) bokeh.uniforms.focus.value = camera.position.distanceTo(device.position);
+      if (bokeh) {
+        // Focus stays on the device; the higher it rises, the further the desk falls out of focus.
+        bokeh.uniforms.focus.value = camera.position.distanceTo(device.position);
+        bokeh.uniforms.aperture.value = .0005 + lifted * .009;
+        bokeh.uniforms.maxblur.value = .0025 + lifted * .011;
+      }
+      camera.layers.disable(DEVICE_LAYER);
       composer.render();
+      camera.layers.enable(DEVICE_LAYER);
     } else renderer.render(scene, camera);
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
-    const floating = !still && lifted > .05 && device.visible;
+    const floating = !still && lean > .05 && device.visible;
     idleFrames = moving > .0005 || floating || pressT > 0 || controlsMoving || thermalMode || deskMoving ? 0 : idleFrames + 1;
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
   // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
   function kick() { if (!raf && !disposed) { if (idleFrames >= 30) last = performance.now(); raf = requestAnimationFrame(frame); } }
   addEventListener("scroll", kick, { passive: true });
+
+  /* ---------- Steam ---------- */
+  // The steam is CSS over the canvas (it never stops moving, and the scene should be free to go
+  // idle); here it is only pinned to the mug's rim on screen and faded with the desk.
+  const steamEl = document.getElementById("launch-steam");
+  const steamP = new THREE.Vector3(), steamQ = new THREE.Vector3();
+  let steamWas = "";
+  function placeSteam() {
+    if (!steamEl) return;
+    const top = deskSet.mugTop(), on = desk.visible && top ? Math.max(0, 1 - cur.veil * 3) * top.fade : 0;
+    let next = `0|${on}`;
+    if (top && on > 0) {
+      camera.updateMatrixWorld();
+      steamP.copy(top.at).project(camera); steamQ.copy(top.at).setX(top.at.x + top.radius).project(camera);
+      const x = (steamP.x + 1) / 2 * innerWidth, y = (1 - steamP.y) / 2 * innerHeight, w = Math.abs(steamQ.x - steamP.x) / 2 * innerWidth * 2;
+      next = `${x.toFixed(1)}|${y.toFixed(1)}|${w.toFixed(1)}|${on.toFixed(2)}`;
+      if (next !== steamWas) { steamEl.style.transform = `translate3d(${x}px, ${y}px, 0)`; steamEl.style.setProperty("--steam-w", `${w}px`); }
+    }
+    if (next !== steamWas) { steamEl.style.opacity = String(on); steamWas = next; }
+  }
 
   /* ---------- Playing with the desk ---------- */
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -374,7 +447,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     else if (c === "knob") {
       turning = { id: e.pointerId, angle: knobAngleAt(e.clientX, e.clientY), travel: 0 };
       canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing";
-    } else deskSet.poke(rayAt(e.clientX, e.clientY));
+    } else if (!deskSet.press(rayAt(e.clientX, e.clientY))) deskSet.poke(rayAt(e.clientX, e.clientY));
     kick();
   };
   const onMove = (e: PointerEvent) => {
@@ -387,8 +460,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     }
     if (e.pointerType !== "mouse") return;
     const c = control(e.clientX, e.clientY);
-    canvas.style.cursor = c === "button" ? "pointer" : c === "knob" ? "grab" : "";
-    deskSet.hover(c ? null : rayAt(e.clientX, e.clientY)); kick();
+    const ray = c ? null : rayAt(e.clientX, e.clientY);
+    canvas.style.cursor = c === "button" || (ray && deskSet.over(ray)) ? "pointer" : c === "knob" ? "grab" : "";
+    deskSet.hover(ray); kick();
   };
   const onUp = (e: PointerEvent) => {
     if (held) { held = false; kick(); }
@@ -404,10 +478,14 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   const onLeave = () => { deskSet.hover(null); if (!turning) canvas.style.cursor = ""; };
-  // The tools hop once, as soon as the loading sheet has lifted (or straight away if there is none).
-  const onRevealed = () => { deskSet.hop(); kick(); };
+  // The entrance plays as the loading sheet lifts (or as soon as the scene is ready, if the sheet has
+  // already gone or is on its way out). Reduced motion and snapshot mode get the finished desk.
+  const onRevealed = () => {
+    if (introAt >= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.hasAttribute("data-snap")) return;
+    introAt = performance.now(); deskSet.enter(); kick();
+  };
   window.addEventListener("launch:revealed", onRevealed);
-  if (!document.querySelector("[data-launch-loader]")) onRevealed();
+  if (!document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) onRevealed();
   canvas.addEventListener("pointerleave", onLeave);
   const onVisibility = () => { if (!document.hidden) kick(); };
   document.addEventListener("visibilitychange", onVisibility);
@@ -438,6 +516,29 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // Just a hint of focus falloff at the far edge; sharpness is what makes a product shot read as real.
     const b = new BokehPass(scene, camera, { focus: 13, aperture: .0005, maxblur: .0025 });
     c.addPass(b);
+    /* The device is drawn on its own, on top, after the blur: the desk can go soft behind it while
+       the device stays perfectly sharp, with no halo. It lives on layer 1. The first passes leave
+       layer 1 out (frame() turns it off around the composer), but the shadow cameras and the lights
+       include it, so it still casts its shadow on the mat and is lit exactly as before. */
+    device.traverse((o) => o.layers.set(DEVICE_LAYER));
+    camera.layers.enable(DEVICE_LAYER);
+    scene.traverse((o) => {
+      if (!(o as THREE.Light).isLight) return;
+      o.layers.enable(DEVICE_LAYER);
+      (o as THREE.Light & { shadow?: THREE.LightShadow }).shadow?.camera.layers.enable(DEVICE_LAYER);
+    });
+    const deviceCam = camera.clone();
+    class DevicePass extends RenderPass {
+      render(r: THREE.WebGLRenderer, write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget, dt: number, mask: boolean) {
+        deviceCam.copy(camera); deviceCam.layers.set(DEVICE_LAYER);
+        // The shadow maps were drawn by the first pass this frame; do not draw them again.
+        const auto = r.shadowMap.autoUpdate; r.shadowMap.autoUpdate = false;
+        super.render(r, write, read, dt, mask);
+        r.shadowMap.autoUpdate = auto;
+      }
+    }
+    const dp = new DevicePass(scene, deviceCam); dp.clear = false; dp.clearDepth = true;
+    c.addPass(dp);
     c.addPass(new OutputPass());
     c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);
     composer = c; bokeh = b as unknown as typeof bokeh;

@@ -56,7 +56,7 @@ export default function Nav() {
       {isProject ? (
         <Link href="/" className={styles.brand}><span aria-hidden="true">← </span>Back to Yossi Abutbul</Link>
       ) : (
-        <Link href="/#top" className={styles.brand} onClick={(e) => go(e, "top")} aria-label="Yossi Abutbul, back to top">
+        <Link href="/#top" className={styles.brand} data-brand onClick={(e) => go(e, "top")} aria-label="Yossi Abutbul, back to top">
           Yossi Abutbul
         </Link>
       )}
