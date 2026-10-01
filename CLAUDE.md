@@ -17,14 +17,20 @@ be usable in the first ten seconds before it is impressive.
 ## Folders
 
 - `src/app/` routes: `/` and `/projects/[slug]` (statically generated).
-- `src/components/launch/` the launch scene: `scene.ts` (three.js desk, device, veil, thermal
-  shader, scroll choreography; loaded with a dynamic import), `LaunchStage` (fixed backdrop + canvas,
-  loads the scene when idle on desktop and on first scroll/touch on phones), and one component per
-  beat in page order: `LaunchIntro` (desk hero + spotlight), `LaunchShips`, `LaunchReel` (projects),
-  `LaunchThermal`, `LaunchPress`, `LaunchEditorial` (release history, more work, paper),
-  `LaunchContact` (panels + footer), `LaunchToast`. Components talk to the scene through window
-  events (`launch:press-device`, `launch:press`, `launch:heat`, `launch:say`), not refs.
-  Design reference: `design/launch-prototype/`.
+- `src/components/launch/` the launch scene: `scene.ts` (three.js device, veil, cameras, scroll
+  choreography; loaded with a dynamic import) and `desk.ts` (the desk set: wood, mat, mug, pencil,
+  the 3D notebook with its More work mode and hologram, and the wall of playable gadgets that rises
+  only for More work). `LaunchStage` (fixed backdrop with drifting glows + canvas, loads the scene
+  when idle on desktop and on first scroll/touch on phones), and one component per beat in page
+  order: `LaunchIntro` (desk hero + spotlight), `LaunchHeroScroll`, `LaunchShips`, `LaunchBrowser`
+  (projects in a browser window, one flick per project), `LaunchNotebook` (More work: caption with
+  links, drawn fallback book, and the projects as JSON in `data-projects` for the scene),
+  `LaunchEditorial` (release history, stack, paper), `LaunchContact` (panels + footer),
+  `LaunchToast`. `projectMedia.ts` holds the demo videos/posters. Components talk to the scene
+  through window events (`launch:press-device`, `launch:press`, `launch:say`) and data attributes
+  (`data-fade`, `data-projects`), not refs. Design reference: `design/launch-prototype/`.
+- The scene's beats are found by id (`intro`, `ships`, `work`, `notebook`, `changelog`); renaming
+  or removing a section id changes the choreography.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
   `PageTransition`, `SkipToContent`. There is no intro loader; the page must be readable at first paint.
@@ -69,7 +75,10 @@ be usable in the first ten seconds before it is impressive.
 - Never hide content waiting on JS: no content parked at `opacity: 0` that only JS reveals.
   Canvas/WebGL paints one frame synchronously before starting any rAF loop (rAF does not run in
   background tabs).
-- Entrances run once. Nothing loops forever in view unless it is the hero.
+- Entrances run once. Nothing loops forever in view except the hero and these deliberate ambient
+  loops: the drifting backdrop glows/grain (`LaunchStage`) and the More work hologram's shimmer and
+  motes (shown only in the dark room and in More work respectively; both off under reduced motion).
+  Don't add more.
 
 ## Performance constraints
 
