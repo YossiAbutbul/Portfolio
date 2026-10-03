@@ -10,7 +10,7 @@ const RELEASES = [
 
 // The stack, picked by hand and grouped: what the work is built on, RF and test last.
 const STACK = [
-  { label: "Languages", items: ["TypeScript", "Python", "C"] },
+  { label: "Languages", items: ["TypeScript", "Python", "C", "C++"] },
   { label: "Frontend", items: ["React", "Next.js"] },
   { label: "Backend & data", items: ["FastAPI", "Firebase"] },
   { label: "Hardware & test", items: ["PyVISA", "SCPI", "BLE", "LoRa"] },

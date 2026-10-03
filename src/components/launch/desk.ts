@@ -349,7 +349,7 @@ export function buildDesk(kit: DeskKit): Desk {
     // Gold foil stamp on the face toward the camera, running along the barrel.
     const stamp = mesh(geo(new THREE.PlaneGeometry(1.9, .1)), new THREE.MeshStandardMaterial({ transparent: true, metalness: .8, roughness: .35, color: 0xd8b25a, map: tex(1024, 54, (x) => { x.fillStyle = "#fff"; x.font = `700 34px ${MONO}`; x.fillText("ABUTBUL  ·  HB  ·  No. 2", 10, 40); }) }), false);
     stamp.rotation.z = Math.PI / 2; stamp.position.set(0, .1, AP + .002); body.add(stamp);
-    addTool(g, { x: -4.1, y: -2.2, a: .55, rest: AP, circles: line(8, 3.4, .13).map(([cx, cy, r]) => [cx + .9, cy, r] as [number, number, number]), mass: .36, foot: [5.3, .45], roll: AP, onPhone: [-2.45, -1.02, .06], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
+    addTool(g, { x: -4.1, y: -2.2, a: .55, rest: AP, circles: line(8, 3.4, .13).map(([cx, cy, r]) => [cx + .9, cy, r] as [number, number, number]), mass: .36, foot: [5.3, .45], roll: AP, onPhone: [-2.45, -1.38, .06], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
     pencil = tools[tools.length - 1]; pencilHome = [pencil.hx, pencil.hy];
   }
 
@@ -357,7 +357,7 @@ export function buildDesk(kit: DeskKit): Desk {
      pushable tools, and it does not lift on hover; the hint says what it does). A click flips it: a
      hop and a full turn about its long side, landing as it was. It arrives with the desk's entrance,
      rolling in end over end from the left. */
-  let eraser: { hit: (ray: THREE.Ray) => boolean; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void } | null = null;
+  let eraser: { hit: (ray: THREE.Ray) => boolean; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; aside: (e: number) => void } | null = null;
   {
     const L = .88, W = .34, H = .17, SL = L * .56;
     const g = new THREE.Group();
@@ -395,6 +395,12 @@ export function buildDesk(kit: DeskKit): Desk {
     };
     eraser = {
       enter() { roll = -ROLL_AT; rollPose(0); },
+      // Phones' More work brings the book to where the eraser lies: it slides to the open mat right of
+      // the pencil's point, below the book (e: 0 at home, 1 there).
+      aside(e) {
+        const [AX, AY, AA] = [1.35, -1.45, .3];
+        holder.position.set(EX + (AX - EX) * e, EY + (AY - EY) * e, H / 2); holder.rotation.z = EA + (AA - EA) * e;
+      },
       hit: (ray) => { raycaster.ray.copy(ray); return raycaster.intersectObject(holder, true).length > 0; },
       press(ray) { if (!eraser!.hit(ray)) return false; if (flip < 0) flip = 0; return true; },
       update(dt) {
@@ -1003,6 +1009,7 @@ export function buildDesk(kit: DeskKit): Desk {
         nb.position.set(NX, NY, 0); nb.rotation.z = NA; nb.scale.setScalar(1);
         pad.position.set(NX, NY, .004); pad.rotation.z = NA; pad.scale.set(PW * 2 + .9, PH + .8, 1);
         holo.visible = false; holoLight.intensity = 0; rise = 0; holoAt = -1;
+        eraser?.aside(0);
         if (mugRig) { mugRig.aside = false; mugRig.g.position.x = mugRig.pad.position.x = mugRig.x; mugRig.g.position.y = mugRig.pad.position.y = mugRig.y; mugRig.g.scale.setScalar(mugRig.s); mugRig.pad.scale.set(2.5, 2.3, 1); }
         if (pencil) { pencil.hx = pencilHome[0]; pencil.hy = pencilHome[1]; pencil.group.scale.setScalar(1); pencil.shadow.scale.set(5.3, .45, 1); }
         notebookOn = true;
@@ -1024,6 +1031,7 @@ export function buildDesk(kit: DeskKit): Desk {
       rise = state.rise; holo.visible = rise > .005; holo.scale.set(HS, HS, HS * Math.max(.001, rise));
       // Phones: the mug, smaller, stands back at the left edge, out of the way of the book and the
       // wall; the pencil comes forward, smaller, in front of the book.
+      if (phone) eraser?.aside(e);
       if (phone && mugRig) {
         // Scales are relative to the mug's own (it is modelled small and scaled up).
         const x = mugRig.x + (-1.7 - mugRig.x) * e, y = mugRig.y + (3.4 - mugRig.y) * e, k = 1 - (1 - .62 / mugRig.s) * e;
@@ -1037,7 +1045,7 @@ export function buildDesk(kit: DeskKit): Desk {
         mugRig.g.scale.setScalar(mugRig.s * k); mugRig.pad.scale.set(2.5 * k, 2.3 * k, 1);
       }
       if (phone && pencil) {
-        pencil.hx = -1.95; pencil.hy = -1.25;
+        pencil.hx = -1.95; pencil.hy = -1.5;
         pencil.group.scale.setScalar(.72); pencil.shadow.scale.set(5.3 * .72, .45 * .72, 1);
       }
       const open = Math.round(u);

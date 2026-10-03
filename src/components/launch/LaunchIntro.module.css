@@ -110,6 +110,11 @@
   .cueArrow { animation: none; }
 }
 
+/* Phones scroll by nature; the cue only crowds the card. */
+@media (max-width: 720px) {
+  .scroll { display: none; }
+}
+
 /* Entrance, as the loading sheet lifts: the name rises in, then the line under it, the card and the
    cue. Set only by the loader, so without JS or with reduced motion the text is simply there. */
 :global(html[data-entering]) .word { animation: rise 1s var(--ease-out) 0.15s both; }
@@ -177,7 +182,7 @@
 }
 
 @media (max-width: 720px) {
-  .card { bottom: 10svh; right: var(--gutter); width: auto; aspect-ratio: auto; min-height: 15rem; }
+  .card { bottom: calc(env(safe-area-inset-bottom, 0px) + 3svh); right: var(--gutter); width: auto; aspect-ratio: auto; min-height: 15rem; }
   /* The name fills the phone's width on one row. */
   .word { top: 13svh; font-size: 15vw; }
   .duo { grid-template-columns: 1fr; align-content: space-between; padding-block: 16svh 10svh; }
