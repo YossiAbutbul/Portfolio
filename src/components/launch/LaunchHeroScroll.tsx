@@ -17,8 +17,6 @@ export default function LaunchHeroScroll() {
     const brand = document.querySelector<HTMLElement>("[data-brand]");
     if (!name || !brand) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Matches Nav's switch to initials.
-    const phone = window.matchMedia("(max-width: 720px)");
     brand.dataset.dock = "";
 
     /* ---- Text that leaves line by line: each line gets a clipping box with the words inside. ---- */
@@ -68,27 +66,19 @@ export default function LaunchHeroScroll() {
       const p = clamp(scrollY / (innerHeight * .45));
       if (reduce) { show(brand, p >= 1 ? 1 : 0); return; }
       const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      if (phone.matches) {
-        // Phones: the bar shows initials, so the name does not fly into it. It drifts up and fades as
-        // the hero leaves, and the initials' pill fades in after it.
-        name.style.translate = `0 ${-e * innerHeight * .12}px`; name.style.scale = ""; name.style.textShadow = "";
-        name.style.opacity = String(1 - clamp(p / .7)); name.style.visibility = p >= .7 ? "hidden" : "";
-        const b = clamp((p - .55) / .45); brand.style.opacity = String(b); brand.style.visibility = b < .02 ? "hidden" : "";
-      } else {
-        // Where the name's centre should be on screen: from where it starts toward the bar.
-        const mid = nameMid + (toMid - nameMid) * e;
-        name.style.translate = `${(toLeft - nameLeft) * e}px ${mid - (nameMid - scrollY)}px`;
-        const sc = 1 + (k - 1) * e;
-        name.style.scale = String(sc);
-        // The shadow is scaled with the name, so set it so that on screen it moves from the hero's soft
-        // glow to the bar's exact shadow; at the hand-over the two are pixel for pixel the same.
-        const sy = 2 + (1 - 2) * e, blur = 30 + (14 - 30) * e, a = .25 + (.45 - .25) * e;
-        name.style.textShadow = `0 ${(sy / sc).toFixed(2)}px ${(blur / sc).toFixed(2)}px rgba(0,0,0,${a.toFixed(3)})`;
-        // No cross-fade: two copies half visible at once read as a smudge. At the end of the flight the
-        // name is exactly the bar's link, so one simply replaces the other.
-        const docked = p >= 1;
-        show(name, docked ? 0 : 1); show(brand, docked ? 1 : 0);
-      }
+      // Where the name's centre should be on screen: from where it starts toward the bar.
+      const mid = nameMid + (toMid - nameMid) * e;
+      name.style.translate = `${(toLeft - nameLeft) * e}px ${mid - (nameMid - scrollY)}px`;
+      const sc = 1 + (k - 1) * e;
+      name.style.scale = String(sc);
+      // The shadow is scaled with the name, so set it so that on screen it moves from the hero's soft
+      // glow to the bar's exact shadow; at the hand-over the two are pixel for pixel the same.
+      const sy = 2 + (1 - 2) * e, blur = 30 + (14 - 30) * e, a = .25 + (.45 - .25) * e;
+      name.style.textShadow = `0 ${(sy / sc).toFixed(2)}px ${(blur / sc).toFixed(2)}px rgba(0,0,0,${a.toFixed(3)})`;
+      // No cross-fade: two copies half visible at once read as a smudge. At the end of the flight the
+      // name is exactly the bar's link, so one simply replaces the other.
+      const docked = p >= 1;
+      show(name, docked ? 0 : 1); show(brand, docked ? 1 : 0);
       // Lines drop out of their masks in turn: the card's headline first, then its sentence.
       let i = 0;
       for (const b of blocks) for (const line of b.lines) {
@@ -111,10 +101,15 @@ export default function LaunchHeroScroll() {
     window.addEventListener("resize", onResize);
     // The fonts settle the sizes and the line breaks; measure again once they are in.
     document.fonts?.ready.then(onResize).catch(() => {});
+    // The name rises in as the loading sheet lifts; measured mid-rise, it would dock off by the rise.
+    // So measure again once that entrance (or any other animation on it) has finished.
+    const settle = (e: AnimationEvent) => { if (e.target === name || (e.target as Node).contains?.(name)) onResize(); };
+    document.addEventListener("animationend", settle);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("animationend", settle);
       name.style.translate = name.style.scale = name.style.transformOrigin = name.style.opacity = name.style.visibility = name.style.textShadow = "";
       brand.style.opacity = brand.style.visibility = "";
       delete brand.dataset.dock;

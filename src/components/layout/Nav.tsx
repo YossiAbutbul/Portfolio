@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { withBasePath } from "@/lib/env";
 import { usePathname } from "next/navigation";
 import styles from "./Nav.module.css";
 
@@ -24,6 +25,36 @@ export default function Nav() {
   const pathname = usePathname();
   const isProject = pathname.startsWith("/projects/");
   const header = useRef<HTMLElement>(null);
+  // Phones: the links live in a drawer behind a menu button.
+  const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const drawer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    // While the drawer is open: the page stops scrolling, Escape closes it, and focus starts on the
+    // first link and stays inside the drawer.
+    window.__lenis?.stop();
+    document.documentElement.style.overflow = "hidden";
+    const first = drawer.current?.querySelector<HTMLElement>("a, button");
+    first?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setOpen(false); return; }
+      if (e.key !== "Tab" || !drawer.current) return;
+      const items = [...drawer.current.querySelectorAll<HTMLElement>("a, button")];
+      const a = items[0], z = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+      else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+    };
+    window.addEventListener("keydown", onKey);
+    const button = menuButton.current;
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.__lenis?.start();
+      document.documentElement.style.overflow = "";
+      button?.focus({ preventScroll: true });
+    };
+  }, [open]);
 
   // Over a section marked data-nav="light" the bar switches to dark ink, and anywhere while some
   // element carries data-nav-force="light" (a 3D backdrop that is pale behind the bar, which no section
@@ -44,7 +75,7 @@ export default function Nav() {
       if (at !== current) {
         current = at;
         history.replaceState(history.state, "", at ? `#${at}` : location.pathname + location.search);
-        el.querySelectorAll<HTMLAnchorElement>("a[data-section]").forEach((a) => {
+        document.querySelectorAll<HTMLAnchorElement>("header a[data-section]").forEach((a) => {
           if (a.dataset.section === (at && (LINK_OF[at] ?? at))) a.setAttribute("aria-current", "location"); else a.removeAttribute("aria-current");
         });
       }
@@ -58,6 +89,9 @@ export default function Nav() {
   }, [pathname, isProject]);
 
   function go(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
+    // From the drawer: scrolling was paused while it was open; resume before jumping.
+    if (open) { window.__lenis?.start(); document.documentElement.style.overflow = ""; }
+    setOpen(false);
     const el = document.getElementById(id);
     if (el) {
       e.preventDefault();
@@ -76,9 +110,8 @@ export default function Nav() {
         <Link href="/" className={styles.brand}><span aria-hidden="true">← </span>Back to Yossi Abutbul</Link>
       ) : (
         <Link href="/#top" className={styles.brand} data-brand onClick={(e) => go(e, "top")} aria-label="Yossi Abutbul, back to top">
-          {/* The full name, or its initials on small screens. The hero's name flies to whichever shows. */}
-          <span className={styles.full} data-brand-text>Yossi Abutbul</span>
-          <span className={styles.short} data-brand-text aria-hidden="true">YA</span>
+          {/* The hero's name flies up to this. */}
+          <span data-brand-text>Yossi Abutbul</span>
         </Link>
       )}
       <nav aria-label="Sections">
@@ -90,6 +123,35 @@ export default function Nav() {
           ))}
         </ul>
       </nav>
+
+      {/* Phones: one button, and a drawer with the sections, the address and the CV. */}
+      <button ref={menuButton} type="button" className={styles.menuButton} aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen((v) => !v)}>
+        <span className={styles.srOnly}>{open ? "Close menu" : "Open menu"}</span>
+        <i aria-hidden="true" /><i aria-hidden="true" />
+      </button>
+      <div className={styles.scrim} data-open={open ? "" : undefined} onClick={() => setOpen(false)} aria-hidden="true" />
+      <div ref={drawer} id="site-menu" className={styles.drawer} data-open={open ? "" : undefined} role="dialog" aria-modal="true" aria-label="Menu" inert={!open}>
+        <nav aria-label="Sections, menu">
+          <ol className={styles.drawerLinks}>
+            {LINKS.map((l, i) => (
+              <li key={l.id} style={{ ["--i" as string]: i }}>
+                <Link href={l.href} data-section={l.id} onClick={(e) => go(e, l.id)}>
+                  <span className={styles.drawerNum}>{String(i + 1).padStart(2, "0")}</span>{l.label}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <div className={styles.drawerFoot}>
+          <span className={styles.drawerLabel}>Write</span>
+          <a href="mailto:abyossi22@gmail.com">abyossi22@gmail.com</a>
+          <div className={styles.drawerRow}>
+            <a href={withBasePath("/Yossi Abutbul - CV 2026.pdf")} download>CV ↓</a>
+            <a href="https://github.com/YossiAbutbul" target="_blank" rel="noreferrer">GitHub ↗</a>
+            <a href="https://www.linkedin.com/in/yossi-abutbul-550958199/" target="_blank" rel="noreferrer">LinkedIn ↗</a>
+          </div>
+        </div>
+      </div>
     </header>
   );
 }

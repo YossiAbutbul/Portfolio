@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { cloneElement, useEffect, useRef, useState } from "react";
 import styles from "./LaunchLoader.module.css";
 
-/** Held at least this long so the drawing gets to finish; never longer than MAX_MS. */
-const MIN_MS = 1700;
+/** Held at least this long so the sketch gets to finish; never longer than MAX_MS. */
+const MIN_MS = 2300;
 const MAX_MS = 6000;
 
 /**
  * A blueprint of the device, drawn on an olive sheet while the 3D scene loads: dashed outlines,
- * Bézier handles, construction lines, and a fill that sweeps round with real setup progress.
- * Phones do not load the scene up front, so there the fill runs on the clock instead.
+ * Bézier handles, construction lines, and a fill that sweeps round with real setup progress (on
+ * every screen: phones load the scene up front too), eased by time so it glides even when the
+ * browser is busy compiling.
  */
 export default function LaunchLoader() {
   const [phase, setPhase] = useState<"loading" | "leaving" | "gone">("loading");
@@ -20,12 +21,11 @@ export default function LaunchLoader() {
   useEffect(() => {
     const root = document.documentElement;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const phone = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
     // Reduced motion: the sheet is hidden by CSS and the page is never held.
     if (reduce) return;
 
     const start = performance.now();
-    let target = 0, shown = 0, frame = 0, left = false;
+    let target = 0, shown = 0, frame = 0, left = false, last = start;
     const onProgress = (e: Event) => { target = Math.max(target, (e as CustomEvent<number>).detail); };
     window.addEventListener("launch:progress", onProgress);
 
@@ -45,10 +45,12 @@ export default function LaunchLoader() {
     };
 
     const tick = (now: number) => {
-      const elapsed = now - start;
-      // Phones: a timed sweep. Desktop: the scene's own progress, never ahead of the clock's floor.
-      const goal = phone ? Math.min(1, elapsed / MIN_MS) : Math.max(target, Math.min(.2, elapsed / 2000));
-      shown += (goal - shown) * .12;
+      const elapsed = now - start, dt = Math.min(.1, Math.max(0, (now - last) / 1000)); last = now;
+      // The scene's own progress, with a slow floor from the clock so it never sits still at zero.
+      const goal = Math.max(target, Math.min(.2, elapsed / 2000));
+      // Eased by time, not by frame: a frame that came late (the browser busy compiling) moves it
+      // further instead of making it stutter.
+      shown += (goal - shown) * (1 - Math.exp(-dt * 6));
       if (goal >= 1 && shown > .995) shown = 1;
       draw(shown);
       if ((shown >= 1 && elapsed >= MIN_MS) || elapsed >= MAX_MS) { draw(1); leave(); return; }
@@ -113,11 +115,12 @@ export default function LaunchLoader() {
         </defs>
 
         <g className={styles.construction}>
+          {/* Ruled in one after another, each from its starting end, like a pen across the sheet. */}
           <g mask="url(#loader-mask-x)" className={styles.hLines}>
-            {[167, 199, 280, 361, 433].map((y) => <line key={y} x1="60" x2="940" y1={y} y2={y} />)}
+            {[167, 199, 280, 361, 433].map((y, i) => <line key={y} x1="60" x2="940" y1={y} y2={y} style={{ ["--d" as string]: `${i * .07}s` }} />)}
           </g>
           <g mask="url(#loader-mask-y)" className={styles.vLines}>
-            {[290, 307, 437, 567, 633, 710].map((x) => <line key={x} x1={x} x2={x} y1="-120" y2="720" />)}
+            {[290, 307, 437, 567, 633, 710].map((x, i) => <line key={x} x1={x} x2={x} y1="-120" y2="720" style={{ ["--d" as string]: `${.12 + i * .06}s` }} />)}
           </g>
         </g>
 
@@ -127,13 +130,23 @@ export default function LaunchLoader() {
         </g>
         <rect className={styles.screenHole} x="307" y="199" width="260" height="162" rx="10" />
 
-        <g className={styles.outlines}>
-          <rect x="290" y="167" width="420" height="266" rx="34" />
-          <rect x="307" y="199" width="260" height="162" rx="10" />
-          <circle cx="633" cy="247" r="41" />
-          <circle cx="633" cy="364" r="31" />
-          <line x1="633" y1="212" x2="633" y2="232" />
-        </g>
+        {/* Each part is first drawn as a solid pen stroke along its path, then settles into the
+            dashed blueprint line (the stroke fades as the dashes come in). */}
+        {[
+          <rect key="body" x="290" y="167" width="420" height="266" rx="34" pathLength={1} />,
+          <rect key="screen" x="307" y="199" width="260" height="162" rx="10" pathLength={1} />,
+          <circle key="knob" cx="633" cy="247" r="41" pathLength={1} />,
+          <circle key="button" cx="633" cy="364" r="31" pathLength={1} />,
+          <line key="notch" x1="633" y1="212" x2="633" y2="232" pathLength={1} />,
+        ].map((shape, i) => {
+          const d = [.45, .85, 1.1, 1.25, 1.35][i];
+          return (
+            <g key={shape.key} style={{ ["--d" as string]: `${d}s` }}>
+              <g className={styles.ink}>{shape}</g>
+              <g className={styles.outlines}>{cloneElement(shape, { pathLength: undefined })}</g>
+            </g>
+          );
+        })}
 
         <g className={styles.handles}>
           {handle(390, 167, 610, 167, true, "t")}

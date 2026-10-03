@@ -131,7 +131,25 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
-  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone: small(), photo: !small() });
+  /* Background preparation (texture uploads, drawing More work's pages) runs in idle time only: a
+     job runs when the browser has at least ~10 ms to spare (or has waited long enough), one per idle
+     moment. afterOpening holds it until the page has been revealed and the entrance has played. */
+  const idleQueue = (job: () => boolean) => {
+    if (typeof requestIdleCallback !== "function") { const tick = () => { if (!disposed && job()) setTimeout(tick, 50); }; setTimeout(tick, 50); return; }
+    const tick = (d: IdleDeadline) => {
+      if (disposed) return;
+      if (d.timeRemaining() < 10 && !d.didTimeout) { requestIdleCallback(tick, { timeout: 2500 }); return; }
+      if (job()) requestIdleCallback(tick, { timeout: 2500 });
+    };
+    requestIdleCallback(tick, { timeout: 2500 });
+  };
+  const afterOpening = (run: () => void) => {
+    const go = () => window.setTimeout(() => { if (!disposed) run(); }, 2500);
+    if (document.documentElement.hasAttribute("data-entering") || !document.querySelector("[data-launch-loader]")) go();
+    else window.addEventListener("launch:revealed", go, { once: true });
+  };
+  const quiet = (cb: () => void) => (typeof requestIdleCallback === "function" ? requestIdleCallback(cb, { timeout: 1000 }) : setTimeout(cb, 30));
+  const deskSet = buildDesk({ tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone: small(), photo: !small(), upload: (t) => quiet(() => { if (!disposed) renderer.initTexture(t); }) });
   const desk = deskSet.group; scene.add(desk);
   hooks.onProgress?.(.6);
   await yieldToMain(); if (signal?.aborted) return abandon();
@@ -609,9 +627,28 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     composer = c; bokeh = b as unknown as typeof bokeh;
     disposables.push({ dispose: () => { c.dispose(); target.dispose(); gtao.dispose(); b.dispose(); } });
   }
+  // Compile everything, the parts that start hidden included (the More work wall, the hologram): a
+  // shader compiled the first time it shows up mid-scroll is a visible stall.
+  deskSet.prewarm(true);
   await renderer.compileAsync(scene, camera).catch(() => {});
   hooks.onProgress?.(.9);
   await renderer.compileAsync(scene, camera).catch(() => {});
+  // Upload every texture now too (the hidden parts' and the notebook pages'), one per idle moment,
+  // rather than the first time each is drawn.
+  {
+    const textures = new Set<THREE.Texture>();
+    scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      for (const mat of m ? (Array.isArray(m) ? m : [m]) : []) for (const v of Object.values(mat)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
+    });
+    deskSet.prewarm(false);
+    const queue = [...textures];
+    // After the reveal has played (the sheet lifting, the desk's entrance), and then only in real
+    // idle time, one texture at a time: preparation never competes with the opening for frames.
+    afterOpening(() => idleQueue(() => { const t = queue.shift(); if (!t) return false; renderer.initTexture(t); return true; }));
+  }
+  // Hand More work its projects then too, so its pages are drawn in idle time long before it is reached.
+  afterOpening(() => moreWork());
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
   frame();

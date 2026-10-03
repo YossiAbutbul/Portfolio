@@ -12,6 +12,7 @@
   gap: 1rem;
   padding: calc(env(safe-area-inset-top, 0px) + 12px) var(--gutter) 0;
   color: var(--cream);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.5);
   transition: color 0.25s, opacity 0.6s var(--ease-out);
   font-size: 0.78rem;
   font-weight: 800;
@@ -29,27 +30,26 @@
   }
 }
 
-.brand,
-.links {
-  border: 1px solid rgba(255, 238, 214, 0.16);
-  border-radius: 999px;
-  background: rgba(58, 38, 24, 0.45);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  backdrop-filter: blur(16px) saturate(1.2);
-  transition: background-color 0.25s, border-color 0.25s;
+/* No pills: a soft band of shade behind the bar, fading out downward, keeps the name and links
+   readable over whatever the scene puts there (dark over the dark scenes, cream over the light). */
+.nav::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -2.5rem;
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(16, 11, 8, 0.55), rgba(16, 11, 8, 0));
+  pointer-events: none;
+  transition: background 0.3s;
 }
 
-.nav[data-tone="light"] .brand,
-.nav[data-tone="light"] .links {
-  border-color: rgba(26, 20, 16, 0.12);
-  background: rgba(255, 248, 236, 0.6);
+.nav[data-tone="light"]::before {
+  background: linear-gradient(to bottom, rgba(242, 230, 212, 0.85), rgba(242, 230, 212, 0));
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 1.1rem;
   font-weight: 900;
   font-size: 0.85rem;
   letter-spacing: 0.02em;
@@ -67,9 +67,9 @@
 
 .links {
   display: flex;
-  gap: 1.3rem;
+  gap: 1.6rem;
   margin: 0;
-  padding: 0 1.2rem;
+  padding: 0;
   list-style: none;
 }
 
@@ -93,23 +93,156 @@
 
 .nav[data-tone="light"] {
   color: var(--ink-dark);
+  text-shadow: none;
 }
 
-/* Initials on small screens, so the pills fit beside the links. */
-.short {
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Phones: the name, a menu button, and a drawer ---------- */
+.menuButton,
+.scrim,
+.drawer {
   display: none;
 }
 
 @media (max-width: 720px) {
-  .full { display: none; }
-  .short { display: inline; }
-  /* On phones the name does not fly into the bar, so the initials take the links' type. */
-  .brand,
-  .brand[data-dock] {
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  /* The name on its own; the links go to the drawer. */
+  .nav > nav { display: none; }
+
+  /* Just the two lines (no ring), with a shadow to read over the scene; they cross into an x when
+     the drawer is open. */
+  .menuButton {
+    position: relative;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.5));
+    cursor: pointer;
   }
-  .links { gap: 1rem; padding: 0 1rem; }
+  .nav[data-tone="light"] .menuButton { filter: none; }
+  .menuButton[aria-expanded="true"] { color: var(--cream); filter: none; }
+  .menuButton:focus-visible { outline: 2px solid var(--mark); outline-offset: 3px; }
+  .menuButton i {
+    grid-area: 1 / 1;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: transform 0.4s var(--ease-out);
+  }
+  .menuButton i:first-of-type { transform: translateY(-4px); }
+  .menuButton i:last-of-type { transform: translateY(4px); }
+  .menuButton[aria-expanded="true"] i:first-of-type { transform: rotate(45deg); }
+  .menuButton[aria-expanded="true"] i:last-of-type { transform: rotate(-45deg); }
+
+  /* The page behind dims and blurs a little; a tap on it closes the drawer. */
+  .scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: rgba(12, 8, 6, 0.5);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s var(--ease-out);
+  }
+  .scrim[data-open] { opacity: 1; pointer-events: auto; }
+
+  /* The drawer: dark paper from the right, big numbered links, the address and the CV at the foot. */
+  .drawer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    width: min(82vw, 22rem);
+    padding: calc(env(safe-area-inset-top, 0px) + 6.5rem) 1.6rem calc(env(safe-area-inset-bottom, 0px) + 2rem);
+    background: var(--paper);
+    border-left: 1px solid rgba(242, 230, 212, 0.08);
+    box-shadow: -30px 0 60px -20px rgba(0, 0, 0, 0.6);
+    color: var(--cream);
+    text-shadow: none;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.55s var(--ease-out), visibility 0s linear 0.55s;
+  }
+  .drawer[data-open] { transform: none; visibility: visible; transition: transform 0.55s var(--ease-out); }
+
+  .drawerLinks {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .drawerLinks li {
+    opacity: 0;
+    transform: translateX(1.5rem);
+    transition: opacity 0.4s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+  .drawer[data-open] .drawerLinks li {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.12s + var(--i) * 0.06s);
+  }
+  .drawerLinks a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 0.55rem 0;
+    font-size: clamp(2.2rem, 11vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    text-transform: none;
+  }
+  .drawerLinks a[aria-current] { color: var(--mark); }
+  .drawerNum {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+  }
+
+  .drawerFoot {
+    display: grid;
+    gap: 0.4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid rgba(242, 230, 212, 0.12);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  .drawerLabel {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .drawerFoot a { display: inline-flex; align-items: center; min-height: 44px; }
+  .drawerRow { display: flex; flex-wrap: wrap; gap: 0 1.3rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+}
+
+@media (max-width: 720px) and (prefers-reduced-motion: reduce) {
+  .drawer, .drawer[data-open], .scrim, .menuButton i, .drawerLinks li { transition: none; }
 }

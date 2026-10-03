@@ -22,6 +22,8 @@ export interface DeskKit {
   phone: boolean;
   /** Desktop swaps in photographed textures (public/textures) once they arrive. */
   photo: boolean;
+  /** Uploads a texture to the GPU at a quiet moment (so a photo arriving mid-scroll does not stall). */
+  upload?: (t: THREE.Texture) => void;
 }
 
 /** A project as the More work notebook and its hologram show it. */
@@ -86,6 +88,9 @@ export interface Desk {
   book: (state: { enter: number; rise: number; u: number } | null) => void;
   /** The projects for More work (read once from the section). */
   setMoreWork: (list: MoreWork[]) => void;
+  /** Shows (true) or hides again (false) the parts that start hidden (the wall, the hologram), so the
+   *  scene can compile their shaders and upload their textures before they are first needed. */
+  prewarm: (on: boolean) => void;
   /** The wall behind the desk, seen only as the camera comes down for More work: rise is how far down
    *  the camera has come (0 overhead, the wall off; 1 low). It never moves itself. */
   setWall: (rise: number) => void;
@@ -114,7 +119,7 @@ function makeNoise(seed: number) {
 }
 
 export function buildDesk(kit: DeskKit): Desk {
-  const { tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone, photo } = kit;
+  const { tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone, photo, upload } = kit;
   const group = new THREE.Group();
   const N = makeNoise(7);
 
@@ -202,9 +207,17 @@ export function buildDesk(kit: DeskKit): Desk {
   table.position.z = -.06; group.add(table);
 
   // Desktop: photographed oak (Poly Haven oak_veneer_01, CC0) replaces the generated wood once loaded.
+  /* The photographs are decoded off the main thread where the browser can (ImageBitmap; Safari keeps
+     the plain loader, as its bitmaps ignore the flip), then uploaded at a quiet moment, so a 2K photo
+     landing while someone scrolls is not a stall. */
   const loader = new THREE.TextureLoader();
+  const bitmaps = typeof createImageBitmap === "function" && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent) ? new THREE.ImageBitmapLoader().setOptions({ imageOrientation: "flipY" }) : null;
   const photoTex = (url: string, color: boolean, repeat: [number, number], rotate = 0) => {
-    const t = loader.load(url, () => { (table.material as THREE.Material).needsUpdate = true; });
+    let t: THREE.Texture;
+    if (bitmaps) {
+      t = new THREE.Texture(); t.flipY = false;
+      bitmaps.load(url, (bmp) => { t.image = bmp; t.needsUpdate = true; upload?.(t); });
+    } else t = loader.load(url, () => upload?.(t));
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); t.anisotropy = 8;
     if (rotate) { t.center.set(.5, .5); t.rotation = rotate; }
     if (color) t.colorSpace = THREE.SRGBColorSpace;
@@ -286,7 +299,7 @@ export function buildDesk(kit: DeskKit): Desk {
   let notebookOn = true;
   // The pencil, so More work can bring it forward on phones (and put it back after).
   let pencil: Tool | null = null, pencilHome: [number, number] = [0, 0];
-  let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"] } | null = null;
+  let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"]; prewarm: (on: boolean) => void } | null = null;
   function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number]; hint?: string }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
@@ -504,10 +517,10 @@ export function buildDesk(kit: DeskKit): Desk {
     // Desktop draws pages at full size: in More work the notebook is the subject, filling the table.
     const SCALE = phone ? .5 : 1, CW = 1024, CH = 1448;
     const page = () => tex(Math.round(CW * SCALE), Math.round(CH * SCALE), () => {});
-    const paint = (t: THREE.CanvasTexture, draw: Page, seed: number) => {
+    const paintInto = (c: HTMLCanvasElement, draw: Page, seed: number) => {
       let st = seed * 2654435761 >>> 0;
       const rnd = () => { st = (st + 0x6d2b79f5) >>> 0; let r = Math.imul(st ^ (st >>> 15), 1 | st); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
-      const c = t.image as HTMLCanvasElement, x = c.getContext("2d")!;
+      const x = c.getContext("2d")!;
       x.setTransform(c.width / CW, 0, 0, c.height / CH, 0, 0);
       const ink = "#22305e";
       x.fillStyle = "#f1eadb"; x.fillRect(0, 0, CW, CH);
@@ -550,7 +563,24 @@ export function buildDesk(kit: DeskKit): Desk {
       };
       draw({ line, curve, text, box, ring, arrow, x });
       x.setTransform(1, 0, 0, 1, 0, 0);
-      t.needsUpdate = true;
+    };
+    /* Drawing a page by hand (hundreds of jittered strokes and handwriting) is the costly part, so
+       each page is drawn once into its own canvas and kept; showing it in a slot is then a copy and
+       an upload, and a slot already showing that page does nothing at all. More work's pages are
+       drawn ahead of time, in idle moments (see setMoreWork). */
+    const drawn = new Map<string, HTMLCanvasElement>();
+    const pageCanvas = (key: string, draw: Page, seed: number) => {
+      let c = drawn.get(key);
+      if (!c) {
+        c = document.createElement("canvas"); c.width = Math.round(CW * SCALE); c.height = Math.round(CH * SCALE);
+        paintInto(c, draw, seed); drawn.set(key, c);
+      }
+      return c;
+    };
+    const showIn = (t: THREE.CanvasTexture, key: string, draw: Page, seed: number) => {
+      if (t.userData.page === key) return;
+      const c = pageCanvas(key, draw, seed), x = (t.image as HTMLCanvasElement).getContext("2d")!;
+      x.drawImage(c, 0, 0); t.userData.page = key; t.needsUpdate = true;
     };
     // Notes page for a project: the name, a few dashes of what it does, one line worth underlining,
     // and the stack in small. Facts only from content/projects.ts.
@@ -714,7 +744,8 @@ export function buildDesk(kit: DeskKit): Desk {
     const mod = (i: number) => { const n = spreads.length; return ((i % n) + n) % n; };
     const pageOf = (s: number, side: "left" | "right") => spreads[mod(s)][side];
     const seedOf = (s: number, side: "left" | "right") => mod(s) * 2 + (side === "left" ? 1 : 2) + (mode === "more" ? 100 : 0);
-    const put = (t: THREE.CanvasTexture, s: number, side: "left" | "right") => paint(t, pageOf(s, side), seedOf(s, side));
+    const keyOf = (s: number, side: "left" | "right") => `${mode}:${mod(s)}:${side}`;
+    const put = (t: THREE.CanvasTexture, s: number, side: "left" | "right") => showIn(t, keyOf(s, side), pageOf(s, side), seedOf(s, side));
     /* Each side has its own turning sheet lying on top of it, so both can move at once and hover
        never has to repaint. Under the right sheet is the next spread's right page; under the left
        sheet, the previous spread's left page. Only a finished turn repaints. */
@@ -787,7 +818,10 @@ export function buildDesk(kit: DeskKit): Desk {
       return Math.abs(lx) < PW + .1 && Math.abs(ly) < PH / 2 + .1 ? { lx, ly } : null;
     };
     // The handwriting font loads on demand; repaint once it is in.
-    document.fonts?.load(`700 80px ${HAND}`).then(() => { paintAll(); if (holoAt >= 0) drawHolo(holoAt); }).catch(() => {});
+    document.fonts?.load(`700 80px ${HAND}`).then(() => {
+      drawn.clear(); for (const t of [underLeft, underRight, rFront, rBack, lFront, lBack]) t.userData.page = "";
+      paintAll(); if (holoAt >= 0) drawHolo(holoAt);
+    }).catch(() => {});
 
     /* ---------- More work: the hologram ----------
        Built once, hidden until More work. It is projected from the middle of the book, the spine: a
@@ -932,7 +966,24 @@ export function buildDesk(kit: DeskKit): Desk {
     const hover = (ray: THREE.Ray | null) => notebook?.hover(ray);
     notebook = {
       book,
-      setMoreWork(list) { more = list; },
+      prewarm(on) { holo.visible = on; },
+      setMoreWork(list) {
+        more = list;
+        // Draw every More work page ahead of time, one per idle moment, so turning a page later is only
+        // a copy. The pages are keyed as they will be shown (mode "more").
+        const ahead = moreSpreads(list), jobs: (() => void)[] = [];
+        ahead.forEach((sp, i) => (["left", "right"] as const).forEach((side) => jobs.push(() => {
+          pageCanvas(`more:${i}:${side}`, sp[side], i * 2 + (side === "left" ? 1 : 2) + 100);
+        })));
+        // A page takes a few milliseconds to draw: wait for idle moments with room for it.
+        if (typeof requestIdleCallback !== "function") { const tick = () => { const job = jobs.shift(); if (job) { job(); setTimeout(tick, 80); } }; setTimeout(tick, 80); return; }
+        const tick = (d: IdleDeadline) => {
+          if (d.timeRemaining() < 12 && !d.didTimeout) { requestIdleCallback(tick, { timeout: 3000 }); return; }
+          const job = jobs.shift(); if (!job) return; job();
+          if (jobs.length) requestIdleCallback(tick, { timeout: 3000 });
+        };
+        requestIdleCallback(tick, { timeout: 3000 });
+      },
       over: (ray) => !!local(ray),
       hint: (ray) => { const p = local(ray); return p ? (p.lx >= 0 ? "Click to turn page" : "Click to go back") : null; },
       hover(ray) {
@@ -1355,6 +1406,7 @@ export function buildDesk(kit: DeskKit): Desk {
     },
     mugTop: () => mug?.top() ?? null,
     book: (state) => notebook?.book(state),
+    prewarm(on) { wall.visible = on; notebook?.prewarm(on); },
     setWall(rise) {
       if (Math.abs(rise - wallRise.v) < .0005) return;
       wallRise.v = rise;

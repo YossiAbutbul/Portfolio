@@ -47,14 +47,14 @@
 
 .hLines line {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: grow-x 0.9s var(--ease-out) both;
+  transform-origin: left center;
+  animation: grow-x 0.7s cubic-bezier(0.45, 0, 0.2, 1) var(--d, 0s) both;
 }
 
 .vLines line {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: grow-y 0.9s var(--ease-out) 0.1s both;
+  transform-origin: center top;
+  animation: grow-y 0.7s cubic-bezier(0.45, 0, 0.2, 1) var(--d, 0s) both;
 }
 
 .fill {
@@ -65,21 +65,27 @@
   fill: #4b5a3d;
 }
 
-.outlines rect,
-.outlines circle,
-.outlines line {
+/* The pen stroke: drawn along the shape's path (pathLength 1), then it fades as the dashes come in. */
+.ink > * {
+  fill: none;
+  stroke: rgba(242, 236, 222, 0.95);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.5s cubic-bezier(0.45, 0, 0.25, 1) var(--d, 0s) forwards, ink-out 0.35s ease calc(var(--d, 0s) + 0.5s) forwards;
+}
+
+/* The dashed blueprint line it leaves (the same shape without the pen's pathLength, so the dashes
+   keep their size). */
+.outlines > * {
   fill: none;
   stroke: rgba(242, 236, 222, 0.9);
   stroke-width: 1.6;
   stroke-dasharray: 5 5;
-  animation: appear 0.6s var(--ease-out) both;
+  opacity: 0;
+  animation: appear 0.35s ease calc(var(--d, 0s) + 0.42s) forwards;
 }
-
-.outlines :nth-child(1) { animation-delay: 0.25s; }
-.outlines :nth-child(2) { animation-delay: 0.4s; }
-.outlines :nth-child(3) { animation-delay: 0.5s; }
-.outlines :nth-child(4) { animation-delay: 0.58s; }
-.outlines :nth-child(5) { animation-delay: 0.62s; }
 
 .handle line {
   stroke: #ff8a3d;
@@ -97,11 +103,18 @@
   animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-.handles .handle:nth-child(1) { animation-delay: 0.55s; }
-.handles .handle:nth-child(2) { animation-delay: 0.6s; }
-.handles .handle:nth-child(3) { animation-delay: 0.65s; }
-.handles .handle:nth-child(4) { animation-delay: 0.7s; }
-.handles .handle:nth-child(n + 5) { animation-delay: 0.8s; }
+/* Handles land as the part they belong to is finished: the body's four, then the screen's, then the
+   knob's and the button's. */
+.handles .handle:nth-child(1) { animation-delay: 0.9s; }
+.handles .handle:nth-child(2) { animation-delay: 0.96s; }
+.handles .handle:nth-child(3) { animation-delay: 1.02s; }
+.handles .handle:nth-child(4) { animation-delay: 1.08s; }
+.handles .handle:nth-child(5) { animation-delay: 1.3s; }
+.handles .handle:nth-child(6) { animation-delay: 1.34s; }
+.handles .handle:nth-child(7) { animation-delay: 1.38s; }
+.handles .handle:nth-child(8) { animation-delay: 1.42s; }
+.handles .handle:nth-child(9) { animation-delay: 1.55s; }
+.handles .handle:nth-child(10) { animation-delay: 1.65s; }
 
 .meta {
   position: absolute;
@@ -120,7 +133,9 @@
 
 @keyframes grow-x { from { transform: scaleX(0); } }
 @keyframes grow-y { from { transform: scaleY(0); } }
-@keyframes appear { from { opacity: 0; } }
+@keyframes appear { to { opacity: 1; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes ink-out { to { opacity: 0; } }
 @keyframes pop { from { transform: scale(0); opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
