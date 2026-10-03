@@ -1,58 +1,47 @@
 import Link from "next/link";
-import type { Project } from "@/types/project";
+import ReleaseTiles from "./ReleaseTiles";
 import styles from "./LaunchSections.module.css";
 
 const RELEASES = [
-  { version: "v0.1 · 2017", big: "Unit 81", role: "Operational Project Leader", detail: "IDF Intelligence. RF projects end to end, and Python tooling for spectrum analyzer data.", tone: "olive" },
-  { version: "v1.0 · 2020", big: "RF & Electronics", role: "Integrator, smart metering", detail: "Bring-up and qualification of RF hardware, and the test software around it.", tone: "sand" },
-  { version: "v2.0 · 2022", big: "BSc CS", role: "The Open University", detail: "Systems programming, algorithms, architecture, software engineering.", tone: "cork" },
+  { version: "2017-2019", big: "Unit 81", role: "Operational Project Leader", detail: "IDF Intelligence. RF projects end to end, and Python tooling for spectrum analyzer data.", tone: "olive" },
+  { version: "2020-PRESENT", big: "RF & Electronics", role: "RF Technician, Arad Technologies", detail: "Bring-up and qualification of RF hardware, and the test software around it.", tone: "sand" },
+  { version: "2022-PRESENT", big: "BSc Computer Science Student", role: "The Open University", detail: "Systems programming, algorithms, architecture, software engineering.", tone: "cork" },
 ] as const;
 
+// The stack, picked by hand and grouped: what the work is built on, RF and test last.
+const STACK = [
+  { label: "Languages", items: ["TypeScript", "Python", "C"] },
+  { label: "Frontend", items: ["React", "Next.js"] },
+  { label: "Backend & data", items: ["FastAPI", "Firebase"] },
+  { label: "Hardware & test", items: ["PyVISA", "SCPI", "BLE", "LoRa"] },
+];
+
 /** The cream page: release history, the stack, and the seminar as a paper. */
-export default function LaunchEditorial({ featured }: { featured: Project[] }) {
-  // The stack card lists what the projects actually use, most used first.
-  const counts = new Map<string, number>();
-  featured.forEach((p) => p.stack.forEach((s) => counts.set(s, (counts.get(s) ?? 0) + 1)));
-  const stack = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([s]) => s);
+export default function LaunchEditorial() {
+
 
   return (
-    <section className={styles.editorial} id="changelog" aria-labelledby="changelog-title" data-nav="light">
-      <span className={styles.cap}>Release history</span>
-      <h2 className={styles.big} id="changelog-title">experience</h2>
-      <ol className={styles.tiles}>
-        {RELEASES.map((r) => (
-          <li key={r.version} className={styles.tile} data-tone={r.tone}>
-            <span className={styles.cap}>{r.version}</span>
-            <div>
-              <span className={styles.tileBig}>{r.big}</span>
-              <h3>{r.role}</h3>
-              <p>{r.detail}</p>
-            </div>
-          </li>
-        ))}
-        <li className={styles.tile} data-tone="ink">
-          <span className={styles.cap}>Stack · in production</span>
-          <p className={styles.stackText}>{stack.join(" · ")}</p>
-        </li>
-      </ol>
+    <section className={styles.editorial} id="experience" aria-labelledby="experience-title" data-nav="light">
+      <h2 className={styles.big} id="experience-title">experience</h2>
+      <ReleaseTiles releases={RELEASES} stack={STACK} />
 
       <div className={styles.paper} id="paper">
         <div>
-          <span className={styles.cap}>Our latest research</span>
           <h3 className={styles.sectionHead}>Paper</h3>
         </div>
         <div>
-          <div className={styles.tabs}><span>Paper · in progress</span><span data-off>Code coming soon</span></div>
-          <h3>Creating User Interfaces Using LLMs: From Specification to Code</h3>
-          <p>
-            How language models turn a written spec into a working interface, where they get it wrong,
-            and how much the wording of the spec changes what comes out. Seminar, The Open University.
-          </p>
-          <pre>{`@misc{abutbul2026ui,
-  title  = {Creating User Interfaces Using LLMs: From Specification to Code},
-  author = {Abutbul, Yossi},
-  note   = {Seminar, The Open University. In progress.}
-}`}</pre>
+          <div className={styles.tabs}><span>Paper · in progress</span></div>
+          {/* Set as the paper's first page: title, author, abstract, then where it sits. */}
+          <article className={styles.sheet} aria-labelledby="paper-title">
+            <h3 id="paper-title">Creating User Interfaces Using LLMs: From Specification to Code</h3>
+            <p className={styles.sheetAuthor}>Yossi Abutbul · The Open University</p>
+            <span className={styles.sheetLabel}>Abstract</span>
+            <p>
+              How language models turn a written spec into a working interface, where they get it wrong,
+              and how much the wording of the spec changes what comes out.
+            </p>
+            <p className={styles.sheetFoot}><span>Seminar</span><span>2026</span><span>In progress</span></p>
+          </article>
         </div>
       </div>
     </section>

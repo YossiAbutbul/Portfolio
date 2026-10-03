@@ -83,21 +83,30 @@
   left: 50%;
   bottom: 3svh;
   translate: -50% 0;
-  display: flex;
-  gap: 0.6rem;
-  align-items: center;
-  min-height: 44px;
+  display: block;
+  color: var(--cream);
+  pointer-events: none;
 }
 
-.scroll i {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid currentColor;
-  display: inline-grid;
-  place-items: center;
-  font-style: normal;
-  font-size: 0.7rem;
+.scroll svg {
+  display: block;
+  overflow: visible;
+}
+
+/* The arrow drops, fades and comes back, inside its ring. (A hero cue, so it may loop.) */
+.cueArrow {
+  animation: cue 1.8s var(--ease-out) infinite;
+}
+
+@keyframes cue {
+  0% { transform: translateY(-3px); opacity: 0; }
+  25% { opacity: 1; }
+  70% { transform: translateY(3px); opacity: 1; }
+  100% { transform: translateY(5px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cueArrow { animation: none; }
 }
 
 /* Entrance, as the loading sheet lifts: the name rises in, then the line under it, the card and the

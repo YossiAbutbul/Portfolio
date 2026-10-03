@@ -22,35 +22,13 @@
   perspective: calc(100svh * 1.866);
 }
 
-.head {
+.srOnly {
   position: absolute;
-  left: var(--gutter);
-  top: 12svh;
-  margin: 0;
-  font-size: clamp(1.2rem, 2vw, 1.8rem);
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  /* It sits on the lit desk now, so it carries its own shadow to read over the mat. */
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
-}
-
-.head span {
-  display: block;
-  color: var(--sand);
-  transition: color 0.4s;
-  font-size: 0.72em;
-  text-transform: uppercase;
-}
-
-/* Over the pale 3D wall: dark ink. */
-.pin[data-nav-force="light"] .head {
-  color: var(--ink-dark);
-  text-shadow: none;
-}
-
-.pin[data-nav-force="light"] .head span {
-  color: #7a6450;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 /* The open notebook: two pages on a dark cover, tilted a touch like it was put down by hand. Sizes
@@ -364,8 +342,8 @@
 .caps {
   position: absolute;
   left: var(--gutter);
-  bottom: 7svh;
-  width: min(21rem, 84vw);
+  bottom: 3.5svh;
+  width: min(27rem, 88vw);
   pointer-events: auto;
 }
 
@@ -376,7 +354,13 @@
   transform: translateY(0.6rem);
   transition: opacity 0.4s var(--ease-out), transform 0.5s var(--ease-out);
   pointer-events: none;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55);
+  /* The hero's card: warm frosted glass, so the text reads whatever of the desk lies under it. */
+  padding: clamp(1.1rem, 1.6vw, 1.6rem);
+  background: rgba(150, 108, 72, 0.3);
+  border: 1px solid rgba(255, 238, 214, 0.16);
+  border-radius: 2px;
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  backdrop-filter: blur(20px) saturate(1.15);
 }
 
 .cap[data-on] {
@@ -387,7 +371,7 @@
 
 .capMeta {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--sand);
   text-transform: uppercase;
@@ -396,32 +380,33 @@
 
 .capName {
   display: block;
-  margin-top: 0.3rem;
-  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+  margin-top: 0.45rem;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
   font-weight: 800;
-  line-height: 1;
+  line-height: 0.95;
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
 .capText {
-  margin: 0.5rem 0 0;
-  font-size: 0.88rem;
+  margin: 0.7rem 0 0;
+  font-size: 1rem;
+  font-weight: 500;
   line-height: 1.45;
-  color: rgba(242, 230, 212, 0.88);
+  color: var(--cream);
 }
 
 .capLinks {
   display: flex;
   gap: 1.2rem;
-  margin-top: 0.3rem;
+  margin-top: 0.5rem;
 }
 
 .capLinks a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -536,18 +521,21 @@
 
 /* Phones: a wider book, so the writing stays legible at the low angle. */
 @media (max-width: 720px) {
+  /* The hologram already names the project; the caption keeps the name and the links, short enough
+     to leave the book in view above it. */
+  .capText { display: none; }
+  .capName { font-size: clamp(1.4rem, 7vw, 1.9rem); }
+  .cap { padding: 0.9rem 1.1rem; }
   .book { --w: 100vw; }
   .holo { left: 8%; right: 8%; height: 34cqw; }
   .hn { font-size: 5cqw; }
   .hk, .hr, .hs i { font-size: 2.2cqw; }
-  .head { top: 10svh; }
 }
 
 /* Reduced motion: no turning; the pages lie flat, two to a row, in reading order. */
 @media (prefers-reduced-motion: reduce) {
   .pin { height: auto; }
   .frame { position: relative; height: auto; overflow: visible; display: block; padding: 9svh var(--gutter) 6svh; perspective: none; }
-  .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
   .holo, .edge, .pool, .caps { display: none !important; }
   .book { visibility: visible !important; }
   .pin, .frame { pointer-events: auto; }

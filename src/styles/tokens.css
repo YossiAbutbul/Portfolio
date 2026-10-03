@@ -23,6 +23,8 @@
   --cream: #f2e6d4;
   --sand: #e7d3b8;
   --cork: #c46f35;
+  /* Cork deep enough to carry cream text (about 4.5:1). */
+  --cork-deep: #9f4f28;
   --olive: #4d5a36;
   --mat: #2e5a49;
   --red: #b3361f;

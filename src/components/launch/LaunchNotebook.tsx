@@ -152,14 +152,15 @@ export default function LaunchNotebook({ projects }: { projects: Project[] }) {
     <section
       ref={section}
       className={styles.pin}
-      id="notebook"
+      id="more-work"
       aria-labelledby="notebook-title"
       style={{ ["--spreads" as string]: spreads }}
       // The scene draws the 3D notebook and its hologram from these.
       data-projects={JSON.stringify(projects.map(({ title, year, role, wip, summary, stack }) => ({ title, year, role, wip, summary, stack })))}
     >
       <div className={styles.frame}>
-        <h2 id="notebook-title" className={styles.head}><span>Also shipped,</span> more work</h2>
+        {/* Not shown: the notebook and its hologram say what this is; the heading still names the section. */}
+        <h2 id="notebook-title" className={styles.srOnly}>More work</h2>
         {/* With the 3D notebook on the desk, the open project's name and real links sit here, bottom
             left; the book drawn below is the fallback (reduced motion, or no WebGL). */}
         <div className={styles.caps}>

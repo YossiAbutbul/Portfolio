@@ -86,8 +86,8 @@ export interface Desk {
   book: (state: { enter: number; rise: number; u: number } | null) => void;
   /** The projects for More work (read once from the section). */
   setMoreWork: (list: MoreWork[]) => void;
-  /** The wall behind the desk, 0 (sunk out of sight below the table) to 1 (standing). It is only seen
-   *  from the low camera of More work. */
+  /** The wall behind the desk, seen only as the camera comes down for More work: rise is how far down
+   *  the camera has come (0 overhead, the wall off; 1 low). It never moves itself. */
   setWall: (rise: number) => void;
   /** The mug's rim in world space, for the steam drawn over the canvas. */
   mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
@@ -195,7 +195,9 @@ export function buildDesk(kit: DeskKit): Desk {
   })();
   const woodMap = new THREE.CanvasTexture(woodData.canvas); woodMap.colorSpace = THREE.SRGBColorSpace;
   const woodBump = tex(W, H, (x) => { const img = x.createImageData(W, H); for (let i = 0; i < W * H; i++) { const b = woodData.bump[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } x.putImageData(img, 0, 0); });
-  for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
+  // The generated wood does not tile seamlessly, so each repeat is mirrored: no seam lines across the
+  // table (phones keep this wood; desktop swaps in the photographed one).
+  for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
   const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: FINISH.kind === "wood" ? 2.2 : .7, roughness: { wood: .78, concrete: .88, terrazzo: .42 }[FINISH.kind] }), false);
   table.position.z = -.06; group.add(table);
 
@@ -278,7 +280,12 @@ export function buildDesk(kit: DeskKit): Desk {
   // The mug is static too; a click on it ripples the coffee.
   let mug: { over: (ray: THREE.Ray) => boolean; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; top: () => { at: THREE.Vector3; radius: number; fade: number } } | null = null;
   const notebookParts: THREE.Object3D[] = [];
+  // The mug's group and shadow, so More work can move it aside on phones (it would stand in front of
+  // the wall there).
+  let mugRig: { g: THREE.Object3D; pad: THREE.Object3D; x: number; y: number; aside?: boolean } | null = null;
   let notebookOn = true;
+  // The pencil, so More work can bring it forward on phones (and put it back after).
+  let pencil: Tool | null = null, pencilHome: [number, number] = [0, 0];
   let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"] } | null = null;
   function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number]; hint?: string }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
@@ -292,7 +299,7 @@ export function buildDesk(kit: DeskKit): Desk {
 
   { // Pencil, built the way one is made: a hexagonal painted barrel, sharpened by a cone cutting
     // through it, which is what leaves the scalloped paint edge, bare wood with grain, a graphite
-    // point, a gold stamp on the top face, a crimped ferrule and an eraser.
+    // point, a gold stamp on the top face, and a plain painted end (no eraser).
     const AP = .1, CR = AP / Math.cos(Math.PI / 6); // hex apothem and corner radius
     const Y0 = -1.2, CUT = 1.62, TIP = 2.62;          // barrel start, where the cone starts, the point: a used pencil
     const hexR = (th: number) => {
@@ -321,18 +328,14 @@ export function buildDesk(kit: DeskKit): Desk {
     pencilGeo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     pencilGeo.computeVertexNormals();
     const g = new THREE.Group();
-    // Centre the pencil (eraser to point) on the tool's origin; its length runs along x once turned.
-    const body = new THREE.Group(); body.rotation.z = -Math.PI / 2; body.position.x = -(Y0 - .6 + TIP) / 2; g.add(body);
+    // Centre the pencil (end to point) on the tool's origin; its length runs along x once turned.
+    const body = new THREE.Group(); body.rotation.z = -Math.PI / 2; body.position.x = -(Y0 + TIP) / 2; g.add(body);
     body.add(mesh(pencilGeo, std({ vertexColors: true, roughness: .5, envMapIntensity: .6 })));
     // Gold foil stamp on the face toward the camera, running along the barrel.
     const stamp = mesh(geo(new THREE.PlaneGeometry(1.9, .1)), new THREE.MeshStandardMaterial({ transparent: true, metalness: .8, roughness: .35, color: 0xd8b25a, map: tex(1024, 54, (x) => { x.fillStyle = "#fff"; x.font = `700 34px ${MONO}`; x.fillText("ABUTBUL  ·  HB  ·  No. 2", 10, 40); }) }), false);
     stamp.rotation.z = Math.PI / 2; stamp.position.set(0, .1, AP + .002); body.add(stamp);
-    // Ferrule: crimped metal with two raised bands, then the eraser.
-    const fProf: [number, number][] = [[0, Y0 + .02], [.107, Y0 + .02], [.107, Y0 - .06], [.113, Y0 - .08], [.113, Y0 - .1], [.105, Y0 - .12], [.105, Y0 - .2], [.113, Y0 - .22], [.113, Y0 - .24], [.107, Y0 - .26], [.107, Y0 - .34], [0, Y0 - .34]];
-    body.add(mesh(geo(new THREE.LatheGeometry(fProf.map(([r, y]) => new THREE.Vector2(r, y)), 48)), std({ color: 0xc8b383, metalness: .95, roughness: .3, envMapIntensity: .7 })));
-    const eProf: [number, number][] = [[0, Y0 - .33], [.1, Y0 - .33], [.1, Y0 - .5], [.094, Y0 - .55], [.075, Y0 - .58], [.04, Y0 - .595], [0, Y0 - .6]];
-    body.add(mesh(geo(new THREE.LatheGeometry(eProf.map(([r, y]) => new THREE.Vector2(r, y)), 40)), std({ color: 0xd48a7e, roughness: .9 })));
-    addTool(g, { x: -5.2, y: -2.35, a: .55, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [-2.9, -2.65, .55], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
+    addTool(g, { x: -5.2, y: -2.35, a: .55, rest: AP, circles: line(6, 2.6, .13).map(([cx, cy, r]) => [cx + .8, cy, r] as [number, number, number]), mass: .3, foot: [4.6, .45], roll: AP, onPhone: [-2.45, -1.02, .06], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
+    pencil = tools[tools.length - 1]; pencilHome = [pencil.hx, pencil.hy];
   }
   { // Coffee mug: glazed stoneware with a cream inside, coffee in it, and a ring it left on the mat.
     const g = new THREE.Group();
@@ -443,7 +446,7 @@ export function buildDesk(kit: DeskKit): Desk {
       update(dt) {
         let busy = false;
         if (enterT >= 0 && enterT < 1.7) { mugAt(backOut(Math.min(1, Math.max(0, (enterT - .2) / 1.1)))); busy = true; }
-        else if (enterT >= 1.7 && g.position.x !== MX) mugAt(1);
+        else if (enterT >= 1.7 && g.position.x !== MX && !mugRig?.aside) mugAt(1);
         if (stir >= 0) { stirring(dt); busy = true; }
         return (drops.length ? ripple(dt) : false) || busy;
       },
@@ -459,12 +462,13 @@ export function buildDesk(kit: DeskKit): Desk {
     // Modelled small and scaled up to a real small mug, about 6 cm across next to the pencil.
     g.scale.setScalar(1.6);
     // Static for now: it sits where it is, with its own contact shadow.
-    const [MX, MY, MA] = phone ? [-1.45, 2.35, .5] : [4.95, 2.2, 2.4];
+    const [MX, MY, MA] = phone ? [-1.55, 2.6, .5] : [4.95, 2.2, 2.4];
     // The spoon rests leaning toward the upper right of the screen, where a right hand leaves it,
     // whatever way the mug itself is turned.
     spoonRest = .35 - MA; spoon.rotation.z = spoonRest;
     g.position.set(MX, MY, 0); g.rotation.z = MA; group.add(g);
     const mugPad = new THREE.Mesh(padGeo, padMat); mugPad.scale.set(2.5, 2.3, 1); mugPad.position.set(MX, MY, .004); mugPad.rotation.z = MA; mugPad.renderOrder = 1; group.add(mugPad);
+    mugRig = { g, pad: mugPad, x: MX, y: MY };
     // Entrance: slides in from beyond the top right corner and settles with a small overshoot.
     const mugAt = (e: number) => {
       const k = 1 - e;
@@ -477,14 +481,14 @@ export function buildDesk(kit: DeskKit): Desk {
       x.strokeStyle = "rgba(92,52,22,.3)"; x.lineWidth = 6; x.beginPath(); x.arc(w / 2, w / 2, w * .43, .3, Math.PI * 1.85); x.stroke();
       x.strokeStyle = "rgba(92,52,22,.14)"; x.lineWidth = 3; x.beginPath(); x.arc(w / 2 + 3, w / 2 - 2, w * .41, 0, Math.PI * 2); x.stroke();
     }) }));
-    ring.position.set(phone ? -.3 : 3.3, phone ? 1.2 : 2.15, .006); ring.renderOrder = 1; group.add(ring);
+    ring.position.set(phone ? .45 : 3.3, phone ? 1.05 : 2.15, .006); ring.renderOrder = 1; group.add(ring);
   }
   { // Open pocket notebook (A7, to scale with the pencil). It stays put. Hovering a page lifts it
     // toward the pointer; a click turns it, forward on the right page and back on the left. The
     // spreads are rough thinking about the featured projects: notes on the left, a sketch on the right.
     const nb = new THREE.Group(); group.add(nb); notebookParts.push(nb);
     const PW = 2.05, PH = 2.9, T = .15;
-    const [NX, NY, NA] = phone ? [1.25, 2.55, -.1] : [4.4, -.35, -.18];
+    const [NX, NY, NA] = phone ? [1.5, 2.55, -.1] : [4.4, -.35, -.18];
     nb.position.set(NX, NY, 0); nb.rotation.z = NA;
     const pad = new THREE.Mesh(padGeo, padMat); pad.scale.set(PW * 2 + .9, PH + .8, 1); pad.position.set(NX, NY, .004); pad.rotation.z = NA; pad.renderOrder = 1; group.add(pad); notebookParts.push(pad);
     // Height of the page surface at distance d from the spine: low at the gutter, rising to the edge.
@@ -878,7 +882,9 @@ export function buildDesk(kit: DeskKit): Desk {
     }
 
     /* ---------- More work: the move and the scroll-turned pages ---------- */
-    const S = phone ? .62 : 1.18, BX = phone ? 0 : .9, BY = phone ? -1.3 : -1.15, BA = -.035;
+    // Phones: the book further back (higher on the narrow screen, clear of the caption card and the
+    // pencil), a little bigger, and its hologram larger so it can be read.
+    const S = phone ? .72 : 1.18, BX = phone ? 0 : .9, BY = phone ? .45 : -1.15, BA = -.035, HS = phone ? 1.8 : 1;
     const HOLD = .45;
     const lerpN = (a: number, b: number, t2: number) => a + (b - a) * t2;
     function book(state: { enter: number; rise: number; u: number } | null) {
@@ -889,6 +895,8 @@ export function buildDesk(kit: DeskKit): Desk {
         nb.position.set(NX, NY, 0); nb.rotation.z = NA; nb.scale.setScalar(1);
         pad.position.set(NX, NY, .004); pad.rotation.z = NA; pad.scale.set(PW * 2 + .9, PH + .8, 1);
         holo.visible = false; holoLight.intensity = 0; rise = 0; holoAt = -1;
+        if (mugRig) { mugRig.aside = false; mugRig.g.position.x = mugRig.pad.position.x = mugRig.x; mugRig.g.position.y = mugRig.pad.position.y = mugRig.y; mugRig.g.scale.setScalar(1); mugRig.pad.scale.set(2.5, 2.3, 1); }
+        if (pencil) { pencil.hx = pencilHome[0]; pencil.hy = pencilHome[1]; pencil.group.scale.setScalar(1); pencil.shadow.scale.set(4.6, .45, 1); }
         notebookOn = true;
         return;
       }
@@ -905,7 +913,19 @@ export function buildDesk(kit: DeskKit): Desk {
       right.phi = right.target = f * Math.PI; right.shape();
       if (left.phi !== Math.PI) { left.phi = left.target = Math.PI; left.shape(); }
       // The hologram: rises once the book has landed, and shows the spread lying open.
-      rise = state.rise; holo.visible = rise > .005; holo.scale.set(1, 1, Math.max(.001, rise));
+      rise = state.rise; holo.visible = rise > .005; holo.scale.set(HS, HS, HS * Math.max(.001, rise));
+      // Phones: the mug, smaller, stands back at the left edge, out of the way of the book and the
+      // wall; the pencil comes forward, smaller, in front of the book.
+      if (phone && mugRig) {
+        const x = mugRig.x + (-1.7 - mugRig.x) * e, y = mugRig.y + (3.4 - mugRig.y) * e, k = 1 - .38 * e;
+        mugRig.aside = true;
+        mugRig.g.position.x = mugRig.pad.position.x = x; mugRig.g.position.y = mugRig.pad.position.y = y;
+        mugRig.g.scale.setScalar(k); mugRig.pad.scale.set(2.5 * k, 2.3 * k, 1);
+      }
+      if (phone && pencil) {
+        pencil.hx = -1.95; pencil.hy = -1.25;
+        pencil.group.scale.setScalar(.72); pencil.shadow.scale.set(4.6 * .72, .45 * .72, 1);
+      }
       const open = Math.round(u);
       if (open !== holoAt) drawHolo(open);
     }
@@ -965,8 +985,8 @@ export function buildDesk(kit: DeskKit): Desk {
   }
 
   /* ---------- The wall behind the desk (More work only) ----------
-     Seen only from the low camera, so it stays sunk out of sight below the table until then and
-     rises as the camera comes down. Pale plaster, so the dark desk and everything on the wall stand
+     Seen only from the low camera, and it stands still: it is switched on as the camera starts to
+     come down, so the transition is just the camera moving. Pale plaster, so the dark desk and everything on the wall stand
      out against it; a pegboard with a coiled cable, screwdrivers and sticky notes; a shelf lit from
      underneath with a bench scope, a dev board, an antenna and a plant; a clock telling the real time.
      Everything on it plays: hover nudges, a click sets it going (see the gadgets list below). */
@@ -1010,7 +1030,9 @@ export function buildDesk(kit: DeskKit): Desk {
     const skirting = mesh(geo(new THREE.BoxGeometry(40, .12, .36)), std({ color: 0x6b4a32, roughness: .55 }));
     skirting.position.set(0, WY - .06, .12); wall.add(skirting);
 
-    // Pegboard on the left, with what hangs on it.
+    // Pegboard on the left, with what hangs on it. Phones leave it out: there is room for the shelf
+    // and the clock only.
+    const pb = new THREE.Group(); wall.add(pb); pb.visible = !phone;
     const pegTex = tex(Math.round(1024 * TEX), Math.round(360 * TEX), (x, w, h) => {
       x.fillStyle = "#a9835a"; x.fillRect(0, 0, w, h);
       x.fillStyle = "rgba(60,40,22,.85)";
@@ -1020,17 +1042,21 @@ export function buildDesk(kit: DeskKit): Desk {
     const edgeMat = std({ color: 0x8d6b48 });
     // Box faces run +x, -x, +y, -y, +z, -z; the side facing the room (and the camera) is -y.
     const board = mesh(geo(new THREE.BoxGeometry(6.2, .07, 2.4)), [edgeMat, edgeMat, edgeMat, std({ map: pegTex, roughness: .85 }), edgeMat, edgeMat]);
-    board.position.set(-4.1, WY - .05, 2.35); wall.add(board);
+    board.position.set(phone ? -.7 : -4.1, WY - .05, phone ? 2.5 : 2.35); pb.add(board);
+    if (phone) { board.scale.set(1.5 / 6.2, 1, 1.8 / 2.4); pegTex.repeat.set(1.5 / 6.2, 1.8 / 2.4); pegTex.wrapS = pegTex.wrapT = THREE.RepeatWrapping; }
     const pegMat = std({ color: 0x9a9a9a, metalness: .8, roughness: .3 });
-    const peg = (x: number, z: number) => { const o = mesh(geo(new THREE.CylinderGeometry(.025, .025, .22, 8)), pegMat); o.position.set(x, WY - .19, z); wall.add(o); };
+    const peg = (x: number, z: number) => { const o = mesh(geo(new THREE.CylinderGeometry(.025, .025, .22, 8)), pegMat); o.position.set(x, WY - .19, z); pb.add(o); };
     // A coil of cable, two loops hanging on a peg: it swings.
-    const coil = new THREE.Group(); coil.position.set(-6.2, WY - .2, 3.15); wall.add(coil); peg(-6.2, 3.15);
+    const [CX, CZ] = phone ? [-1.15, 3.1] : [-6.2, 3.15];
+    const coil = new THREE.Group(); coil.position.set(CX, WY - .2, CZ); pb.add(coil); peg(CX, CZ);
+    if (phone) coil.scale.setScalar(.7);
     const cableMat = std({ color: 0xc4552c, roughness: .45 });
     [[0, 0], [.07, -.06]].forEach(([dx, dz]) => { const c = mesh(geo(new THREE.TorusGeometry(.42, .045, 12, 56)), cableMat); c.rotation.x = Math.PI / 2; c.position.set(dx, 0, -.4 + dz); coil.add(c); });
     gadgets.push(swinger(coil, "Click to swing the cable", { k: 9, damp: .9 }));
     // Screwdrivers, hanging handle-up from their pegs: they swing.
-    ([[0xb3361f, -5.1], [0xd39a3c, -4.8], [0x2e5a49, -4.5]] as [number, number][]).forEach(([color, x]) => {
-      const sd = new THREE.Group(); sd.position.set(x, WY - .16, 3.28); wall.add(sd);
+    ([[0xb3361f, -5.1, -.75], [0xd39a3c, -4.8, -.55], [0x2e5a49, -4.5, -.35]] as [number, number, number][]).forEach(([color, dx, px]) => {
+      const x = phone ? px : dx;
+      const sd = new THREE.Group(); sd.position.set(x, WY - .16, phone ? 3.25 : 3.28); pb.add(sd);
       const handle = mesh(geo(new THREE.CylinderGeometry(.07, .06, .42, 16)), std({ color, roughness: .4 }));
       handle.rotation.x = Math.PI / 2; handle.position.z = -.23; sd.add(handle);
       const shaft = mesh(geo(new THREE.CylinderGeometry(.018, .018, .55, 8)), std({ color: 0xbfc3c7, metalness: .9, roughness: .25 }));
@@ -1039,11 +1065,13 @@ export function buildDesk(kit: DeskKit): Desk {
     });
     // A steel rule across the bottom of the board.
     const rule = mesh(geo(new THREE.BoxGeometry(2.6, .02, .14)), std({ color: 0xc9ccd0, metalness: .85, roughness: .3 }));
-    rule.position.set(-4.4, WY - .12, 1.55); wall.add(rule); peg(-5.5, 1.66); peg(-3.3, 1.66);
+    if (phone) { rule.scale.x = .5; rule.position.set(-.7, WY - .12, 1.8); pb.add(rule); peg(-1.25, 1.91); peg(-.15, 1.91); }
+    else { rule.position.set(-4.4, WY - .12, 1.55); pb.add(rule); peg(-5.5, 1.66); peg(-3.3, 1.66); }
     // Sticky notes, in the notebook's hand: pinned at the top, they flap away from the wall.
-    ([["ship it", 0xf2d36b, -3.2, 3.05, .08], ["BLE?", 0xf0a7a0, -2.45, 2.7, -.1], ["tests!", 0xbfe3a8, -2.9, 2.2, .05]] as [string, number, number, number, number][]).forEach(([text, color, x, z, a]) => {
+    // Phones have room for two notes, lower on the smaller board.
+    ((phone ? [["ship it", 0xf2d36b, -.95, 2.3, .08], ["BLE?", 0xf0a7a0, -.35, 2.25, -.1]] : [["ship it", 0xf2d36b, -3.2, 3.05, .08], ["BLE?", 0xf0a7a0, -2.45, 2.7, -.1], ["tests!", 0xbfe3a8, -2.9, 2.2, .05]]) as [string, number, number, number, number][]).forEach(([text, color, x, z, a]) => {
       const t = tex(256, 256, (c, w, h) => { c.fillStyle = "#" + color.toString(16).padStart(6, "0"); c.fillRect(0, 0, w, h); c.fillStyle = "#2a2a3a"; c.font = `700 60px ${HAND}`; c.textAlign = "center"; c.fillText(text, w / 2, h / 2 + 20); });
-      const hinge = new THREE.Group(); hinge.position.set(x, WY - .1, z + .275); hinge.rotation.y = a; wall.add(hinge);
+      const hinge = new THREE.Group(); hinge.position.set(x, WY - .1, z + .275); hinge.rotation.y = a; pb.add(hinge);
       const flap = new THREE.Group(); hinge.add(flap);
       const note = mesh(geo(new THREE.PlaneGeometry(.55, .55)), std({ map: t, roughness: .9, side: THREE.DoubleSide }), false);
       note.rotation.x = Math.PI / 2; note.position.z = -.275; flap.add(note);
@@ -1056,14 +1084,16 @@ export function buildDesk(kit: DeskKit): Desk {
 
     // Shelf on the right, lit from underneath.
     const wood = std({ color: 0x5b3b24, roughness: .55 });
-    const shelf = mesh(geo(new THREE.BoxGeometry(6.4, .7, .09)), wood); shelf.position.set(3.9, WY - .35, 1.9); wall.add(shelf);
-    [1.2, 6.6].forEach((x) => { const b = mesh(geo(new THREE.BoxGeometry(.08, .55, .45)), std({ color: 0x1d1d1d, metalness: .6, roughness: .4 })); b.position.set(x, WY - .28, 1.65); wall.add(b); });
-    const strip = new THREE.Mesh(geo(new THREE.BoxGeometry(6, .05, .02)), new THREE.MeshBasicMaterial({ color: 0xffc48a, toneMapped: false }));
-    strip.position.set(3.9, WY - .55, 1.84); wall.add(strip);
+    // Phones: a short shelf under the clock, right of the board.
+    const SX = phone ? .45 : 3.9, SW = phone ? 2.1 : 6.4, SZ = phone ? 2.3 : 1.9;
+    const shelf = mesh(geo(new THREE.BoxGeometry(SW, .7, .09)), wood); shelf.position.set(SX, WY - .35, SZ); wall.add(shelf);
+    (phone ? [-.5, 1.4] : [1.2, 6.6]).forEach((x) => { const b = mesh(geo(new THREE.BoxGeometry(.08, .55, .45)), std({ color: 0x1d1d1d, metalness: .6, roughness: .4 })); b.position.set(x, WY - .28, SZ - .25); wall.add(b); });
+    const strip = new THREE.Mesh(geo(new THREE.BoxGeometry(SW - .4, .05, .02)), new THREE.MeshBasicMaterial({ color: 0xffc48a, toneMapped: false }));
+    strip.position.set(SX, WY - .55, SZ - .06); wall.add(strip);
     // Present from the start (at zero) so raising the wall never recompiles the lit materials.
-    const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2); stripLight.position.set(3.9, WY - 1.1, 1.6); wall.add(stripLight);
+    const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2); stripLight.position.set(SX, WY - 1.1, SZ - .3); wall.add(stripLight);
     wallRise.light = stripLight;
-    const SH = 1.95; // the shelf's top
+    const SH = SZ + .05; // the shelf's top
     // A bench scope: a click cycles what it is showing (a ring-down, a square wave, noise, a burst).
     const scopeTex = tex(512, 320, () => {});
     let trace = 0;
@@ -1085,7 +1115,8 @@ export function buildDesk(kit: DeskKit): Desk {
       scopeTex.needsUpdate = true;
     };
     drawTrace();
-    const scope = new THREE.Group(); scope.position.set(2.5, WY - .45, SH); wall.add(scope);
+    const scope = new THREE.Group(); scope.position.set(phone ? .1 : 2.5, WY - .45, SH); wall.add(scope);
+    if (phone) scope.scale.setScalar(.72);
     const scase = mesh(geo(new RoundedBoxGeometry(1.7, .62, .95, 3, .05)), std({ color: 0x3a3d40, roughness: .5, metalness: .3 })); scase.position.z = .475; scope.add(scase);
     const sscreen = new THREE.Mesh(geo(new THREE.PlaneGeometry(.95, .6)), new THREE.MeshBasicMaterial({ map: scopeTex, toneMapped: false }));
     sscreen.rotation.x = Math.PI / 2; sscreen.position.set(-.28, -.315, .52); scope.add(sscreen);
@@ -1107,6 +1138,8 @@ export function buildDesk(kit: DeskKit): Desk {
     const pcbMat = std({ color: 0x1f5a3a });
     const pcb = mesh(geo(new THREE.BoxGeometry(1.0, .03, .72)), [pcbMat, pcbMat, pcbMat, std({ map: pcbTex, roughness: .5 }), pcbMat, pcbMat]);
     pcb.rotation.x = -.28; pcb.position.set(4.35, WY - .2, SH + .38); wall.add(pcb);
+    // No room for the dev board or the antenna on a phone's shelf.
+    pcb.visible = !phone;
     const ledMat = new THREE.MeshBasicMaterial({ color: 0x3a0d08, toneMapped: false });
     const led = new THREE.Mesh(geo(new THREE.SphereGeometry(.035, 12, 8)), ledMat); led.position.set(.38, -.03, .22); pcb.add(led);
     let blink = 0;
@@ -1116,14 +1149,14 @@ export function buildDesk(kit: DeskKit): Desk {
       update(dt) { blink = Math.max(0, blink - dt); ledMat.color.setHex(blink > 0 && Math.floor(blink * 6) % 2 === 0 ? 0xff3b1f : 0x3a0d08); return blink > 0; },
     });
     // An antenna on a small base: it springs side to side.
-    const abase = mesh(geo(new THREE.BoxGeometry(.32, .32, .14)), std({ color: 0x222222, roughness: .5 })); abase.position.set(5.3, WY - .4, SH + .07); wall.add(abase);
-    const mast = new THREE.Group(); mast.position.set(5.3, WY - .4, SH + .14); wall.add(mast);
+    const abase = mesh(geo(new THREE.BoxGeometry(.32, .32, .14)), std({ color: 0x222222, roughness: .5 })); abase.position.set(5.3, WY - .4, SH + .07); wall.add(abase); abase.visible = !phone;
+    const mast = new THREE.Group(); mast.position.set(5.3, WY - .4, SH + .14); wall.add(mast); mast.visible = !phone;
     const rod = mesh(geo(new THREE.CylinderGeometry(.014, .02, 1.3, 10)), std({ color: 0x1a1a1a, roughness: .4 })); rod.rotation.x = Math.PI / 2; rod.position.z = .65; mast.add(rod);
     const tip = mesh(geo(new THREE.SphereGeometry(.035, 12, 8)), std({ color: 0x1a1a1a, roughness: .4 })); tip.position.z = 1.3; mast.add(tip);
     gadgets.push(swinger(mast, "Click to twang it", { k: 60, damp: 1.4, kick: 7 }));
     // A plant: its leaves sway when touched.
-    const pot = mesh(geo(new THREE.CylinderGeometry(.2, .15, .34, 24)), std({ color: 0xc46f35, roughness: .7 })); pot.rotation.x = Math.PI / 2; pot.position.set(6.2, WY - .4, SH + .17); wall.add(pot);
-    const crown = new THREE.Group(); crown.position.set(6.2, WY - .4, SH + .32); wall.add(crown);
+    const pot = mesh(geo(new THREE.CylinderGeometry(.2, .15, .34, 24)), std({ color: 0xc46f35, roughness: .7 })); pot.rotation.x = Math.PI / 2; pot.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .17); wall.add(pot);
+    const crown = new THREE.Group(); crown.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .32); wall.add(crown);
     const leafMat = std({ color: 0x4d6b36, roughness: .7 });
     for (let i = 0; i < 7; i++) {
       const leaf = mesh(geo(new THREE.SphereGeometry(.16, 12, 8)), leafMat); leaf.scale.set(.55, .55, 1.6);
@@ -1132,7 +1165,7 @@ export function buildDesk(kit: DeskKit): Desk {
     }
     gadgets.push(swinger(crown, "Click to ruffle it", { k: 22, damp: 2, kick: 3 }));
     // A clock over the middle, telling the real time; a click sends its hands round once.
-    const clock = new THREE.Group(); clock.position.set(.9, WY - .08, 2.95); clock.rotation.x = Math.PI / 2; wall.add(clock);
+    const clock = new THREE.Group(); clock.position.set(phone ? -1.1 : .9, WY - .08, phone ? 3.35 : 2.95); clock.rotation.x = Math.PI / 2; wall.add(clock);
     const dial = tex(256, 256, (x, w) => {
       x.fillStyle = "#fbf6ec"; x.beginPath(); x.arc(w / 2, w / 2, w / 2, 0, Math.PI * 2); x.fill();
       x.fillStyle = "#2a2420";
@@ -1166,7 +1199,8 @@ export function buildDesk(kit: DeskKit): Desk {
     if (wallRise.v < .95) return null;
     raycaster.ray.copy(ray);
     let best: Gadget | null = null, bestD = Infinity;
-    for (const g of gadgets) { const hit = raycaster.intersectObject(g.obj, true)[0]; if (hit && hit.distance < bestD) { bestD = hit.distance; best = g; } }
+    const shown = (o: THREE.Object3D | null): boolean => !o || (o.visible && shown(o.parent));
+    for (const g of gadgets) { if (!shown(g.obj)) continue; const hit = raycaster.intersectObject(g.obj, true)[0]; if (hit && hit.distance < bestD) { bestD = hit.distance; best = g; } }
     return best;
   };
   let hovered: Gadget | null = null;
@@ -1325,8 +1359,8 @@ export function buildDesk(kit: DeskKit): Desk {
       if (Math.abs(rise - wallRise.v) < .0005) return;
       wallRise.v = rise;
       wall.visible = rise > .002;
-      // It rises from below the table, the table hiding it until it clears the edge.
-      wall.position.z = (rise - 1) * 6;
+      // The wall stands still; only the camera moves. It is simply there from the moment the camera
+      // starts to come down (from straight overhead it would only block the view, so it is off then).
       if (wallRise.light) wallRise.light.intensity = rise * 9;
       for (const g of gadgets) g.update(0);
     },

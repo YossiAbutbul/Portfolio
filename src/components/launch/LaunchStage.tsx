@@ -38,11 +38,17 @@ export default function LaunchStage() {
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
       setReady(true);
     };
-    // Desktop loads straight away, behind the loading screen, after the first paint. Phones wait for
-    // the first scroll or touch: a phone's first seconds belong to the text, not a 3D scene.
+    // Desktop loads straight away, behind the loading screen, after the first paint. Phones let the
+    // text paint first and load once the browser is idle (within about a second at most), so the desk
+    // is there on arrival rather than only after a first touch; a scroll or touch before then hurries it.
     const phone = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
-    const idle = phone ? 0 : window.setTimeout(() => void load(), 0);
-    const hurry = () => { clearTimeout(idle); void load(); };
+    // Safari has no requestIdleCallback: a short timeout stands in for it.
+    const hasIdle = "requestIdleCallback" in window;
+    const idle = !phone ? window.setTimeout(() => void load(), 0)
+      : hasIdle ? window.requestIdleCallback(() => void load(), { timeout: 1200 })
+      : window.setTimeout(() => void load(), 400);
+    const cancelIdle = () => { if (phone && hasIdle) window.cancelIdleCallback(idle); else clearTimeout(idle); };
+    const hurry = () => { cancelIdle(); void load(); };
     const once = { once: true, passive: true } as const;
     let started = false;
     const start = () => { if (!started) { started = true; hurry(); } };
@@ -54,7 +60,7 @@ export default function LaunchStage() {
 
     return () => {
       abort.abort();
-      clearTimeout(idle);
+      cancelIdle();
       window.removeEventListener("scroll", start);
       window.removeEventListener("pointerdown", start);
       window.removeEventListener("launch:press-device", press);

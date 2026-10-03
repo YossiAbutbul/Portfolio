@@ -17,11 +17,13 @@ export default function LaunchHeroScroll() {
     const brand = document.querySelector<HTMLElement>("[data-brand]");
     if (!name || !brand) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Matches Nav's switch to initials.
+    const phone = window.matchMedia("(max-width: 720px)");
     brand.dataset.dock = "";
 
     /* ---- Text that leaves line by line: each line gets a clipping box with the words inside. ---- */
     const card = document.querySelector<HTMLElement>("#top [data-card]");
-    const cue = document.querySelector<HTMLElement>("#top a[href='#intro']");
+    const cue = document.querySelector<HTMLElement>("#top [data-cue]");
     const blocks = reduce ? [] : [...document.querySelectorAll<HTMLElement>("#top [data-lines]")].map((el) => ({ el, text: el.textContent ?? "", lines: [] as HTMLElement[] }));
     const split = () => {
       for (const b of blocks) {
@@ -48,10 +50,13 @@ export default function LaunchHeroScroll() {
     let nameLeft = 0, nameMid = 0, toLeft = 0, toMid = 0, k = 1;
     const measure = () => {
       name.style.translate = name.style.scale = "";
-      const n = name.getBoundingClientRect(), b = brand.getBoundingClientRect();
+      // The target is the bar's name text itself (not its pill): the full name, or the initials on
+      // small screens, whichever is showing.
+      const text = [...brand.querySelectorAll<HTMLElement>("[data-brand-text]")].find((s) => s.offsetWidth > 0) ?? brand;
+      const n = name.getBoundingClientRect(), b = text.getBoundingClientRect();
       nameLeft = n.left; nameMid = n.top + scrollY + n.height / 2;
       toLeft = b.left; toMid = b.top + b.height / 2;
-      k = parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(name).fontSize);
+      k = parseFloat(getComputedStyle(text).fontSize) / parseFloat(getComputedStyle(name).fontSize);
       split();
     };
 
@@ -63,19 +68,27 @@ export default function LaunchHeroScroll() {
       const p = clamp(scrollY / (innerHeight * .45));
       if (reduce) { show(brand, p >= 1 ? 1 : 0); return; }
       const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      // Where the name's centre should be on screen: from where it starts toward the bar.
-      const mid = nameMid + (toMid - nameMid) * e;
-      name.style.translate = `${(toLeft - nameLeft) * e}px ${mid - (nameMid - scrollY)}px`;
-      const sc = 1 + (k - 1) * e;
-      name.style.scale = String(sc);
-      // The shadow is scaled with the name, so set it so that on screen it moves from the hero's soft
-      // glow to the bar's exact shadow; at the hand-over the two are pixel for pixel the same.
-      const sy = 2 + (1 - 2) * e, blur = 30 + (14 - 30) * e, a = .25 + (.45 - .25) * e;
-      name.style.textShadow = `0 ${(sy / sc).toFixed(2)}px ${(blur / sc).toFixed(2)}px rgba(0,0,0,${a.toFixed(3)})`;
-      // No cross-fade: two copies half visible at once read as a smudge. At the end of the flight the
-      // name is exactly the bar's link, so one simply replaces the other.
-      const docked = p >= 1;
-      show(name, docked ? 0 : 1); show(brand, docked ? 1 : 0);
+      if (phone.matches) {
+        // Phones: the bar shows initials, so the name does not fly into it. It drifts up and fades as
+        // the hero leaves, and the initials' pill fades in after it.
+        name.style.translate = `0 ${-e * innerHeight * .12}px`; name.style.scale = ""; name.style.textShadow = "";
+        name.style.opacity = String(1 - clamp(p / .7)); name.style.visibility = p >= .7 ? "hidden" : "";
+        const b = clamp((p - .55) / .45); brand.style.opacity = String(b); brand.style.visibility = b < .02 ? "hidden" : "";
+      } else {
+        // Where the name's centre should be on screen: from where it starts toward the bar.
+        const mid = nameMid + (toMid - nameMid) * e;
+        name.style.translate = `${(toLeft - nameLeft) * e}px ${mid - (nameMid - scrollY)}px`;
+        const sc = 1 + (k - 1) * e;
+        name.style.scale = String(sc);
+        // The shadow is scaled with the name, so set it so that on screen it moves from the hero's soft
+        // glow to the bar's exact shadow; at the hand-over the two are pixel for pixel the same.
+        const sy = 2 + (1 - 2) * e, blur = 30 + (14 - 30) * e, a = .25 + (.45 - .25) * e;
+        name.style.textShadow = `0 ${(sy / sc).toFixed(2)}px ${(blur / sc).toFixed(2)}px rgba(0,0,0,${a.toFixed(3)})`;
+        // No cross-fade: two copies half visible at once read as a smudge. At the end of the flight the
+        // name is exactly the bar's link, so one simply replaces the other.
+        const docked = p >= 1;
+        show(name, docked ? 0 : 1); show(brand, docked ? 1 : 0);
+      }
       // Lines drop out of their masks in turn: the card's headline first, then its sentence.
       let i = 0;
       for (const b of blocks) for (const line of b.lines) {

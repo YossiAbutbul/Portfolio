@@ -208,7 +208,7 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
     <section ref={section} className={styles.pin} id="work" aria-labelledby="work-title" style={{ ["--cards" as string]: projects.length }}>
       <div className={styles.frame}>
         <h2 id="work-title" className={styles.head}>
-          <span>Six projects,</span> all shipped
+          Work
         </h2>
 
         <div className={styles.items}>

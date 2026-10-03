@@ -323,7 +323,7 @@
 
 /* Phones: the window across the top, the label underneath. */
 @media (max-width: 860px) {
-  .head { top: 8svh; }
+  .head { top: calc(env(safe-area-inset-top, 0px) + 76px); }
   .window { --w: auto; left: var(--gutter); right: var(--gutter); top: 15svh; translate: none; }
   .tab { max-width: 9rem; }
   .badge { display: none !important; }

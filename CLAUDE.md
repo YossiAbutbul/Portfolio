@@ -21,7 +21,7 @@ be usable in the first ten seconds before it is impressive.
   choreography; loaded with a dynamic import) and `desk.ts` (the desk set: wood, mat, mug, pencil,
   the 3D notebook with its More work mode and hologram, and the wall of playable gadgets that rises
   only for More work). `LaunchStage` (fixed backdrop with drifting glows + canvas, loads the scene
-  when idle on desktop and on first scroll/touch on phones), and one component per beat in page
+  right after first paint on desktop and when the browser is idle on phones), and one component per beat in page
   order: `LaunchIntro` (desk hero + spotlight), `LaunchHeroScroll`, `LaunchShips`, `LaunchBrowser`
   (projects in a browser window, one flick per project), `LaunchNotebook` (More work: caption with
   links, drawn fallback book, and the projects as JSON in `data-projects` for the scene),
@@ -29,7 +29,7 @@ be usable in the first ten seconds before it is impressive.
   `LaunchToast`. `projectMedia.ts` holds the demo videos/posters. Components talk to the scene
   through window events (`launch:press-device`, `launch:press`, `launch:say`) and data attributes
   (`data-fade`, `data-projects`), not refs. Design reference: `design/launch-prototype/`.
-- The scene's beats are found by id (`intro`, `ships`, `work`, `notebook`, `changelog`); renaming
+- The scene's beats are found by id (`intro`, `ships`, `work`, `more-work`, `experience`); renaming
   or removing a section id changes the choreography.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),

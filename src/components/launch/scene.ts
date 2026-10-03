@@ -237,7 +237,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   let moreList: MoreWork[] | null = null;
   const moreWork = () => {
     if (!moreList) {
-      try { moreList = JSON.parse(byId("notebook")?.dataset.projects ?? "[]") as MoreWork[]; } catch { moreList = []; }
+      try { moreList = JSON.parse(byId("more-work")?.dataset.projects ?? "[]") as MoreWork[]; } catch { moreList = []; }
       deskSet.setMoreWork(moreList);
     }
     return moreList;
@@ -255,7 +255,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   addEventListener("pointermove", onPointer, { passive: true });
 
   function choreograph() {
-    const intro = byId("intro"), ships = byId("ships"), work = byId("work"), book = byId("notebook"), after = byId("changelog");
+    const intro = byId("intro"), ships = byId("ships"), work = byId("work"), book = byId("more-work"), after = byId("experience");
     const vh = innerHeight, mob = small(), base = mob ? .72 : 1;
     const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1, spin: 0, low: 0, crane: 0 };
     let backdrop: "desk" | "void" = "desk";
@@ -377,10 +377,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // and shade everything under it.
     veil.visible = cur.veil > .003 && cur.veil < .985;
     desk.rotation.z = cur.spin;
-    // The dark has to cover everything on the desk evenly, the tall mug included. Desktop draws the
-    // device in its own pass on top, so the veil can sit above the mug; elsewhere it stays just under
-    // the device as it rises, so the device itself never goes under it.
-    veil.position.z = composer ? 2.15 : clamp(cur.z - FRONT * cur.s - .05, .3, 2.15);
+    // The dark has to cover everything on the desk evenly, the tall mug and the spoon standing out of
+    // it included: the device is drawn in its own pass on top (every screen), so the veil can sit
+    // above all of them.
+    veil.position.z = 3.4;
     spot.intensity = cur.spot * 90; sun.intensity = SUN * (1 - cur.veil * .8);
     sunExtras.forEach((l) => { l.visible = desk.visible; });
     if (paneLight) paneLight.intensity = 115 * (1 - cur.low);
@@ -420,6 +420,17 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       camera.layers.disable(DEVICE_LAYER);
       composer.render();
       camera.layers.enable(DEVICE_LAYER);
+    } else if (desk.visible) {
+      // Phones: the desk (and the veil) first, then the device alone on top, depth cleared between.
+      camera.layers.disable(DEVICE_LAYER);
+      renderer.render(scene, camera);
+      const mask = camera.layers.mask, auto = renderer.autoClear, shadows = renderer.shadowMap.autoUpdate;
+      camera.layers.mask = phoneDeviceMask.mask;
+      renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
+      renderer.clearDepth();
+      renderer.render(scene, camera);
+      renderer.autoClear = auto; renderer.shadowMap.autoUpdate = shadows;
+      camera.layers.mask = mask; camera.layers.enable(DEVICE_LAYER);
     } else renderer.render(scene, camera);
     // Keep going while anything is still easing, the device is floating, or a gag is animating;
     // otherwise stop until scroll, pointer or resize wakes it.
@@ -542,6 +553,19 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // Compile every material up front, off the main thread where the driver allows it, so the first
   // frame does not stall on shader compilation.
   hooks.onProgress?.(.75);
+  /* The device lives on layer 1 on every screen, so it can be drawn on its own, on top of the desk:
+     then the veil can sit above everything on the desk (the tall mug included) and darken it evenly,
+     while the device rising out of it stays bright. The lights and shadow cameras include layer 1, so
+     it is lit and casts its shadow exactly as before. Desktop does this inside its composer; phones
+     draw the two passes directly (see frame()). */
+  device.traverse((o) => o.layers.set(DEVICE_LAYER));
+  camera.layers.enable(DEVICE_LAYER);
+  scene.traverse((o) => {
+    if (!(o as THREE.Light).isLight) return;
+    o.layers.enable(DEVICE_LAYER);
+    (o as THREE.Light & { shadow?: THREE.LightShadow }).shadow?.camera.layers.enable(DEVICE_LAYER);
+  });
+  const phoneDeviceMask = new THREE.Layers(); phoneDeviceMask.set(DEVICE_LAYER);
   // Desktop: ambient occlusion so things darken where they meet the mat, and a shallow depth of field
   // focused on the device. The dark scenes draw straight to the screen and keep their transparency.
   if (!small()) {
@@ -568,13 +592,6 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
        the device stays perfectly sharp, with no halo. It lives on layer 1. The first passes leave
        layer 1 out (frame() turns it off around the composer), but the shadow cameras and the lights
        include it, so it still casts its shadow on the mat and is lit exactly as before. */
-    device.traverse((o) => o.layers.set(DEVICE_LAYER));
-    camera.layers.enable(DEVICE_LAYER);
-    scene.traverse((o) => {
-      if (!(o as THREE.Light).isLight) return;
-      o.layers.enable(DEVICE_LAYER);
-      (o as THREE.Light & { shadow?: THREE.LightShadow }).shadow?.camera.layers.enable(DEVICE_LAYER);
-    });
     const deviceCam = camera.clone();
     class DevicePass extends RenderPass {
       render(r: THREE.WebGLRenderer, write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget, dt: number, mask: boolean) {

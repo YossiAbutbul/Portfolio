@@ -27,7 +27,7 @@ export default function Home() {
       <LaunchShips />
       <LaunchBrowser projects={FEATURED_PROJECTS} />
       <LaunchNotebook projects={OTHER_PROJECTS} />
-      <LaunchEditorial featured={FEATURED_PROJECTS} />
+      <LaunchEditorial />
       <LaunchContact />
       <LaunchToast />
     </div>
