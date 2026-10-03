@@ -122,6 +122,9 @@
 .tile:not([data-open]) .tileMore {
   grid-template-rows: 0fr;
   opacity: 0;
+  /* Out of the accessibility tree too while it is closed (after the fade, so it does not blink). */
+  visibility: hidden;
+  transition: grid-template-rows 0.6s var(--ease-out), opacity 0.4s var(--ease-out), visibility 0s linear 0.4s;
 }
 
 .tileMore h3 {
@@ -199,7 +202,7 @@
   .tileHit { gap: 2rem; cursor: default; }
   .tile:not([data-open]) .tileBig { transform: none; }
   /* Stacked, there is room for everything: every tile shows its role and detail, nothing to open. */
-  .tile:not([data-open]) .tileMore { grid-template-rows: 1fr; opacity: 1; }
+  .tile:not([data-open]) .tileMore { grid-template-rows: 1fr; opacity: 1; visibility: visible; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -362,7 +365,7 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  opacity: 0.6;
+  /* Full strength: at this size anything fainter falls below AA on the red and cork panels. */
 }
 
 /* The panel's mark, big and solid, standing over the name; it lifts when the panel is pointed at. */
@@ -406,7 +409,6 @@
   font-weight: 500;
   /* Breaks only where it must (a long address), never in the middle of an ordinary word. */
   overflow-wrap: anywhere;
-  opacity: 0.85;
 }
 
 .footer {

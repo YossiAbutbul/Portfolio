@@ -54,17 +54,17 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "og.png",
+        url: "og.jpg",
         width: 1200,
         height: 630,
-        alt: "Yossi Abutbul",
+        alt: "The name Yossi Abutbul over a desk with a handheld device, an open notebook, a pencil and a mug",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Yossi Abutbul",
-    images: ["og.png"],
+    images: ["og.jpg"],
   },
 };
 
@@ -80,7 +80,18 @@ export default function RootLayout({
       lang="en"
       className={`${figtree.variable} ${caveat.variable} ${jetbrains.variable}`}
       data-theme="dark"
+      // The head script below may mark the document before React hydrates.
+      suppressHydrationWarning
     >
+      <head>
+        {/* The loading sheet plays once per tab: a reload (or coming back from a project page) skips
+            it. Read before first paint so the sheet never flashes. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("launch:seen"))document.documentElement.setAttribute("data-seen","")}catch(e){}`,
+          }}
+        />
+      </head>
       <body>
         <SkipToContent />
         <SmoothScroll>

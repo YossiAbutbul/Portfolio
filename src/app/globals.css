@@ -141,3 +141,88 @@ button {
     scroll-behavior: auto !important;
   }
 }
+
+/* The 404 page. Kept here rather than in a CSS module: Next preloads a not-found module's
+   stylesheet on every page, where it then goes unused (a console warning on every load). */
+.nf-page {
+  min-height: calc(100dvh - 8rem);
+  display: flex;
+  align-items: center;
+}
+
+.nf-inner {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: 7rem;
+  padding-bottom: var(--space-8);
+  justify-items: start;
+}
+
+.nf-stamp {
+  color: var(--ink-muted);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--hairline-w) solid var(--rule-strong);
+  width: 100%;
+}
+
+.nf-code {
+  font-size: var(--step-6);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+.nf-headline {
+  font-size: var(--step-2);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.nf-sub {
+  max-width: 44ch;
+  color: var(--ink-mid);
+  line-height: 1.55;
+}
+
+.nf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.nf-primary,
+.nf-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.8rem 1.2rem;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: var(--hairline-w) solid var(--ink);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.nf-primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.nf-primary:hover,
+.nf-primary:focus-visible {
+  background: transparent;
+  color: var(--ink);
+}
+
+.nf-ghost {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}
+
+.nf-ghost:hover,
+.nf-ghost:focus-visible {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}

@@ -33,9 +33,12 @@ be usable in the first ten seconds before it is impressive.
   or removing a section id changes the choreography.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
-  `PageTransition`, `SkipToContent`. There is no intro loader; the page must be readable at first paint.
+  `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) covers the
+  page on every load until the scene's first frame is ready; on a reload in the same tab
+  (`sessionStorage` `launch:seen`, read by a head script in the root layout) it skips the extra beat
+  after the sketch finishes. Reduced motion and no-JS never see it.
 - `content/projects.ts` project data; `src/types/project.ts` its type.
-- `public/` CV PDF, project screenshots/posters, `og.png`.
+- `public/` CV PDF, project screenshots/posters, `og.jpg` (1200 x 630, the hero desk with the name).
 
 ## Commands
 
@@ -89,6 +92,12 @@ be usable in the first ten seconds before it is impressive.
 - Images: explicit width/height, responsive `sizes`, lazy below the fold. Prefer AVIF/WebP.
 - Unreferenced files in `public/` still bloat the repo; delete assets for cut projects.
 - Check Lighthouse (LCP, CLS, INP) and the JS chunk sizes after any motion or asset change.
+- No shader may compile mid-scroll. three builds one variant per material for each render target and
+  each set of visible lights, so `scene.ts` precompiles every state the page shows (`compileFor`:
+  desk, dark, wall, wall+holo). Toggling a light's `visible`, adding a light, or drawing to a new
+  target adds a state: add it there. Frames are held (`ready`) until the desk's set has compiled.
+- Background work goes through `idleQueue` / `afterOpening`; never re-request an idle callback with a
+  fresh timeout (the hero's loop keeps idle slots short and the job starves).
 
 ## Accessibility requirements
 

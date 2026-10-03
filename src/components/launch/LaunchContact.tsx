@@ -53,7 +53,7 @@ export default function LaunchContact() {
         </div>
         <ul className={styles.panels}>
           <li>
-            <button className={styles.panel} type="button" onClick={copy} aria-label={`Copy email address ${EMAIL}`}>
+            <button className={styles.panel} type="button" onClick={copy}>
               {top("01", copied ? "Copied ✓" : "Copy address")}
               <span><Mark kind="mail" /><span className={styles.panelWord}>Email</span><span className={styles.panelDetail}>{EMAIL}</span></span>
             </button>

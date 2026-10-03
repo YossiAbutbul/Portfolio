@@ -20,7 +20,7 @@ export default function LaunchIntro() {
         <span className={styles.scroll} data-cue aria-hidden="true">
           <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="11" />
-            <g className={styles.cueArrow}><path d="M12 7v9" /><path d="m8 12.5 4 4 4-4" /></g>
+            <g className={styles.cueArrow}><path d="M12 7v9" /><path d="m8 12 4 4 4-4" /></g>
           </svg>
         </span>
       </section>

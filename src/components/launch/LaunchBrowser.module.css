@@ -260,7 +260,8 @@
   padding: 0.15rem 0.6rem;
   border-radius: 999px;
   background: var(--mark-soft);
-  color: var(--mark);
+  /* A touch lighter than the cork itself, for AA at this size on the dark bar. */
+  color: color-mix(in srgb, var(--mark) 85%, var(--ink));
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;

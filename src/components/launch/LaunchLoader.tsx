@@ -5,7 +5,9 @@ import styles from "./LaunchLoader.module.css";
 
 /** Held at least this long so the sketch gets to finish; never longer than MAX_MS. */
 const MIN_MS = 2300;
-const MAX_MS = 6000;
+/** On a reload in the same tab: just long enough for the sketch to finish drawing. */
+const MIN_SEEN_MS = 1800;
+const MAX_MS = 12000;
 
 /**
  * A blueprint of the device, drawn on an olive sheet while the 3D scene loads: dashed outlines,
@@ -23,6 +25,9 @@ export default function LaunchLoader() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // Reduced motion: the sheet is hidden by CSS and the page is never held.
     if (reduce) return;
+    // Seen already in this tab (a reload): the sketch still plays, but the sheet lifts as soon as it is
+    // drawn and the desk is ready (quick from the browser's caches), without the extra beat.
+    const minMs = root.hasAttribute("data-seen") ? MIN_SEEN_MS : MIN_MS;
 
     const start = performance.now();
     let target = 0, shown = 0, frame = 0, left = false, last = start;
@@ -36,6 +41,7 @@ export default function LaunchLoader() {
 
     const leave = () => {
       if (left) return; left = true;
+      try { sessionStorage.setItem("launch:seen", "1"); } catch {}
       // Stop holding the page the moment the sheet starts to lift.
       clearInterval(muzzle);
       root.style.overflow = overflowWas;
@@ -53,7 +59,7 @@ export default function LaunchLoader() {
       shown += (goal - shown) * (1 - Math.exp(-dt * 6));
       if (goal >= 1 && shown > .995) shown = 1;
       draw(shown);
-      if ((shown >= 1 && elapsed >= MIN_MS) || elapsed >= MAX_MS) { draw(1); leave(); return; }
+      if ((shown >= 1 && elapsed >= minMs) || elapsed >= MAX_MS) { draw(1); leave(); return; }
       frame = requestAnimationFrame(tick);
     };
     function draw(p: number) {

@@ -134,7 +134,7 @@ export default function LaunchNotebook({ projects }: { projects: Project[] }) {
     <>
       <span className={styles.date}>also shipped</span>
       <h3 className={`${styles.title} ${styles.big}`}>more work</h3>
-      <p className={styles.note}>Smaller, older, or still going. Each one runs, and each one taught me something the six above use.</p>
+      <p className={styles.note}>Smaller, older, or still going. Each one runs, and each one taught me something the ones above use.</p>
       <span className={styles.arrow} aria-hidden="true">turn the page ↷</span>
     </>
   ) : <Notes project={projects[k - 1]} n={k} />;

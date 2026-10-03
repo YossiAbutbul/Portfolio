@@ -188,7 +188,6 @@
   width: 0;
   height: 0;
   pointer-events: none;
-  color: var(--cream);
   opacity: 0;
   transition: opacity 0.2s var(--ease-out);
 }
@@ -202,23 +201,31 @@
   height: 30px;
   box-sizing: border-box;
   border-radius: 50%;
-  border: 1.5px dotted currentColor;
-  filter: drop-shadow(0 1px 6px rgba(0, 0, 0, 0.45));
-  scale: 0.4;
+  border: 1.5px solid rgba(23, 17, 14, 0.7);
+  background: rgba(242, 230, 212, 0.9);
+  scale: 0.25;
   transition: scale 0.25s var(--ease-out);
 }
 
+/* A paper label: cream card, dark ink, tilted a touch, like a tag lying on the desk, so it reads over
+   light things (the eraser, the pages) as well as dark ones. */
 .hint span {
   position: absolute;
   left: 24px;
   top: 0;
   translate: -6px -50%;
+  padding: 0.36rem 0.6rem;
+  border-radius: 3px;
+  background: var(--cream);
+  color: var(--paper);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(0, 0, 0, 0.15);
+  rotate: -2deg;
   white-space: nowrap;
+  font-family: var(--font-mono);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
   transition: translate 0.25s var(--ease-out);
 }
 
@@ -227,53 +234,9 @@
 }
 
 .hint[data-on="true"]::before {
-  scale: 1;
+  scale: 0.45;
 }
 
 .hint[data-on="true"] span {
   translate: 0 -50%;
-}
-
-/* Three soft wisps that rise off the rim, widen, drift and fade, out of step with each other. */
-.steam i {
-  position: absolute;
-  left: calc(var(--steam-w, 120px) * -0.22);
-  bottom: 0;
-  width: calc(var(--steam-w, 120px) * 0.44);
-  height: calc(var(--steam-w, 120px) * 1.1);
-  border-radius: 50%;
-  background: radial-gradient(50% 50% at 50% 70%, rgba(255, 248, 238, 0.32), rgba(255, 248, 238, 0) 70%);
-  filter: blur(calc(var(--steam-w, 120px) * 0.06));
-  opacity: 0;
-  transform-origin: 50% 100%;
-  animation: steam 4.8s ease-in infinite;
-  will-change: transform, opacity;
-}
-
-.steam i:nth-child(2) {
-  left: calc(var(--steam-w, 120px) * -0.38);
-  animation-delay: -1.6s;
-  animation-duration: 5.4s;
-}
-
-.steam i:nth-child(3) {
-  left: calc(var(--steam-w, 120px) * -0.06);
-  animation-delay: -3.2s;
-  animation-duration: 5s;
-}
-
-@keyframes steam {
-  0% { opacity: 0; transform: translate3d(0, 0, 0) scale(0.55, 0.5); }
-  25% { opacity: 0.8; }
-  60% { opacity: 0.45; transform: translate3d(8%, -45%, 0) scale(0.9, 0.95) rotate(-4deg); }
-  100% { opacity: 0; transform: translate3d(-12%, -95%, 0) scale(1.3, 1.25) rotate(6deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .steam i { animation: none; opacity: 0.35; transform: translate3d(0, -30%, 0) scale(0.9); }
-  .backdrop::before,
-  .backdrop::after,
-  .canvas {
-    transition: none;
-  }
 }

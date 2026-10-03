@@ -35,11 +35,17 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   let renderer: THREE.WebGLRenderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" }); }
   catch { return null; }
+  // Checking every shader for errors makes the browser finish compiling it on the spot (the main
+  // thread waits); in production the parallel compile below is left to finish in the background.
+  if (process.env.NODE_ENV === "production") renderer.debug.checkShaderErrors = false;
 
   // Loop state lives up here: resize() and the font callback can call kick() during setup.
   let composer: { render: () => void; setSize: (w: number, h: number) => void; setPixelRatio: (r: number) => void } | null = null;
   let bokeh: { uniforms: { focus: { value: number }; aperture: { value: number }; maxblur: { value: number } } } | null = null;
   let last = performance.now(), time = 0, lastBackdrop = "", raf = 0, idleFrames = 0, disposed = false;
+  // No frame until every shader has compiled: a frame drawn mid-setup (the cursor blink, a resize, the
+  // fonts arriving all ask for one) would compile them all synchronously and freeze the page.
+  let ready = false;
   const small = () => innerWidth <= 720;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   // next/font hashes family names, so the canvas has to ask the page what they are.
@@ -136,9 +142,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
      moment. afterOpening holds it until the page has been revealed and the entrance has played. */
   const idleQueue = (job: () => boolean) => {
     if (typeof requestIdleCallback !== "function") { const tick = () => { if (!disposed && job()) setTimeout(tick, 50); }; setTimeout(tick, 50); return; }
+    // The wait is counted from when the job was queued: asking again with a fresh timeout would starve
+    // it for good while the desk animates (every idle moment between frames is short).
+    let since = performance.now();
     const tick = (d: IdleDeadline) => {
       if (disposed) return;
-      if (d.timeRemaining() < 10 && !d.didTimeout) { requestIdleCallback(tick, { timeout: 2500 }); return; }
+      if (d.timeRemaining() < 10 && !d.didTimeout && performance.now() - since < 2500) { requestIdleCallback(tick, { timeout: 2500 }); return; }
+      since = performance.now();
       if (job()) requestIdleCallback(tick, { timeout: 2500 });
     };
     requestIdleCallback(tick, { timeout: 2500 });
@@ -207,7 +217,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     ["BSc\nSTUDENT", "COMPUTER SCIENCE  ·  THE OPEN UNIVERSITY"],
     ["INOVATION\nWITH AI", "AUTOMATE MANUAL PROCESSES"],
     ["END\nTO END", "UI  ·  API  ·  DATA  ·  DEVICES"],
-    ["FULL\nSTACK", "PYTHON  ·  FASTAPI  ·  REACTR  ·  C  ·  FIREBASE"],
+    ["FULL\nSTACK", "PYTHON  ·  FASTAPI  ·  REACT  ·  TS"],
     ["RF &\nWIRELESS", "BLE  ·  LORA  ·  LTE  ·  SPECTRUM"],
   ];
   const scr = { cursor: true };
@@ -332,12 +342,14 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     if (rect(after).top < vh * .6) t.show = 0;
     ([[intro, introOn], [ships, shipsOn]] as const).forEach(([beat, on]) =>
       beat?.querySelectorAll<HTMLElement>("[data-fade]").forEach((el) => el.toggleAttribute("data-off", !on)));
-    // The giant word crosses the ships beat from right to left, behind the device.
+    // The giant word crosses the ships beat from right to left, behind the device. It travels past its
+    // own box and then some: the tight letter-spacing lets the last glyph (the full stop) hang outside
+    // the box, so stopping at the box's width left the dot on screen at the left edge.
     const word = byId("launch-word");
     if (word) {
       const r = rect(ships), onScreen = r.top < vh && r.bottom > 0;
       word.style.opacity = onScreen ? "1" : "0";
-      if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth, prog(ships))}px, 0, 0)`;
+      if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth - word.offsetHeight * .35, prog(ships))}px, 0, 0)`;
     }
     // Reduced motion lists More work as a page instead; the desk's notebook stays put.
     deskSet.book(bookOn && !reduce.matches ? book_ : null);
@@ -457,7 +469,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     if (idleFrames < 30 && !document.hidden) raf = requestAnimationFrame(frame);
   }
   // Waking from idle restarts the clock; a kick while already running must not, or dt collapses to 0.
-  function kick() { if (!raf && !disposed) { if (idleFrames >= 30) last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function kick() { if (!raf && !disposed && ready) { if (idleFrames >= 30) last = performance.now(); raf = requestAnimationFrame(frame); } }
   addEventListener("scroll", kick, { passive: true });
 
   /* ---------- Pointer hint ---------- */
@@ -558,7 +570,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // The entrance plays as the loading sheet lifts (or as soon as the scene is ready, if the sheet has
   // already gone or is on its way out). Reduced motion and snapshot mode get the finished desk.
   const onRevealed = () => {
-    if (introAt >= 0 || matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.hasAttribute("data-snap")) return;
+    if (introAt >= 0 || reduce.matches || document.documentElement.hasAttribute("data-snap")) return;
     introAt = performance.now(); deskSet.enter(); kick();
   };
   window.addEventListener("launch:revealed", onRevealed);
@@ -586,6 +598,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const phoneDeviceMask = new THREE.Layers(); phoneDeviceMask.set(DEVICE_LAYER);
   // Desktop: ambient occlusion so things darken where they meet the mat, and a shallow depth of field
   // focused on the device. The dark scenes draw straight to the screen and keep their transparency.
+  const passMaterials = new THREE.Scene();
+  let composerTarget: THREE.WebGLRenderTarget | null = null;
   if (!small()) {
     const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { BokehPass }, { OutputPass }] = await Promise.all([
       import("three/addons/postprocessing/EffectComposer.js"),
@@ -597,7 +611,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     if (signal?.aborted) return abandon();
     const buffer = renderer.getDrawingBufferSize(new THREE.Vector2());
     const target = new THREE.WebGLRenderTarget(buffer.x, buffer.y, { type: THREE.HalfFloatType, samples: 4 });
-    const c = new EffectComposer(renderer, target);
+    const c = new EffectComposer(renderer, target); composerTarget = target;
     c.addPass(new RenderPass(scene, camera));
     const gtao = new GTAOPass(scene, camera, buffer.x, buffer.y);
     gtao.updateGtaoMaterial({ radius: .5, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 16 });
@@ -625,14 +639,50 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     c.addPass(new OutputPass());
     c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);
     composer = c; bokeh = b as unknown as typeof bokeh;
+    // The passes' own materials (ambient occlusion, blur, output) compile with the scene's below, in
+    // the background, instead of on the composer's first frame.
+    const quad = geo(new THREE.PlaneGeometry(2, 2));
+    for (const pass of c.passes) for (const v of Object.values(pass)) {
+      if (!(v as THREE.Material)?.isMaterial) continue;
+      const m = new THREE.Mesh(quad, v as THREE.Material); m.frustumCulled = false; passMaterials.add(m);
+    }
     disposables.push({ dispose: () => { c.dispose(); target.dispose(); gtao.dispose(); b.dispose(); } });
   }
-  // Compile everything, the parts that start hidden included (the More work wall, the hologram): a
-  // shader compiled the first time it shows up mid-scroll is a visible stall.
-  deskSet.prewarm(true);
-  await renderer.compileAsync(scene, camera).catch(() => {});
-  hooks.onProgress?.(.9);
-  await renderer.compileAsync(scene, camera).catch(() => {});
+  /* Compile every shader before it is first drawn, in the background (parallel compile): a shader
+     first met mid-frame compiles on the spot and freezes the page for a few hundred milliseconds.
+     three builds a separate variant of each material per render target (tone mapping and colour
+     space differ) and per set of lights, so each state the page shows needs its own set:
+       desk  the desk as it starts (desktop draws it into the composer's buffer)
+       dark  the dark scenes: the desk hidden, and with it the window light and the wall fill (see
+             frame()), drawn straight to the screen
+       wall  More work: the wall up (its strip light), then the hologram too (its own light)
+     The desk's set is compiled and waited for before the first frame; the others are started then too. */
+  const compileFor = (state: "desk" | "dark" | "wall" | "wall+holo") => {
+    // compileAsync creates the programs synchronously (only the waiting is async), so whatever is
+    // switched here is switched back before any frame can see it.
+    const dark = state === "dark";
+    renderer.setRenderTarget(dark ? null : composerTarget);
+    if (state !== "desk" && !dark) deskSet.prewarm(true, state === "wall+holo");
+    const lit = [...sunExtras, wallFill].map((l) => l.visible);
+    if (dark) [...sunExtras, wallFill].forEach((l) => { l.visible = false; });
+    // The dark scenes show only what is outside the desk (the device, the veil): compile just those,
+    // lit by the scene's lights as they are then.
+    const done = dark
+      ? Promise.all(scene.children.filter((o) => o !== desk).map((o) => renderer.compileAsync(o, camera, scene).catch(() => {})))
+      : renderer.compileAsync(scene, camera).catch(() => {});
+    if (state !== "desk" && !dark) deskSet.prewarm(false);
+    [...sunExtras, wallFill].forEach((l, i) => { l.visible = lit[i]; });
+    renderer.setRenderTarget(null);
+    return done;
+  };
+  await compileFor("desk");
+  hooks.onProgress?.(.88);
+  if (passMaterials.children.length) await renderer.compileAsync(passMaterials, camera).catch(() => {});
+  hooks.onProgress?.(.94);
+  // The others are started now too, while the loading sheet is still up, but not waited for: their
+  // synchronous part (building the sources) happens here rather than in the middle of the hero, and the
+  // compiling itself finishes in the background long before anyone scrolls to them.
+  for (const set of ["dark", "wall", "wall+holo"] as const) void compileFor(set);
   // Upload every texture now too (the hidden parts' and the notebook pages'), one per idle moment,
   // rather than the first time each is drawn.
   {
@@ -641,7 +691,6 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       for (const mat of m ? (Array.isArray(m) ? m : [m]) : []) for (const v of Object.values(mat)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
     });
-    deskSet.prewarm(false);
     const queue = [...textures];
     // After the reveal has played (the sheet lifting, the desk's entrance), and then only in real
     // idle time, one texture at a time: preparation never competes with the opening for frames.
@@ -651,6 +700,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   afterOpening(() => moreWork());
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
+  ready = true;
   frame();
   hooks.onProgress?.(1);
 

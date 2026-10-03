@@ -13,6 +13,7 @@ export const FEATURED_SLUGS = [
   "pipeline-cpu",
   "current-logger",
   "algorithmx",
+  "cpp-hero",
   "toast-turn",
 ] as const;
 
@@ -206,6 +207,40 @@ export const PROJECTS: Project[] = [
       "Warns when an algorithm is the wrong tool, then runs it anyway if you insist",
       "Build, save and share your own graphs",
       "Pitfalls, exam tips and practice questions per algorithm",
+    ],
+  },
+  {
+    slug: "cpp-hero",
+    title: "Cpp Hero",
+    summary:
+      "Teaches modern C++ from zero as a game: 16 worlds of short lessons, 802 challenges and a boss per world, with a focus on safe, defensive code. Installs as an app and plays offline.",
+    metric: { before: "read about", after: "played" },
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["React 18", "TypeScript", "Vite", "PWA", "Firebase", "Zod"],
+    links: [
+      { label: "Live", href: "https://cpp-hero.vercel.app/" },
+      { label: "GitHub", href: "https://github.com/YossiAbutbul/cpp-hero" },
+    ],
+    images: [{
+      src: "/projects/cpp-hero/screenshot.png",
+      alt: "Cpp Hero running a first C++ program line by line, with Curlo explaining the current line and the output below",
+      width: 1280,
+      height: 720,
+    }],
+    featured: true,
+    noCase: true,
+    overview: [
+      "A game-like app that teaches C++ from the first #include. Each world is a path of short lessons, a project and a boss fight; a lesson explains one idea in a line or two, runs the code step by step with the output filling in, then turns it into challenges.",
+      "All lessons and challenges are YAML, checked against a schema at build time, and every C++ snippet in them is compiled and run with g++ so the answers are what a compiler actually says. Progress syncs through Firebase when signed in, and the whole thing installs and works offline.",
+    ],
+    highlights: [
+      "16 worlds, 84 lessons, 802 challenges, 16 projects and 16 boss fights",
+      "Step-through code demos with stack frames and memory cells",
+      "Every snippet compiled and run with g++ before it ships",
+      "Content as YAML, validated against a schema at build time",
+      "Installable PWA that plays offline, with optional cloud save",
     ],
   },
   {

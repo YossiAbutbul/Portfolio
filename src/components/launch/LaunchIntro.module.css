@@ -68,7 +68,7 @@
   margin: auto 0 0;
   padding-top: clamp(1rem, 1.4vw, 1.4rem);
   border-top: 1px dotted rgba(255, 238, 214, 0.65);
-  text-align: right;
+  text-align: left;
   font-size: clamp(0.95rem, 1.15vw, 1.2rem);
   font-weight: 500;
   line-height: 1.38;
@@ -93,16 +93,17 @@
   overflow: visible;
 }
 
-/* The arrow drops, fades and comes back, inside its ring. (A hero cue, so it may loop.) */
+/* The arrow drops, fades and comes back, inside its ring. (A hero cue, so it may loop.) The drop is
+   even about the ring's centre, so while it is visible it sits in the middle. */
 .cueArrow {
-  animation: cue 1.8s var(--ease-out) infinite;
+  animation: cue 1.8s ease-in-out infinite;
 }
 
 @keyframes cue {
-  0% { transform: translateY(-3px); opacity: 0; }
-  25% { opacity: 1; }
-  70% { transform: translateY(3px); opacity: 1; }
-  100% { transform: translateY(5px); opacity: 0; }
+  0% { transform: translateY(-1.5px); opacity: 0; }
+  30% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(3.5px); opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

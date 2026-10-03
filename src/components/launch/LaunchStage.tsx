@@ -34,7 +34,8 @@ export default function LaunchStage() {
         onPress: (count) => window.dispatchEvent(new CustomEvent("launch:press", { detail: count })),
         onProgress: (value) => window.dispatchEvent(new CustomEvent("launch:progress", { detail: value })),
       }, abort.signal);
-      if (!scene) return;
+      // No WebGL (or it failed): let the loading sheet go now rather than at its time limit.
+      if (!scene) { window.dispatchEvent(new CustomEvent("launch:progress", { detail: 1 })); return; }
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
       setReady(true);
     };
