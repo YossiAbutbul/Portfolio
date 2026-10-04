@@ -487,8 +487,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     device.position.set(cur.x, cur.y + (still ? 0 : Math.sin(time * 1.2) * .04 * lean), cur.z - FRONT * (1 - SIZE * cur.s));
     device.rotation.set(cur.rx + pointer.y * .12 * lean, cur.ry + pointer.x * .25 * lean, cur.rz);
     device.scale.setScalar(Math.max(.0001, cur.s * cur.show * SIZE));
-    devicePad.visible = desk.visible && lifted < .5; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s * SIZE); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
-    device.visible = cur.show > .02;
+    // <html data-no-device> (set by the capture tooling for banners) leaves the desk without it.
+    const noDevice = document.documentElement.hasAttribute("data-no-device");
+    devicePad.visible = desk.visible && lifted < .5 && !noDevice; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s * SIZE); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
+    device.visible = cur.show > .02 && !noDevice;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     desk.visible = cur.veil < .985;
