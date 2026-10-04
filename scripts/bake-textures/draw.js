@@ -100,38 +100,37 @@ window.BAKES = [
   } },
   // Speckled relief for the mat (phones; desktop uses the photographed linoleum).
   { name: "mat-bump", w: 512, h: 340, draw: (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); } },
-  // The coffee in the mug: crema over most of it, marbled in toward a darker middle, fine bubbles
-  // gathered at the rim and a bright meniscus where it meets the cup. Its own noise (seed 23).
+  // The coffee in the mug: a latte. Milky tan foam, paler in the middle where the milk went in,
+  // browner toward the rim where the espresso shows through the thinner foam, and a few fine
+  // bubbles at the rim. Its own noise (seed 23).
   { name: "coffee", w: 1024, h: 1024, draw: (x, w, h) => {
     const N = makeNoise(23);
-    // Crema over most of it: only the middle shows the darker coffee through.
-    const stops = [[0, [48, 24, 11]], [.3, [64, 34, 15]], [.55, [104, 63, 31]], [.75, [146, 98, 55]], [.9, [170, 120, 72]], [.985, [190, 140, 90]], [1, [214, 172, 122]]];
-    const at = (d) => {
-      for (let k = 1; k < stops.length; k++) if (d <= stops[k][0]) {
-        const [d0, a] = stops[k - 1], [d1, b] = stops[k], t = (d - d0) / (d1 - d0), e = t * t * (3 - 2 * t);
-        return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e];
-      }
-      return stops[stops.length - 1][1];
-    };
-    const crema = [176, 126, 76], img = x.createImageData(w, h), c = w / 2;
+    const clamp = (v) => Math.max(0, Math.min(1, v)), smooth = (v) => { v = clamp(v); return v * v * (3 - 2 * v); };
+    const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+    const foam = [206, 162, 112], deep = [186, 138, 90], rim = [140, 86, 42], milk = [238, 222, 196], lip = [226, 200, 164];
+    const img = x.createImageData(w, h), c = w / 2;
     for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
       const dx = (i - c) / c, dy = (j - c) / c, d = Math.min(1, Math.hypot(dx, dy));
-      // Crema drawn in toward the middle in soft fingers: warped noise, only within the band.
-      const warp = N.fbm(dx * 2.2 + 3, dy * 2.2, 3) * 2.4;
-      const m = N.fbm(dx * 5 + warp, dy * 5 - warp, 4);
-      const band = Math.max(0, Math.min(1, (d - .12) / .4)) * (1 - Math.max(0, (d - .92) / .08));
-      const swirl = Math.min(1, Math.max(0, (m - .4) * 2.6)) * band * .9;
-      const col = at(d), grain = (N.fbm(i / 7, j / 7, 2) - .5) * 10, k = (j * w + i) * 4;
-      for (let ch = 0; ch < 3; ch++) img.data[k + ch] = col[ch] + (crema[ch] - col[ch]) * swirl + grain;
+      // The foam: milky tan drifting in broad patches, browner toward the rim.
+      const broad = N.fbm(dx * 1.8 + 5, dy * 1.8 - 2, 3);
+      let col = mix(foam, deep, smooth((broad - .4) * 1.6) * .6);
+      col = mix(col, rim, smooth((d - .7) / .26) * .85);
+      // Paler where the milk was poured in the middle, in soft uneven patches.
+      const pour = N.fbm(dx * 3 + 9, dy * 3, 3);
+      col = mix(col, milk, smooth((.55 - d) / .5 + (pour - .5) * 1.2) * .35);
+      // A pale meniscus where the foam climbs the cup.
+      col = mix(col, lip, smooth((d - .975) / .025) * .6);
+      const grain = (N.fbm(i / 5, j / 5, 2) - .5) * 6, k = (j * w + i) * 4;
+      for (let ch = 0; ch < 3; ch++) img.data[k + ch] = col[ch] + grain;
       img.data[k + 3] = 255;
     }
     x.putImageData(img, 0, 0);
-    // Fine bubbles in the crema at the rim: a dark body with a pale lit edge.
-    for (let n = 0; n < 2600; n++) {
-      const a = N.rand() * Math.PI * 2, d = .86 + Math.pow(N.rand(), .6) * .125, r = .7 + Math.pow(N.rand(), 3) * 3.2;
+    // A few fine bubbles at the rim: microfoam is smooth, so only a scatter.
+    for (let n = 0; n < 500; n++) {
+      const a = N.rand() * Math.PI * 2, d = .86 + Math.pow(N.rand(), .5) * .12, r = .5 + Math.pow(N.rand(), 4) * 1.8;
       const px = c + Math.cos(a) * d * c, py = c + Math.sin(a) * d * c;
-      x.fillStyle = `rgba(110,72,40,${.25 + N.rand() * .25})`; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
-      x.strokeStyle = `rgba(232,200,158,${.3 + N.rand() * .35})`; x.lineWidth = .6; x.beginPath(); x.arc(px - r * .2, py - r * .2, r * .8, Math.PI * 1.05, Math.PI * 1.75); x.stroke();
+      x.fillStyle = `rgba(120,74,36,${.15 + N.rand() * .2})`; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = `rgba(236,214,182,${.25 + N.rand() * .3})`; x.lineWidth = .6; x.beginPath(); x.arc(px - r * .2, py - r * .2, r * .8, Math.PI * 1.05, Math.PI * 1.75); x.stroke();
     }
   } },
   // The More work wall's plaster.

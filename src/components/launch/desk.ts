@@ -344,63 +344,86 @@ export function buildDesk(kit: DeskKit): Desk {
     const CR = RO - .052;
     const surface = new THREE.RingGeometry(0, CR, 72, 28);
     const sp = surface.attributes.position, flat = Float32Array.from(sp.array as Float32Array);
-    // Dark in the middle, a ring of crema at the rim (baked).
+    const suv = surface.attributes.uv;
+    // The meniscus: the coffee climbs the cup's wall a little at the very edge, which is where a
+    // real cup shows its brightest line of light.
+    for (let i = 0; i < sp.count; i++) {
+      flat[i * 3 + 2] = .012 * Math.exp(-(CR - Math.hypot(flat[i * 3], flat[i * 3 + 1])) / .012);
+      sp.setZ(i, flat[i * 3 + 2]);
+    }
+    surface.computeVertexNormals();
+    // An espresso's crema, flecked and darker at the rim (baked).
     const coffeeTex = picture("/textures/coffee.webp", true);
     coffeeTex.wrapS = coffeeTex.wrapT = THREE.ClampToEdgeWrapping;
-    // The crema turns about the middle when the coffee swirls (the texture turns, not the mesh, so the
-    // ripples stay where they were dropped).
-    coffeeTex.center.set(.5, .5);
-    // Liquid is glossy: a smooth surface, so the room and the ripples catch on it.
-    const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .14, envMapIntensity: .55 }), false);
+    // Crema is a fine foam: a satin sheen, not a mirror, but enough that the ripples catch the light.
+    const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .32, envMapIntensity: .5 }), false);
     coffee.position.z = H2 - .22; g.add(coffee);
     const drops: { x: number; y: number; t: number; a: number }[] = [];
-    // The swirl: how fast the coffee turns (radians a second) and how far it has turned. A stir spins
-    // it up; on its own it slows the way a liquid does, quickly at first and then gently.
-    let swirlV = 0, swirlA = 0, swirlTarget = 0;
+    // The swirl: how fast the coffee turns at the rim (radians a second) and how far it has turned. A
+    // stir spins it up; on its own it slows the way a liquid does, quickly at first and then gently.
+    // The middle turns faster than the rim (the wall holds the edge back), so the crema is drawn out
+    // into a spiral rather than turning as one piece: `shear` is how far the middle has got ahead,
+    // capped so the spiral never winds tighter than the surface's rings can show.
+    let swirlV = 0, swirlA = 0, swirlTarget = 0, shear = 0;
     const ripple = (dt: number) => {
       for (const d of drops) d.t += dt;
       while (drops.length && drops[0].t > 3) drops.shift();
-      swirlV += (swirlTarget - swirlV) * (1 - Math.exp(-dt * (swirlTarget ? 2.5 : .9)));
+      swirlV += (swirlTarget - swirlV) * (1 - Math.exp(-dt * (swirlTarget ? 2.5 : .6)));
       if (!swirlTarget && Math.abs(swirlV) < .02) swirlV = 0;
-      swirlA += swirlV * dt; coffeeTex.rotation = -swirlA;
-      // A turning liquid dips in the middle; the dip grows with the speed.
-      const dip = Math.min(.03, Math.abs(swirlV) * .0045);
+      swirlA += swirlV * dt; shear = Math.max(-5, Math.min(5, shear + swirlV * dt * .6));
+      // A turning liquid dips in the middle and rises against the wall; both grow with the speed.
+      const dip = Math.min(.03, Math.abs(swirlV) * .006);
       for (let i = 0; i < sp.count; i++) {
-        const vx = flat[i * 3], vy = flat[i * 3 + 1], rr = Math.hypot(vx, vy);
-        let h = dip * ((rr / CR) * (rr / CR) - .6);
+        const vx = flat[i * 3], vy = flat[i * 3 + 1], rr = Math.hypot(vx, vy), q = (rr / CR) * (rr / CR);
+        let w = 0;
         for (const d of drops) {
           const r = Math.hypot(vx - d.x, vy - d.y), front = d.t * .32, u = r - front;
-          h += d.a * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
+          w += d.a * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
         }
-        // Calm at the rim, where the cup holds the coffee still.
-        sp.setZ(i, h * Math.min(1, (CR - rr) / .05));
+        // Ripples calm at the rim, where the cup holds the coffee still.
+        sp.setZ(i, flat[i * 3 + 2] + dip * (q - .5) + w * Math.min(1, (CR - rr) / .05));
+        // The crema carried round by the flow at this radius (the picture turns, not the mesh, so the
+        // ripples stay where they were dropped).
+        const f = -(swirlA + shear * (1 - q)), c = Math.cos(f), s = Math.sin(f);
+        suv.setXY(i, .5 + (vx * c - vy * s) / (2 * CR), .5 + (vx * s + vy * c) / (2 * CR));
       }
-      sp.needsUpdate = true; surface.computeVertexNormals();
+      sp.needsUpdate = suv.needsUpdate = true; surface.computeVertexNormals();
       return drops.length > 0 || swirlV !== 0;
     };
-    // Teaspoon: only its handle shows, rising out of the coffee near the middle and leaning out over
-    // the rim; the bowl is under the surface. It turns on the cup's axis, so a stir is a turn of this group.
+    // Teaspoon: only its handle shows. At rest it leans the way a spoon left in a mug does: the bowl
+    // down on the far side of the cup, the handle lying against the rim and out over it. The bowl is
+    // under the surface.
     const spoon = new THREE.Group(); g.add(spoon);
-    const steelSpoon = std({ color: 0xcfcac2, metalness: 1, roughness: .28, envMapIntensity: .8 });
+    // Brushed stainless: a neutral steel, rough enough to spread the room's light rather than mirror
+    // its darkest corner (a polished one turns black against the wall).
+    const steelSpoon = std({ color: 0xc8c9cc, metalness: .75, roughness: .48, envMapIntensity: .75 });
     const SZ = H2 - .22;
-    // From below the surface, standing fairly upright and leaning just past the rim.
-    const from = new THREE.Vector3(.12, 0, SZ - .35), to = new THREE.Vector3(.7, 0, SZ + .78);
-    // Where the handle meets the coffee: the stir's ripples start there.
-    const SR = from.x + (to.x - from.x) * (-from.z + SZ) / (to.z - from.z);
-    // The handle is a thin flat strip, as on a real teaspoon: a narrow neck widening into a rounded
-    // paddle at the end, edges softened by a small bevel. Its broad face turns toward the camera.
-    const len = from.distanceTo(to);
-    const outline = new THREE.Shape();
-    const neck = .026, paddle = .085, swell = len * .52, end = len - paddle;
-    outline.moveTo(-neck, 0);
-    outline.lineTo(-neck, swell);
-    outline.bezierCurveTo(-neck, swell + (end - swell) * .45, -paddle, end - (end - swell) * .25, -paddle, end);
+    // From the bowl just under the surface near the middle to the rim's inner lip, where the handle
+    // rests, leaning well over; only a short end shows past the rim.
+    const from = new THREE.Vector3(0, 0, .65), rest = new THREE.Vector3(RO - .03, 0, H2 + .024);
+    const to = rest.clone().add(rest.clone().sub(from).normalize().multiplyScalar(.36));
+    // The handle as on a real teaspoon: a slim neck out of the bowl that widens gently, then flares
+    // into a rounded paddle, a little thick with softened edges, and curling up at the end past the
+    // rim. Drawn from many points along its length so the curl bends smoothly.
+    const len = from.distanceTo(to), paddle = .082, end = len - paddle, flare = len * .5;
+    const width = (y: number) => {
+      const s = Math.min(1, Math.max(0, (y - flare) / (end - flare)));
+      return .02 + .012 * Math.min(1, y / flare) + (paddle - .032) * s * s * (3 - 2 * s);
+    };
+    const outline = new THREE.Shape(), STEPS = 40;
+    outline.moveTo(-width(0), 0);
+    for (let i = 1; i <= STEPS; i++) outline.lineTo(-width(end * i / STEPS), end * i / STEPS);
     outline.absarc(0, end, paddle, Math.PI, 0, true);
-    outline.bezierCurveTo(paddle, end - (end - swell) * .25, neck, swell + (end - swell) * .45, neck, swell);
-    outline.lineTo(neck, 0);
-    outline.closePath();
-    const strip = new THREE.ExtrudeGeometry(outline, { depth: .012, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 2, curveSegments: 10 });
-    strip.translate(0, 0, -.006);
+    for (let i = STEPS; i >= 0; i--) outline.lineTo(width(end * i / STEPS), end * i / STEPS);
+    const strip = new THREE.ExtrudeGeometry(outline, { depth: .014, bevelEnabled: true, bevelThickness: .007, bevelSize: .007, bevelSegments: 3, curveSegments: 12 });
+    strip.translate(0, 0, -.007);
+    // The curl: past the rim the handle bends up, away from the side that rests on the rim.
+    const lp = strip.attributes.position, curlFrom = from.distanceTo(rest) + .04;
+    for (let i = 0; i < lp.count; i++) {
+      const q = Math.max(0, (lp.getY(i) - curlFrom) / (len - curlFrom));
+      lp.setZ(i, lp.getZ(i) - .025 * q * q);
+    }
+    strip.computeVertexNormals();
     const stem = mesh(geo(strip), steelSpoon);
     // Length along from→to, width across the cup's tangent, so the flat face looks up and outward.
     const along = to.clone().sub(from).normalize(), across = new THREE.Vector3(0, 1, 0), face = new THREE.Vector3().crossVectors(across, along);
@@ -408,26 +431,40 @@ export function buildDesk(kit: DeskKit): Desk {
     stem.position.copy(from); spoon.add(stem);
     // Set once the mug's own turn is known (below): the rest angle is chosen on screen, not on the cup.
     let spoonRest = 0;
-    // A stir, the way a hand does it: two calm turns with a soft start and stop, the handle tipping a
-    // little as it goes round, a fine wake trailing from where it meets the coffee, and the coffee
-    // itself drawn round with it, still turning a while after the spoon stops.
+    // A stir, the way a hand does it: the spoon is lifted off the rim and stood up over the middle,
+    // the fingers hold the top of the handle nearly still and the bowl goes round in a small circle,
+    // so the handle sweeps a cone (it never swings round the rim like a clock hand). Four quick turns
+    // with a soft start and stop, then it is laid back against the rim; a fine wake trails from where
+    // the handle meets the coffee, and the coffee is drawn round, still turning after the spoon stops.
+    const foot = new THREE.Vector3(), tip = new THREE.Vector3(), dir = new THREE.Vector3(), side = new THREE.Vector3(), up = new THREE.Vector3(0, 0, 1), basis = new THREE.Matrix4();
+    // Where the fingers hold it while stirring: over the cup, just inside the rim.
+    const held = new THREE.Vector3(.28, 0, 1.68);
+    // k blends from the resting pose (0) to the circling one (1); a is how far round the bowl is.
+    const pose = (a: number, k: number) => {
+      foot.set(from.x + (Math.cos(a) * .14 - from.x) * k, Math.sin(a) * .14 * k, from.z + .06 * k);
+      tip.set(to.x + (held.x + Math.cos(a) * .04 - to.x) * k, Math.sin(a) * .04 * k, to.z + (held.z - to.z) * k);
+      dir.subVectors(tip, foot).normalize(); side.crossVectors(up, dir).normalize();
+      stem.quaternion.setFromRotationMatrix(basis.makeBasis(side, dir, face.crossVectors(side, dir)));
+      stem.position.copy(foot);
+    };
     let stir = -1, trail = 0;
-    const STIR = 4, TURNS = 2;
+    const STIR = 3, TURNS = 4;
     const stirring = (dt: number) => {
       stir += dt;
       const t = Math.min(1, stir / STIR), e = (1 - Math.cos(t * Math.PI)) / 2;
-      spoon.rotation.z = spoonRest + e * Math.PI * 2 * TURNS;
-      // The spoon's own speed, eased: the coffee follows at a little over half of it.
-      swirlTarget = t < 1 ? Math.sin(t * Math.PI) * Math.PI * Math.PI * TURNS / STIR * .55 : 0;
-      const sway = Math.sin(t * Math.PI) * .06;
-      spoon.rotation.x = Math.sin(stir * 3.1) * sway; spoon.rotation.y = Math.cos(stir * 2.3) * sway;
+      const r = Math.min(1, t / .2, (1 - t) / .2), k = r * r * (3 - 2 * r);
+      pose(e * Math.PI * 2 * TURNS, k);
+      // The spoon's own speed, eased: the coffee follows at well under half of it.
+      swirlTarget = t < 1 ? Math.sin(t * Math.PI) * Math.PI * Math.PI * TURNS / STIR * .3 : 0;
       trail -= dt;
       if (trail <= 0 && t < .95) {
-        trail = .06;
-        const a = spoon.rotation.z;
-        drops.push({ x: Math.cos(a) * SR, y: Math.sin(a) * SR, t: 0, a: .0024 });
+        trail = .05;
+        // Where the handle crosses the surface, turned from the spoon's frame into the cup's.
+        const s = (SZ - foot.z) / (tip.z - foot.z), px = foot.x + (tip.x - foot.x) * s, py = foot.y + (tip.y - foot.y) * s;
+        const c = Math.cos(spoonRest), n = Math.sin(spoonRest);
+        drops.push({ x: px * c - py * n, y: px * n + py * c, t: 0, a: .0022 });
       }
-      if (t >= 1) { stir = -1; spoon.rotation.set(0, 0, spoonRest); }
+      if (t >= 1) { stir = -1; pose(0, 0); }
     };
     const rim = new THREE.Vector3();
     mug = {
