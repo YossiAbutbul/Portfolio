@@ -480,7 +480,7 @@ export function buildDesk(kit: DeskKit): Desk {
   }
   { // Open pocket notebook (A7, to scale with the pencil). It stays put. Hovering a page lifts it
     // toward the pointer; a click turns it, forward on the right page and back on the left. The
-    // spreads are rough thinking about the featured projects: notes on the left, a sketch on the right.
+    // spreads are a student's pages: the day's list, data structures and old CS jokes, sketched.
     const nb = new THREE.Group(); group.add(nb); notebookParts.push(nb);
     const PW = 2.05, PH = 2.9, T = .15;
     const [NX, NY, NA] = phone ? [1.5, 2.55, -.1] : [4.4, -.35, -.18];
@@ -564,14 +564,6 @@ export function buildDesk(kit: DeskKit): Desk {
       const c = pageCanvas(key, draw, seed), x = (t.image as HTMLCanvasElement).getContext("2d")!;
       x.drawImage(c, 0, 0); t.userData.page = key; t.needsUpdate = true;
     };
-    // Notes page for a project: the name, a few dashes of what it does, one line worth underlining,
-    // and the stack in small. Facts only from content/projects.ts.
-    const notes = (title: string, lines: string[], key: string, stack: string): Page => (p) => {
-      p.text(title, 90, 200, 112); p.line([[86, 232], [96 + title.length * 50, 226]], 4);
-      lines.forEach((l, i) => { p.line([[100, 380 + i * 140], [140, 378 + i * 140]], 5); p.text(l, 170, 400 + i * 140, 86); });
-      p.text(key, 100, 1050, 88); p.line([[96, 1080], [110 + key.length * 36, 1074]], 4);
-      p.text(stack, 92, 1330, 58);
-    };
     const deskSpreads: { left: Page; right: Page }[] = [
       { // The day's list and the system it adds up to.
         left: ((p) => {
@@ -589,84 +581,93 @@ export function buildDesk(kit: DeskKit): Desk {
           p.box(420, 500, 240, 140); p.text("API", 490, 595, 92);
           p.arrow(540, 660, 540, 830);
           p.box(420, 850, 240, 140); p.text("DB", 505, 945, 92);
-          p.text("cron?", 740, 260, 84); p.line([[720, 236], [930, 226]], 6);
-          p.text("cache?", 700, 1120, 76);
         }),
       },
-      {
-        left: notes("Test Console", ["PA tests", "load pull", "RF sweeps"], "was 3 days, now ~8 min", "React · FastAPI · PyVISA · BLE"),
+      { // Data structures, the classics.
+        left: ((p) => {
+          p.text("stack", 100, 200, 104); p.line([[96, 232], [330, 226]], 4);
+          ["3", "2", "1"].forEach((s, i) => { p.box(140, 330 + i * 120, 260, 110); p.text(s, 255, 410 + i * 120, 76); });
+          p.text("push / pop", 470, 420, 76); p.arrow(460, 395, 420, 370);
+          p.text("LIFO", 470, 580, 80); p.text("last in, first out", 470, 670, 58);
+          p.text("queue", 100, 900, 104); p.line([[96, 932], [350, 926]], 4);
+          ["a", "b", "c", "d"].forEach((s, i) => { p.box(120 + i * 170, 990, 140, 110); p.text(s, 170 + i * 170, 1065, 76); });
+          p.text("FIFO", 120, 1250, 80); p.text("first in, first out", 120, 1340, 58);
+        }),
         right: ((p) => {
-          p.text("test console", 90, 170, 92);
-          p.box(100, 330, 230, 130); p.text("UI", 180, 420, 88);
-          p.arrow(340, 395, 450, 395);
-          p.box(460, 330, 300, 130); p.text("FastAPI", 490, 420, 84);
-          p.arrow(610, 470, 610, 640);
-          p.box(460, 650, 300, 130); p.text("PyVISA", 495, 740, 84);
-          p.arrow(610, 790, 610, 960);
-          p.text("instruments", 455, 1040, 84);
-          p.text("BLE", 150, 740, 80); p.arrow(250, 715, 450, 715);
+          p.text("linked list", 90, 200, 96); p.line([[86, 230], [480, 224]], 4);
+          ["4", "8", "15"].forEach((s, i) => {
+            const x0 = 80 + i * 270; p.box(x0, 310, 160, 100); p.line([[x0 + 110, 310], [x0 + 110, 410]], 3);
+            p.text(s, x0 + 22, 385, s.length > 1 ? 62 : 72); p.arrow(x0 + 135, 360, x0 + (i < 2 ? 268 : 215), 360);
+          });
+          p.text("null", 845, 385, 62);
+          p.text("BST", 90, 680, 96);
+          const nodes: [number, number, string][] = [[520, 740, "8"], [330, 940, "3"], [710, 940, "10"], [220, 1150, "1"], [440, 1150, "6"], [820, 1150, "14"]];
+          ([[0, 1], [0, 2], [1, 3], [1, 4], [2, 5]] as [number, number][]).forEach(([a, b]) => p.line([[nodes[a][0], nodes[a][1]], [nodes[b][0], nodes[b][1]]], 4));
+          nodes.forEach(([nx, ny, s]) => { p.x.fillStyle = "#f1eadb"; p.x.beginPath(); p.x.arc(nx, ny, 56, 0, Math.PI * 2); p.x.fill(); p.ring(nx, ny, 56); p.text(s, nx - (s.length > 1 ? 30 : 16), ny + 24, s.length > 1 ? 66 : 76); });
+          p.text("left < root < right", 120, 1340, 64);
         }),
       },
-      {
-        left: notes("OPlanner", [".ics import", "courses, deadlines", "exams"], "import, don't retype", "React · Firebase Auth · Firestore"),
+      { // Two old jokes, and recursion explaining itself.
+        left: ((p) => {
+          p.text("a SQL query walks into", 90, 200, 76); p.text("a bar, goes up to two", 90, 300, 76); p.text("tables and asks:", 90, 400, 76);
+          p.text("\"can I JOIN you?\"", 140, 550, 90); p.line([[136, 580], [800, 574]], 4);
+          p.line([[90, 690], [930, 680]], 3);
+          p.text("there's no place", 90, 840, 80); p.text("like 127.0.0.1", 90, 940, 80);
+          // Home, sketched.
+          p.box(560, 1080, 240, 190); p.line([[530, 1090], [680, 970], [830, 1090]], 5); p.box(655, 1180, 50, 90);
+        }),
         right: ((p) => {
-          p.text("oplanner", 90, 170, 92);
-          // The calendar file, dog-eared.
-          p.line([[120, 300], [300, 300], [360, 360], [360, 560], [120, 560], [120, 300]]); p.line([[300, 300], [300, 360], [360, 360]]);
-          p.text(".ics", 165, 470, 84);
-          p.arrow(390, 430, 560, 430);
-          p.box(590, 320, 330, 240);
-          [0, 1, 2].forEach((k) => p.line([[600, 390 + k * 60], [910, 390 + k * 60]], 3));
-          p.text("term", 680, 650, 80);
+          p.text("recursion", 90, 200, 104); p.line([[86, 232], [500, 226]], 4);
+          p.text("def understand():", 100, 360, 70); p.text("return understand()", 160, 460, 70);
+          [0, 1, 2, 3, 4].forEach((k) => { const w = 640 - k * 120, h = 420 - k * 80; p.box(512 - w / 2, 860 - h / 2, w, h); });
+          p.text("base case?!", 520, 1260, 80); p.arrow(560, 1200, 520, 1090);
         }),
       },
-      {
-        left: notes("Pipeline CPU", ["5 stages", "one cycle per step", "hazards, stalls"], "draw forwarding", "React · TypeScript · Vite"),
+      { // Big O, and the hard things.
+        left: ((p) => {
+          p.text("big O", 90, 200, 112); p.line([[86, 232], [350, 226]], 4);
+          p.line([[140, 320], [140, 1150], [940, 1150]], 4);
+          p.text("time", 160, 350, 58); p.text("n", 920, 1220, 70);
+          p.line([[140, 1090], [880, 1090]], 4); p.text("1", 895, 1100, 66);
+          const curveOf = (f: (t: number) => number, span: number) => { const pts: [number, number][] = []; for (let i = 0; i <= 20; i++) { const t = i / 20; pts.push([140 + t * span, 1150 - f(t)]); } p.line(pts); };
+          curveOf((t) => 40 + 200 * Math.log(1 + 9 * t) / Math.log(10), 740); p.text("log n", 760, 900, 64);
+          curveOf((t) => t * 560, 740); p.text("n", 880, 600, 70);
+          curveOf((t) => t * t * 800, 520); p.text("n²", 680, 380, 70);
+          p.text("please not n²", 260, 1330, 76);
+        }),
         right: ((p) => {
-          p.text("pipeline", 90, 170, 92);
-          ["IF", "ID", "EX", "MEM", "WB"].forEach((s, i) => { p.box(70 + i * 182, 420, 150, 140); p.text(s, 92 + i * 182, 510, s.length > 2 ? 62 : 80); });
-          // Forwarding: from MEM back into EX.
-          p.curve(690, 580, 600, 760, 500, 590); p.arrow(520, 640, 500, 580);
-          p.text("fwd", 560, 820, 80);
-          p.ring(250, 960, 70); p.text("stall?", 360, 985, 80);
+          p.text("2 hard things in CS:", 90, 210, 84); p.line([[86, 240], [760, 234]], 4);
+          p.text("1. cache invalidation", 100, 380, 72); p.text("2. naming things", 100, 500, 72); p.text("3. off-by-one errors", 100, 620, 72);
+          p.ring(122, 598, 46);
+          p.text("!false", 110, 900, 140);
+          p.text("(it's funny", 520, 850, 64); p.text("because it's true)", 470, 940, 64);
+          p.text("// TODO: fix later", 100, 1180, 70); p.text("(2019)", 720, 1290, 64);
         }),
       },
-      {
-        left: notes("Current Logger", ["TX bursts", "battery tests", "trigger on current"], "stop when peak drops", "Python · N6781A · SCPI · WebSocket"),
-        right: ((p) => {
-          p.text("current logger", 90, 170, 92);
-          p.line([[120, 300], [120, 1060], [930, 1060]], 4);
-          p.text("I", 70, 340, 80); p.text("t", 920, 1130, 80);
-          const pts: [number, number][] = [[120, 1000]];
-          [0, 1, 2, 3].forEach((k) => { const x0 = 200 + k * 180, hgt = 600 - k * 140; pts.push([x0, 1000], [x0 + 12, 1000 - hgt], [x0 + 70, 1000 - hgt], [x0 + 82, 1000]); });
-          pts.push([930, 1000]); p.line(pts);
-          p.x.setLineDash([18, 14]); p.line([[120, 680], [930, 680]], 3); p.x.setLineDash([]);
-          p.text("trigger", 780, 650, 72);
-          p.arrow(820, 480, 760, 600); p.text("stop", 790, 450, 80);
+      { // A hash table, and the best debugger there is.
+        left: ((p) => {
+          p.text("hash table", 90, 200, 104); p.line([[86, 232], [520, 226]], 4);
+          p.text("h(k) = k mod 5", 100, 340, 72);
+          [0, 1, 2, 3, 4].forEach((i) => { const y = 430 + i * 150; p.box(110, y, 120, 120); p.text(String(i), 150, y + 88, 70); });
+          const entry = (x0: number, y: number, s: string) => { p.box(x0, y + 10, 200, 100); p.text(s, x0 + 40, y + 82, 66); };
+          p.arrow(240, 640, 340, 640); entry(350, 580, "cat");
+          p.arrow(240, 940, 340, 940); entry(350, 880, "dog"); p.arrow(560, 940, 650, 940); entry(660, 880, "owl");
+          p.arrow(240, 1090, 340, 1090); entry(350, 1030, "ant");
+          p.text("collision!", 640, 830, 60);
+          p.text("chain on collision", 100, 1330, 68);
         }),
-      },
-      {
-        left: notes("AlgorithmX", ["9 graph algorithms", "step-by-step playback", "compare side by side"], "show the queue", "TypeScript · React · Cloudflare Workers"),
         right: ((p) => {
-          p.text("algorithmx", 90, 170, 92);
-          const nodes: [number, number][] = [[260, 360], [580, 320], [820, 560], [260, 720], [560, 760]];
-          ([[0, 1], [0, 3], [1, 2], [1, 4], [3, 4], [2, 4]] as [number, number][]).forEach(([a, b]) => p.line([nodes[a], nodes[b]], 4));
-          nodes.forEach(([nx, ny], i) => { p.x.fillStyle = "#f1eadb"; p.x.beginPath(); p.x.arc(nx, ny, 60, 0, Math.PI * 2); p.x.fill(); p.ring(nx, ny, 60); p.text(String(i + 1), nx - 16, ny + 26, 80); });
-          p.text("BFS / DFS / Dijkstra", 120, 1020, 76);
-          p.text("play / step / back", 120, 1180, 76);
-        }),
-      },
-      {
-        left: notes("ToastTurn", ["whose turn", "log each turn", "all phones at home"], "sync", "React · Firestore · PWA"),
-        right: ((p) => {
-          p.text("toastturn", 90, 170, 92);
-          // Two phones, kept in sync.
-          p.box(120, 330, 250, 460); p.box(640, 330, 250, 460);
-          p.text("turn?", 160, 520, 80); p.text("turn?", 680, 520, 80);
-          p.arrow(400, 520, 610, 520); p.arrow(610, 620, 400, 620);
-          p.text("sync", 450, 700, 76);
-          p.text("one button", 120, 1000, 76);
-          p.text("offline?", 120, 1160, 76);
+          p.text("rubber duck", 90, 200, 104); p.line([[86, 232], [560, 226]], 4);
+          const oval = (cx: number, cy: number, rx: number, ry: number) => { const pts: [number, number][] = []; for (let i = 0; i <= 28; i++) { const a = .3 + i / 26 * Math.PI * 2; pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } p.line(pts); };
+          oval(470, 760, 260, 150);
+          p.x.fillStyle = "#f1eadb"; p.x.beginPath(); p.x.arc(680, 540, 100, 0, Math.PI * 2); p.x.fill(); p.ring(680, 540, 100);
+          p.line([[770, 515], [870, 540], [772, 565]], 5);
+          p.x.fillStyle = "#22305e"; p.x.beginPath(); p.x.arc(705, 515, 12, 0, Math.PI * 2); p.x.fill();
+          p.line([[225, 720], [190, 640], [262, 690]], 5);
+          p.curve(360, 740, 470, 690, 580, 760);
+          p.line([[120, 940], [220, 920], [320, 945], [420, 920], [520, 945], [620, 920], [720, 945], [820, 920], [920, 940]], 3);
+          p.text("explain the bug", 120, 1100, 76); p.text("out loud.", 120, 1200, 76);
+          p.text("oh. it's a typo.", 470, 1330, 64);
         }),
       },
     ];
