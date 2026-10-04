@@ -15,6 +15,7 @@ export const FEATURED_SLUGS = [
   "algorithmx",
   "cpp-hero",
   "toast-turn",
+  "trump-jump",
 ] as const;
 
 export const PROJECTS: Project[] = [
@@ -291,6 +292,40 @@ export const PROJECTS: Project[] = [
       "Join by link, tap your name, no sign-up",
       "Offline-first PWA with queued writes",
       "Runs with no backend at all if you never set the keys",
+    ],
+  },
+  {
+    slug: "trump-jump",
+    title: "Trump Jump",
+    summary:
+      "A browser arcade climber: bounce up the Strait of Hormuz on tankers and speedboats, dodge missiles, and spend coins on skins, fleets and maps. Every score is checked on the server before it reaches the global leaderboard.",
+    metric: { before: "a meme", after: "a live game" },
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["Phaser 3", "JavaScript", "Firebase Auth", "Firestore", "Vercel Functions"],
+    links: [
+      { label: "Live", href: "https://trump-jump-hormuz.vercel.app/" },
+      { label: "GitHub", href: "https://github.com/YossiAbutbul/TrumpJump-Hormuz" },
+    ],
+    images: [{
+      src: "/projects/trump-jump/cover.png",
+      alt: "Trump Jump on three phone screens: the menu, a climb over oil tankers and speedboats, and the skins shop",
+      width: 1920,
+      height: 1080,
+    }],
+    featured: true,
+    noCase: true,
+    overview: [
+      "An endless vertical climber that runs in the browser on phone and desktop. Steer left and right, land on tankers, speedboats and barrels, grab power-ups and dodge drones and missiles as the climb speeds up.",
+      "Coins from each run buy skins, fleets, map themes and power-up upgrades. Google sign-in keeps progress in the cloud, and a run is registered when it starts and verified by a serverless function when it ends, so the leaderboard only takes scores the server believes.",
+    ],
+    highlights: [
+      "Endless climb with difficulty that ramps with altitude",
+      "Shop with character skins, fleets, map themes and upgrades",
+      "Server-verified runs before a score reaches the leaderboard",
+      "Google sign-in, cloud saves and a daily login streak",
+      "One build for touch, arrow keys and A/D",
     ],
   },
 

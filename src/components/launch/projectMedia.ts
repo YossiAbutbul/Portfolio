@@ -8,12 +8,13 @@ export const PREVIEWS: Record<string, string> = {
   algorithmx: "/projects/algorithmx/screenshot.png",
   "cpp-hero": "/projects/cpp-hero/cover.png",
   "toast-turn": "/projects/toast-turn/cover.png",
+  "trump-jump": "/projects/trump-jump/cover.png",
 };
 
 /* Silent loops of the apps working, each with a poster from its own first frames and its true size.
    Test Console, OPlanner and Pipeline CPU are screen recordings of the real apps (Test Console's is a
    VP8 WebM); AlgorithmX was recorded from the live site. Current Logger needs its lab hardware, so it
-   shows a still screenshot; ToastTurn and Cpp Hero show a cover of three phone screens for now (their
+   shows a still screenshot; ToastTurn, Cpp Hero and Trump Jump show a cover of three phone screens for now (their
    recordings, demo.mp4 in each folder, are kept for later). */
 export const DEMOS: Record<string, { src: string; poster: string; w: number; h: number }> = {
   "test-console": { src: "/projects/test-console/demo.webm", poster: "/projects/test-console/demo-poster.jpg", w: 1440, h: 900 },
