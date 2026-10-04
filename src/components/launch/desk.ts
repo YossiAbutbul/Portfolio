@@ -94,6 +94,9 @@ export interface Desk {
   /** The wall behind the desk, seen only as the camera comes down for More work: rise is how far down
    *  the camera has come (0 overhead, the wall off; 1 low). It never moves itself. */
   setWall: (rise: number) => void;
+  /** Builds the wall (once; it starts empty) and returns its group, still hidden. setWall builds it
+   *  on the spot if it is needed before then. */
+  buildWall: () => THREE.Object3D;
   /** The mug's rim in world space, for the steam drawn over the canvas. */
   mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
   /** Settles once every picture the desk loads has arrived (or failed). */
@@ -1030,534 +1033,543 @@ export function buildDesk(kit: DeskKit): Desk {
   };
   let clockHands: { h: THREE.Object3D; m: THREE.Object3D } | null = null;
   let clockSpin = 0;
-  {
-    const plaster = picture("/textures/plaster.webp", true);
-    plaster.wrapS = plaster.wrapT = THREE.ClampToEdgeWrapping;
-    // The room's lights reach this wall unevenly (the sun is behind it, the window patch and the
-    // shadow frusta end partway up), which split it into bands. It carries its own soft, even light
-    // instead: the plaster texture as its glow, and no shadows thrown onto it.
-    const face = mesh(geo(new THREE.PlaneGeometry(40, 10)), std({ map: plaster, emissiveMap: plaster, emissive: 0xffffff, emissiveIntensity: .55, roughness: .95 }), false);
-    face.receiveShadow = false;
-    face.rotation.x = Math.PI / 2; face.position.set(0, WY, 4.94); wall.add(face);
-    const skirting = mesh(geo(new THREE.BoxGeometry(40, .12, .36)), std({ color: 0x6b4a32, roughness: .55 }));
-    skirting.position.set(0, WY - .06, .12); wall.add(skirting);
-
-    // Pegboard on the left, with what hangs on it. Phones leave it out: there is room for the shelf
-    // and the clock only.
-    const pb = new THREE.Group(); wall.add(pb); pb.visible = !phone;
-    const pegTex = picture("/textures/pegboard.webp", true);
-    if (!phone) pegTex.wrapS = pegTex.wrapT = THREE.ClampToEdgeWrapping;
-    const edgeMat = std({ color: 0x8d6b48 });
-    // Box faces run +x, -x, +y, -y, +z, -z; the side facing the room (and the camera) is -y.
-    const board = mesh(geo(new THREE.BoxGeometry(6.2, .07, 2.4)), [edgeMat, edgeMat, edgeMat, std({ map: pegTex, roughness: .85 }), edgeMat, edgeMat]);
-    board.position.set(phone ? -.7 : -4.1, WY - .05, phone ? 2.5 : 2.35); pb.add(board);
-    if (phone) { board.scale.set(1.5 / 6.2, 1, 1.8 / 2.4); pegTex.repeat.set(1.5 / 6.2, 1.8 / 2.4); }
-    const pegMat = std({ color: 0x9a9a9a, metalness: .8, roughness: .3 });
-    const peg = (x: number, z: number) => { const o = mesh(geo(new THREE.CylinderGeometry(.025, .025, .22, 8)), pegMat); o.position.set(x, WY - .19, z); pb.add(o); };
-    // A coil of cable, two loops hanging on a peg: it swings.
-    const [CX, CZ] = phone ? [-1.15, 3.1] : [-6.2, 3.15];
-    const coil = new THREE.Group(); coil.position.set(CX, WY - .2, CZ); pb.add(coil); peg(CX, CZ);
-    if (phone) coil.scale.setScalar(.7);
-    const cableMat = std({ color: 0xc4552c, roughness: .45 });
-    [[0, 0], [.07, -.06]].forEach(([dx, dz]) => { const c = mesh(geo(new THREE.TorusGeometry(.42, .045, 12, 56)), cableMat); c.rotation.x = Math.PI / 2; c.position.set(dx, 0, -.4 + dz); coil.add(c); });
-    gadgets.push(swinger(coil, "Click to swing the cable", { k: 9, damp: .9 }));
-    // Screwdrivers, hanging handle-up from their pegs: they swing.
-    ([[0xb3361f, -5.1, -.75], [0xd39a3c, -4.8, -.55], [0x2e5a49, -4.5, -.35]] as [number, number, number][]).forEach(([color, dx, px]) => {
-      const x = phone ? px : dx;
-      const sd = new THREE.Group(); sd.position.set(x, WY - .16, phone ? 3.25 : 3.28); pb.add(sd);
-      const handle = mesh(geo(new THREE.CylinderGeometry(.07, .06, .42, 16)), std({ color, roughness: .4 }));
-      handle.rotation.x = Math.PI / 2; handle.position.z = -.23; sd.add(handle);
-      const shaft = mesh(geo(new THREE.CylinderGeometry(.018, .018, .55, 8)), std({ color: 0xbfc3c7, metalness: .9, roughness: .25 }));
-      shaft.rotation.x = Math.PI / 2; shaft.position.z = -.72; sd.add(shaft);
-      gadgets.push(swinger(sd, "Click to knock it", { k: 14, damp: 1.1 }));
-    });
-    // A steel rule across the bottom of the board.
-    const rule = mesh(geo(new THREE.BoxGeometry(2.6, .02, .14)), std({ color: 0xc9ccd0, metalness: .85, roughness: .3 }));
-    if (phone) { rule.scale.x = .5; rule.position.set(-.7, WY - .12, 1.8); pb.add(rule); peg(-1.25, 1.91); peg(-.15, 1.91); }
-    else { rule.position.set(-4.4, WY - .12, 1.55); pb.add(rule); peg(-5.5, 1.66); peg(-3.3, 1.66); }
-    // Sticky notes, in the notebook's hand: working notes from a range test, not slogans. Pinned at the
-    // top, they flap away from the wall. Phones have room for two, lower on the smaller board.
-    type Doodle = (c: CanvasRenderingContext2D, w: number, h: number) => void;
-    // Each note is a quick sketch in pen: a LoRa chirp with its frequency ramp, the log visualizer's
-    // to-do list, and the path a packet takes.
-    const ink = (c: CanvasRenderingContext2D, wd = 5) => { c.strokeStyle = c.fillStyle = "#2a2a3a"; c.lineWidth = wd; c.lineCap = c.lineJoin = "round"; };
-    const chirp: Doodle = (c, w) => {
-      ink(c, 4);
-      c.beginPath();
-      for (let px = 0; px <= 196; px++) { const u = px / 196, y = 92 - 38 * Math.sin(Math.PI * 2 * (1.5 * u + 4 * u * u)); if (px) c.lineTo(30 + px, y); else c.moveTo(30 + px, y); }
-      c.stroke();
-      // The same chirp as frequency over time: ramps that wrap round, three symbols.
-      c.beginPath(); c.moveTo(28, 150); c.lineTo(28, 222); c.lineTo(w - 24, 222); c.stroke();
-      ink(c, 5); c.beginPath();
-      for (let i = 0; i < 3; i++) { const x0 = 36 + i * 62; c.moveTo(x0, 212); c.lineTo(x0 + 58, 160); if (i < 2) c.lineTo(x0 + 62, 212); }
-      c.stroke();
-    };
-    const todo: Doodle = (c) => {
-      ink(c, 4); c.font = `700 46px ${HAND}`; c.textAlign = "left";
-      [["parser", true], ["charts", true], ["export", false]].forEach(([word, done], i) => {
-        const y = 62 + i * 68;
-        c.strokeRect(30, y - 26, 30, 30);
-        if (done) { c.beginPath(); c.moveTo(34, y - 12); c.lineTo(44, y); c.lineTo(66, y - 34); c.stroke(); }
-        c.fillText(word as string, 78, y + 2);
-      });
-    };
-    const flow: Doodle = (c) => {
-      ink(c, 4); c.font = `700 40px ${HAND}`; c.textAlign = "center";
-      const node = (cx: number, cy: number, label: string) => { c.strokeRect(cx - 46, cy - 26, 92, 48); c.fillText(label, cx, cy + 12); };
-      const arrow = (x0: number, y0: number, x1: number, y1: number) => {
-        c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
-        const a = Math.atan2(y1 - y0, x1 - x0); c.beginPath(); c.moveTo(x1 - 13 * Math.cos(a - .5), y1 - 13 * Math.sin(a - .5)); c.lineTo(x1, y1); c.lineTo(x1 - 13 * Math.cos(a + .5), y1 - 13 * Math.sin(a + .5)); c.stroke();
-      };
-      node(70, 66, "node"); node(186, 66, "gw"); node(186, 190, "web");
-      arrow(118, 64, 138, 64); arrow(186, 94, 186, 160);
-      // Radio waves off the node's antenna.
-      for (const r of [12, 22]) { c.beginPath(); c.arc(70, 40, r, -Math.PI * .8, -Math.PI * .2); c.stroke(); }
-    };
-    const notes: [Doodle, number][] = [[chirp, 0xf2d36b], [todo, 0xf0a7a0], [flow, 0xbfe3a8]];
-    ((phone ? [[...notes[0], -.95, 2.3, .08], [...notes[1], -.35, 2.25, -.1]] : [[...notes[0], -3.2, 3.05, .08], [...notes[1], -2.3, 2.78, -.1], [...notes[2], -2.9, 2.2, .05]]) as [Doodle, number, number, number, number][]).forEach(([doodle, color, x, z, a]) => {
-      const paint: Doodle = (c, w, h) => { c.fillStyle = "#" + color.toString(16).padStart(6, "0"); c.fillRect(0, 0, w, h); doodle(c, w, h); };
-      const t = tex(256, 256, paint);
-      // The handwriting arrives later than the wall is built: draw the note again once it has.
-      document.fonts?.load(`700 46px ${HAND}`).then(() => { const cv = t.image as HTMLCanvasElement; paint(cv.getContext("2d")!, cv.width, cv.height); t.needsUpdate = true; }).catch(() => {});
-      const hinge = new THREE.Group(); hinge.position.set(x, WY - .1, z + .275); hinge.rotation.y = a; pb.add(hinge);
-      const flap = new THREE.Group(); hinge.add(flap);
-      const note = mesh(geo(new THREE.PlaneGeometry(.55, .55)), std({ map: t, roughness: .9, side: THREE.DoubleSide }), false);
-      note.rotation.x = Math.PI / 2; note.position.z = -.275; flap.add(note);
-      // Flapping lifts the note off the wall (about its top edge), never into it.
-      const g = swinger(flap, "Click to flick it", { k: 30, damp: 2.4, kick: 6, axis: "x", nudge: 2 });
-      const step = g.update;
-      g.update = (dt) => { const m = step(dt); flap.rotation.x = -Math.abs(flap.rotation.x); return m; };
-      gadgets.push(g);
-    });
-
-    // Shelf on the right, lit from underneath.
-    const wood = std({ color: 0x5b3b24, roughness: .55 });
-    // Phones: a short shelf under the clock, right of the board.
-    const SX = phone ? .45 : 3.9, SW = phone ? 2.1 : 6.4, SZ = phone ? 2.3 : 1.9;
-    const shelf = mesh(geo(new THREE.BoxGeometry(SW, .7, .09)), wood); shelf.position.set(SX, WY - .35, SZ); wall.add(shelf);
-    (phone ? [-.5, 1.4] : [1.2, 6.6]).forEach((x) => { const b = mesh(geo(new THREE.BoxGeometry(.08, .55, .45)), std({ color: 0x1d1d1d, metalness: .6, roughness: .4 })); b.position.set(x, WY - .28, SZ - .25); wall.add(b); });
-    const strip = new THREE.Mesh(geo(new THREE.BoxGeometry(SW - .4, .05, .02)), new THREE.MeshBasicMaterial({ color: 0xffc48a, toneMapped: false }));
-    strip.position.set(SX, WY - .55, SZ - .06); wall.add(strip);
-    // Present from the start (at zero) so raising the wall never recompiles the lit materials.
-    const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2); stripLight.position.set(SX, WY - 1.1, SZ - .3); wall.add(stripLight);
-    wallRise.light = stripLight;
-    const SH = SZ + .05; // the shelf's top
-    /* A bench scope, drawn after a real two-channel DSO: a screen with the instrument's own interface
-       (status bar, dotted graticule, channel and trigger markers, scale and measurement readouts), a
-       front panel with soft keys, knobs and BNC inputs, and (desktop) a probe on channel 1 clipped to
-       the dev board beside it. A click cycles what it is measuring. The case is 1.7 wide, .62 deep,
-       .95 tall; its front face is at y = -.31 (toward the camera). */
-    const SCR_W = 768, SCR_H = 464;
-    const scopeTex = tex(SCR_W, SCR_H, () => {});
-    let trace = 0;
-    const MODES = [
-      { label: "RING-DOWN", time: "50.0µs", ch1: "1.00V", ch2: "", trig: .15, level: .5, meas: ["Freq 18.0kHz", "Vpp 6.02V", "τ 22.1µs"] },
-      { label: "CLK 1kHz", time: "200µs", ch1: "1.00V", ch2: "1.00V", trig: .45, level: .5, meas: ["Freq 1.000kHz", "Vpp 4.12V", "Rise 18.0ns"] },
-      { label: "NOISE FLOOR", time: "1.00µs", ch1: "5.00mV", ch2: "", trig: .5, level: .2, meas: ["Vrms 2.91mV", "Vpp 19.6mV", "Mean 0.04mV"] },
-      { label: "LoRa TX", time: "500µs", ch1: "500mV", ch2: "2.00V", trig: .2, level: .8, meas: ["Width 3.12ms", "Vpp 5.04V", "SF7 125kHz"] },
-    ];
-    const drawTrace = () => {
-      const x = (scopeTex.image as HTMLCanvasElement).getContext("2d")!, w = SCR_W, h = SCR_H, m = MODES[trace];
-      // Seeded, so a mode looks the same every time it comes round.
-      let seed = 11 + trace * 97;
-      const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-      const n = (a: number) => (rnd() + rnd() + rnd() - 1.5) / 1.5 * a;
-      const gx = 24, gy = 34, gw = 720, gh = 376, dx = gw / 10, dy = gh / 8;
-      const X = (t: number) => gx + t * gw, Y = (v: number) => gy + gh / 2 - v * dy;
-      x.setLineDash([]); x.globalAlpha = 1;
-      x.fillStyle = "#050607"; x.fillRect(0, 0, w, h);
-      // Status bar: run state, timebase, sample rate, memory depth, trigger.
-      x.fillStyle = "#16181a"; x.fillRect(0, 0, w, 28);
-      x.fillStyle = "#2fd16b"; x.beginPath(); x.roundRect(6, 5, 52, 19, 3); x.fill();
-      x.fillStyle = "#04140a"; x.font = `700 13px ${MONO}`; x.fillText("RUN", 18, 19);
-      x.fillStyle = "#e8e8e8"; x.font = `500 13px ${MONO}`;
-      x.fillText(`H ${m.time}`, 70, 19); x.fillText("Sa 1.00GSa/s", 170, 19); x.fillText("D 14.0Mpts", 300, 19);
-      const unit = m.ch1.replace(/[\d.]+/, ""), lvl = (m.level * Number.parseFloat(m.ch1)).toFixed(2);
-      x.fillStyle = "#ff9b2f"; x.fillText(`T ↑ CH1 ${lvl}${unit}`, 560, 19);
-      // Graticule: dotted divisions, the centre lines with fifth-division ticks, a frame.
-      x.strokeStyle = "rgba(150,150,150,.38)"; x.lineWidth = 1; x.setLineDash([1, 4]);
-      for (let i = 1; i < 10; i++) { x.beginPath(); x.moveTo(X(i / 10) + .5, gy); x.lineTo(X(i / 10) + .5, gy + gh); x.stroke(); }
-      for (let j = 1; j < 8; j++) { x.beginPath(); x.moveTo(gx, gy + j * dy + .5); x.lineTo(gx + gw, gy + j * dy + .5); x.stroke(); }
-      x.setLineDash([]); x.strokeStyle = "rgba(170,170,170,.55)";
-      for (let i = 0; i <= 50; i++) { const px = gx + i * dx / 5 + .5, k = i % 5 ? 3 : 5; x.beginPath(); x.moveTo(px, Y(0) - k); x.lineTo(px, Y(0) + k); x.stroke(); }
-      for (let j = 0; j <= 40; j++) { const py = gy + j * dy / 5 + .5, k = j % 5 ? 3 : 5; x.beginPath(); x.moveTo(X(.5) - k, py); x.lineTo(X(.5) + k, py); x.stroke(); }
-      x.strokeStyle = "rgba(170,170,170,.6)"; x.strokeRect(gx + .5, gy + .5, gw, gh);
-      // A trace: a soft wide pass for the glow, then the sharp line.
-      const plot = (f: (t: number) => number, color: string, glow: string, alpha = 1) => {
-        const pts: [number, number][] = [];
-        for (let px = 0; px <= gw; px++) pts.push([gx + px, Y(Math.max(-4.2, Math.min(4.2, f(px / gw))))]);
-        x.save(); x.beginPath(); x.rect(gx, gy, gw, gh); x.clip(); x.globalAlpha = alpha; x.lineJoin = "round";
-        for (const [lw, c] of [[5, glow], [1.6, color]] as const) {
-          x.strokeStyle = c; x.lineWidth = lw; x.beginPath();
-          pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.stroke();
-        }
-        x.restore();
-      };
-      const Y1 = "#ffe14a", Y1G = "rgba(255,225,74,.22)", C2 = "#35d6f0", C2G = "rgba(53,214,240,.22)";
-      // Each channel's ground level, in divisions.
-      const g1 = trace === 1 || trace === 3 ? 1.6 : 0, g2 = -2.2;
-      if (trace === 0) {
-        // A struck resonator: flat until the trigger, then a decaying ring.
-        plot((t) => { const u = t - m.trig; return (u < 0 ? 0 : 3 * Math.sin(Math.PI * 2 * 9 * u) * Math.exp(-u * 4.5)) + n(.04); }, Y1, Y1G);
-      } else if (trace === 1) {
-        // A 1 kHz clock with a real edge (rise time, overshoot, ringing) and its RC-filtered copy on CH2.
-        const edge = (t: number) => { const p = (t * 2 + .05) % 1; return p < .5 ? { L: 1, te: p } : { L: -1, te: p - .5 }; };
-        plot((t) => { const { L, te } = edge(t); return g1 + L * (1 - 2 * Math.exp(-te * 140) * Math.cos(te * 260)) + n(.03); }, Y1, Y1G);
-        plot((t) => { const { L, te } = edge(t); return g2 + L * .9 * (1 - 2 * Math.exp(-te * 9)) + n(.02); }, C2, C2G);
-      } else if (trace === 2) {
-        // The noise floor, with persistence: earlier sweeps stay faintly on screen.
-        for (let k = 0; k < 7; k++) plot(() => n(.7), Y1, Y1G, .16);
-        plot(() => n(.7), Y1, Y1G);
-      } else {
-        // A LoRa packet: up-chirps (each sweeping up through the band, then wrapping) on a short ramp,
-        // with the radio's TX-enable line on CH2.
-        const end = .86;
-        const env = (t: number) => Math.max(0, Math.min(1, (t - m.trig) / .02, (end - t) / .02));
-        plot((t) => {
-          if (t < m.trig || t > end) return g1 + n(.03);
-          const u = ((t - m.trig) % .08) / .08;
-          return g1 + 2.2 * env(t) * Math.sin(Math.PI * 2 * (3 * u + 3 * u * u)) + n(.04);
-        }, Y1, Y1G);
-        plot((t) => (t > m.trig - .015 && t < end + .015 ? g2 + .9 : g2 - .9) + n(.02), C2, C2G);
-      }
-      // Markers: channel ground levels on the left, the trigger level on the right, the trigger
-      // position along the top.
-      const tag = (px: number, py: number, color: string, text: string, left: boolean) => {
-        const s = left ? 1 : -1;
-        x.fillStyle = color; x.beginPath();
-        x.moveTo(px, py - 8); x.lineTo(px + s * 14, py - 8); x.lineTo(px + s * 20, py); x.lineTo(px + s * 14, py + 8); x.lineTo(px, py + 8);
-        x.closePath(); x.fill();
-        x.fillStyle = "#000"; x.font = `700 12px ${MONO}`; x.fillText(text, left ? px + 3 : px - 13, py + 4);
-      };
-      tag(2, Y(g1), Y1, "1", true);
-      if (m.ch2) tag(2, Y(g2), C2, "2", true);
-      tag(w - 2, Y(g1 + m.level), "#ff9b2f", "T", false);
-      x.fillStyle = "#ff9b2f"; x.beginPath(); x.moveTo(X(m.trig) - 7, gy); x.lineTo(X(m.trig) + 7, gy); x.lineTo(X(m.trig), gy + 9); x.closePath(); x.fill();
-      // The channel's label, as the instrument lets you set one.
-      x.fillStyle = Y1; x.font = `600 13px ${MONO}`; x.fillText(m.label, gx + 8, gy + 18);
-      // Bottom bar: channel scales, then the measurements.
-      x.fillStyle = "#16181a"; x.fillRect(0, h - 46, w, 46);
-      const chip = (px: number, color: string, num: string, text: string) => {
-        x.fillStyle = color; x.beginPath(); x.roundRect(px, h - 38, 18, 18, 2); x.fill();
-        x.fillStyle = "#000"; x.font = `700 12px ${MONO}`; x.fillText(num, px + 5, h - 24);
-        x.strokeStyle = color; x.lineWidth = 1; x.strokeRect(px + 18.5, h - 37.5, 82, 17);
-        x.fillStyle = color; x.font = `500 12px ${MONO}`; x.fillText(text, px + 25, h - 24);
-      };
-      chip(8, Y1, "1", `${m.ch1} DC`);
-      if (m.ch2) chip(118, C2, "2", `${m.ch2} DC`);
-      x.fillStyle = "#d8d8d8"; x.font = `500 13px ${MONO}`;
-      m.meas.forEach((s, i) => x.fillText(s, 250 + i * 172, h - 24));
-      x.fillStyle = "#7b7f84"; x.font = `500 11px ${MONO}`; x.fillText("Measure · CH1", 250, h - 8);
-      scopeTex.needsUpdate = true;
-    };
-    drawTrace();
-    const scope = new THREE.Group(); scope.position.set(phone ? .1 : 2.5, WY - .45, SH); wall.add(scope);
-    if (phone) scope.scale.setScalar(.72);
-    const scase = mesh(geo(new RoundedBoxGeometry(1.7, .62, .95, 3, .05)), std({ color: 0x3a3d41, roughness: .55, metalness: .25 })); scase.position.z = .475; scope.add(scase);
-    // A carry handle folded back over the top.
-    const handle = mesh(geo(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-.66, .26, .95), new THREE.Vector3(-.66, .02, .975), new THREE.Vector3(-.5, -.04, .98),
-      new THREE.Vector3(.5, -.04, .98), new THREE.Vector3(.66, .02, .975), new THREE.Vector3(.66, .26, .95),
-    ]), 40, .018, 8)), std({ color: 0x1d1f21, roughness: .5 })); scope.add(handle);
-    // The front face: the printed panel (section frames, labels, the screen's bezel, the coloured rings
-    // round the inputs) is a texture; the controls themselves are geometry on top of it.
-    const FW = 1.62, FH = .88, FZ = .475, FT = FZ + FH / 2;
-    const panelTex = tex(1024, 556, (x, w, h) => {
-      const P = (px: number, pz: number): [number, number] => [(px + FW / 2) / FW * w, (FT - pz) / FH * h];
-      const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#3a3e42"); g.addColorStop(1, "#2c2f32");
-      x.fillStyle = g; x.fillRect(0, 0, w, h);
-      for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(255,255,255,${.01 + (i % 7) * .002})`; x.fillRect(0, (i * 37) % h, w, 1); }
-      // The screen's bezel.
-      const [sx0, sy0] = P(-.8, .845), [sx1, sy1] = P(.2, .215);
-      x.fillStyle = "#0c0d0e"; x.beginPath(); x.roundRect(sx0, sy0, sx1 - sx0, sy1 - sy0, 10); x.fill();
-      x.fillStyle = "#c9ccd0"; x.font = `600 15px ${SANS}`; x.fillText("DSO 2104", ...P(-.79, .875));
-      x.fillStyle = "#8d9296"; x.font = `500 12px ${MONO}`; x.fillText("100 MHz  ·  1 GSa/s  ·  4 CH", ...P(-.6, .875));
-      x.fillText("DIGITAL STORAGE OSCILLOSCOPE", ...P(-.12, .875));
-      // Sections on the right, framed and titled.
-      const frame = (a: number, b: number, c: number, d: number, title: string) => {
-        const [x0, y0] = P(a, b), [x1, y1] = P(c, d);
-        x.strokeStyle = "rgba(200,205,210,.32)"; x.lineWidth = 1.5; x.beginPath(); x.roundRect(x0, y0, x1 - x0, y1 - y0, 6); x.stroke();
-        if (!title) return;
-        x.font = `600 11px ${MONO}`; const tw = x.measureText(title).width;
-        x.fillStyle = "#383c40"; x.fillRect(x0 + 8, y0 - 7, tw + 8, 12); x.fillStyle = "#b9bec3"; x.fillText(title, x0 + 12, y0 + 4);
-      };
-      frame(.3, .86, .79, .755, "MENU");
-      frame(.3, .735, .47, .555, "");
-      frame(.5, .735, .66, .555, "HORIZONTAL");
-      frame(.68, .735, .79, .555, "TRIGGER");
-      frame(.3, .535, .79, .21, "VERTICAL");
-      x.fillStyle = "#a9aeb3"; x.font = `500 10px ${MONO}`;
-      ([["Measure", .35, .775], ["Acquire", .43, .775], ["Cursor", .51, .775], ["Display", .59, .775], ["RUN/STOP", .675, .775], ["SINGLE", .76, .775],
-        ["SCALE", .555, .575], ["POS", .63, .575], ["LEVEL", .735, .575], ["MATH", .655, .455], ["REF", .655, .375], ["AUTO", .745, .455], ["CLEAR", .745, .375],
-        ["CH1", .37, .225], ["CH2", .53, .225], ["EXT", .67, .225]] as [string, number, number][])
-        .forEach(([s, a, b]) => { const [px, py] = P(a, b); x.fillText(s, px - x.measureText(s).width / 2, py); });
-      { const [px, py] = P(.78, .055); x.fillText("1kHz 3V", px - 30, py); }
-      // Coloured rings round the channel inputs and their scale knobs.
-      for (const [a, b, c, r] of [[.37, .12, "#ffe14a", 28], [.53, .12, "#35d6f0", 28], [.37, .33, "#ffe14a", 34], [.53, .33, "#35d6f0", 34]] as [number, number, string, number][]) {
-        const [px, py] = P(a, b); x.strokeStyle = c; x.lineWidth = 3; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.stroke();
-      }
-      // Power and USB, bottom left.
-      x.fillStyle = "#8d9296"; x.font = `500 10px ${MONO}`; x.fillText("POWER", ...P(-.785, .045)); x.fillText("USB", ...P(-.6, .045));
-      const [ux, uy] = P(-.62, .14); x.fillStyle = "#111"; x.fillRect(ux, uy, 34, 14); x.fillStyle = "#555"; x.fillRect(ux + 5, uy + 4, 24, 5);
-    });
-    const faceMesh = mesh(geo(new THREE.PlaneGeometry(FW, FH)), std({ map: panelTex, roughness: .6, metalness: .1 }), false);
-    faceMesh.rotation.x = Math.PI / 2; faceMesh.position.set(0, -.311, FZ); scope.add(faceMesh);
-    const sscreen = new THREE.Mesh(geo(new THREE.PlaneGeometry(.94, .568)), new THREE.MeshBasicMaterial({ map: scopeTex, toneMapped: false }));
-    sscreen.rotation.x = Math.PI / 2; sscreen.position.set(-.3, -.313, .53); scope.add(sscreen);
-    // Controls. They face the camera (-y), and cylinders already run along y.
-    const knobMat = std({ color: 0x1a1b1d, roughness: .45 }), capMat = std({ color: 0x2c2e31, roughness: .35, metalness: .2 });
-    const markMat = std({ color: 0xd8dade, roughness: .5 });
-    const knob = (a: number, b: number, r: number) => {
-      const k = new THREE.Group(); k.position.set(a, -.311, b); scope.add(k);
-      const body = mesh(geo(new THREE.CylinderGeometry(r * .96, r, .05, 32)), knobMat, false); body.position.y = -.025; k.add(body);
-      const cap = mesh(geo(new THREE.CylinderGeometry(r * .8, r * .8, .012, 32)), capMat, false); cap.position.y = -.056; k.add(cap);
-      const mark = mesh(geo(new THREE.BoxGeometry(r * .12, .006, r * .55)), markMat, false); mark.position.set(0, -.062, r * .45); k.add(mark);
-      return k;
-    };
-    const keyMat = std({ color: 0x55595e, roughness: .5 });
-    const key = (a: number, b: number, wd = .062, hg = .034, mat: THREE.Material = keyMat) => {
-      const k = mesh(geo(new RoundedBoxGeometry(wd, .022, hg, 2, .008)), mat, false); k.position.set(a, -.322, b); scope.add(k); return k;
-    };
-    const multi = knob(.385, .645, .05);
-    knob(.555, .645, .04); knob(.63, .645, .028); knob(.735, .645, .04);
-    knob(.37, .33, .042); knob(.53, .33, .042); knob(.37, .45, .026); knob(.53, .45, .026);
-    [.35, .43, .51, .59].forEach((a) => key(a, .805));
-    key(.675, .805, .07, .036, new THREE.MeshBasicMaterial({ color: 0x35d16b, toneMapped: false }));
-    key(.76, .805, .07, .036, std({ color: 0x6b5a2e, roughness: .5 }));
-    [[.655, .48], [.655, .4], [.745, .48], [.745, .4]].forEach(([a, b]) => key(a, b, .056, .03));
-    // Soft keys down the right of the screen, and the power key.
-    [.76, .65, .54, .43, .32].forEach((b) => key(.245, b, .05, .05));
-    const power = mesh(geo(new THREE.CylinderGeometry(.03, .03, .02, 24)), keyMat, false); power.position.set(-.74, -.32, .1); scope.add(power);
-    // BNC inputs: a flange, the barrel, the insulator, and the two bayonet studs.
-    const metal = std({ color: 0xcfd3d8, roughness: .25, metalness: .95 }), insul = std({ color: 0xe8e2d4, roughness: .6 });
-    const bnc = (a: number, b: number) => {
-      const g = new THREE.Group(); g.position.set(a, -.311, b); scope.add(g);
-      const flange = mesh(geo(new THREE.CylinderGeometry(.042, .042, .01, 6)), metal, false); flange.position.y = -.005; g.add(flange);
-      const barrel = mesh(geo(new THREE.CylinderGeometry(.027, .027, .06, 24, 1, true)), metal, false); barrel.position.y = -.035; g.add(barrel);
-      const ins = mesh(geo(new THREE.CylinderGeometry(.02, .02, .05, 20)), insul, false); ins.position.y = -.03; g.add(ins);
-      for (const s of [-1, 1]) { const stud = mesh(geo(new THREE.CylinderGeometry(.006, .006, .02, 8)), metal, false); stud.rotation.z = Math.PI / 2; stud.position.set(s * .033, -.05, 0); g.add(stud); }
-    };
-    bnc(.37, .12); bnc(.53, .12); bnc(.67, .12);
-    // The probe-compensation tabs.
-    for (const a of [.76, .8]) { const tab = mesh(geo(new THREE.BoxGeometry(.016, .03, .03)), metal, false); tab.position.set(a, -.326, .12); scope.add(tab); }
-    let scopeBump = 0;
-    gadgets.push({
-      obj: scope, hint: "Click to change the trace",
-      press() { trace = (trace + 1) % MODES.length; drawTrace(); scopeBump = 1; },
-      update(dt) { scopeBump = Math.max(0, scopeBump - dt * 4); multi.rotation.y = trace * 1.2 + scopeBump; scope.position.z = SH + Math.sin(scopeBump * Math.PI) * .03; return scopeBump > 0; },
-    });
-    /* A dev board leaning on the wall: a small LoRa node, 1.0 wide and .72 tall, its front face toward
-       the camera (-y). The printed side (solder mask over copper pour, routed traces, vias, pads and
-       the silkscreen) is a texture; the parts on it are geometry. Its TX LED flashes when clicked; the
-       scope's probe hooks onto its TP1 test point. */
-    const BW = 1.0, BH = .72;
-    const pcbTex = tex(1024, 737, (x, w, h) => {
-      const P = (a: number, b: number): [number, number] => [(a + BW / 2) / BW * w, (BH / 2 - b) / BH * h];
-      const S = w / BW; // texture pixels per unit
-      // Solder mask, with the ground pour under it a shade lighter.
-      x.fillStyle = "#17532f"; x.fillRect(0, 0, w, h);
-      x.fillStyle = "#1d6339"; x.beginPath(); x.roundRect(18, 18, w - 36, h - 36, 14); x.fill();
-      // Traces, routed at 45°: each is cut out of the pour (the clearance), then laid in copper.
-      const traces: [number, number][][] = [
-        // MCU to the left header.
-        [[.01, .03], [-.06, .03], [-.12, -.03], [-.39, -.03], [-.42, -.06]],
-        [[.01, .0], [-.05, .0], [-.09, -.04], [-.09, -.1], [-.39, -.1], [-.42, -.13]],
-        [[.01, -.03], [-.03, -.07], [-.03, -.16], [-.39, -.16], [-.42, -.19]],
-        // MCU to the right header.
-        [[.15, .06], [.26, .06], [.3, .1], [.39, .1], [.42, .13]],
-        [[.15, .02], [.3, .02], [.34, -.02], [.39, -.02], [.42, -.05]],
-        [[.15, -.02], [.26, -.02], [.29, -.05], [.29, -.11], [.39, -.11], [.42, -.14]],
-        // MCU to the radio under the can (SPI).
-        [[.04, .05], [.04, .09], [.0, .13], [-.03, .13]],
-        [[.08, .05], [.08, .11], [.03, .16], [-.03, .16]],
-        [[.12, .05], [.12, .13], [.07, .18], [.07, .21], [-.03, .21]],
-        // USB to the MCU, as a pair.
-        [[-.07, -.33], [-.07, -.26], [.03, -.16], [.03, -.09]],
-        [[-.03, -.33], [-.03, -.27], [.07, -.17], [.07, -.09]],
-        // To the LEDs and the buttons.
-        [[.15, .04], [.22, .11], [.32, .11], [.33, .12]],
-        [[.15, -.06], [.17, -.08], [.17, -.24]],
-        [[.13, -.09], [.13, -.16], [.27, -.16], [.28, -.17], [.28, -.24]],
-        // Regulator to the 3V3 rail and the test point.
-        [[-.2, -.18], [-.2, -.22], [-.27, -.22]],
-        [[-.24, -.12], [-.31, -.12], [-.36, -.07], [-.39, -.07]],
-      ];
-      const path = (pts: [number, number][]) => { x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(...P(a, b)) : x.moveTo(...P(a, b)))); };
-      x.lineCap = "round"; x.lineJoin = "round";
-      for (const t of traces) { path(t); x.strokeStyle = "#17532f"; x.lineWidth = 15; x.stroke(); }
-      for (const t of traces) { path(t); x.strokeStyle = "#36a463"; x.lineWidth = 8; x.stroke(); }
-      // The 50 Ω RF line from the radio to the antenna connector, wide, fenced with ground vias.
-      const rf: [number, number][] = [[-.04, .2], [.12, .2], [.18, .26], [.27, .26], [.3, .29], [.3, .33]];
-      path(rf); x.strokeStyle = "#17532f"; x.lineWidth = 30; x.stroke();
-      path(rf); x.strokeStyle = "#3aab68"; x.lineWidth = 14; x.stroke();
-      const via = (a: number, b: number, r = 6) => {
-        const [px, py] = P(a, b);
-        x.fillStyle = "#c9a54b"; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
-        x.fillStyle = "#0d2416"; x.beginPath(); x.arc(px, py, r * .45, 0, Math.PI * 2); x.fill();
-      };
-      for (let i = 0; i <= 8; i++) { const a = -.02 + i * .016; via(a, .245, 4.5); via(a, .155, 4.5); }
-      [[.25, .3], [.22, .22], [.33, .27]].forEach(([a, b]) => via(a, b, 4.5));
-      // Vias at the bends, and stitching the pour.
-      for (const t of traces) { const [a, b] = t[t.length - 1]; if (Math.abs(a) < .38) via(a, b); }
-      for (let a = -.36; a <= .37; a += .12) for (const b of [.31, -.3]) via(a, b, 4);
-      // Pads: the QFN under the MCU, and the header rows down each side (pin 1 square).
-      { const [cx, cy] = P(.08, -.02), half = .085 * S; x.fillStyle = "#d4b05a";
-        for (let i = 0; i < 9; i++) { const o = -half * .8 + i * half * .2; x.fillRect(cx + o - 3, cy - half - 8, 6, 12); x.fillRect(cx + o - 3, cy + half - 4, 6, 12); x.fillRect(cx - half - 8, cy + o - 3, 12, 6); x.fillRect(cx + half - 4, cy + o - 3, 12, 6); } }
-      for (const a of [-.45, .45]) for (let i = 0; i < 14; i++) {
-        const [px, py] = P(a, .3 - i * .046);
-        x.fillStyle = "#d4b05a"; if (i === 0) x.fillRect(px - 11, py - 11, 22, 22); else { x.beginPath(); x.arc(px, py, 11, 0, Math.PI * 2); x.fill(); }
-        x.fillStyle = "#0b1a10"; x.beginPath(); x.arc(px, py, 5, 0, Math.PI * 2); x.fill();
-      }
-      // Mounting holes, plated.
-      for (const [a, b] of [[-.455, .325], [.455, .325], [-.455, -.325], [.455, -.325]]) {
-        const [px, py] = P(a, b); x.fillStyle = "#d4b05a"; x.beginPath(); x.arc(px, py, 19, 0, Math.PI * 2); x.fill();
-        x.fillStyle = "#0b0b0b"; x.beginPath(); x.arc(px, py, 10, 0, Math.PI * 2); x.fill();
-      }
-      // Small parts (0603 resistors black, capacitors tan), with their tinned ends.
-      const smd = (a: number, b: number, cap: boolean, vert = false) => {
-        const [px, py] = P(a, b), lw = vert ? 10 : 20, lh = vert ? 20 : 10;
-        x.fillStyle = cap ? "#b89468" : "#1e1e1e"; x.fillRect(px - lw / 2, py - lh / 2, lw, lh);
-        x.fillStyle = "#cfd2d4";
-        if (vert) { x.fillRect(px - lw / 2, py - lh / 2, lw, 4); x.fillRect(px - lw / 2, py + lh / 2 - 4, lw, 4); }
-        else { x.fillRect(px - lw / 2, py - lh / 2, 4, lh); x.fillRect(px + lw / 2 - 4, py - lh / 2, 4, lh); }
-      };
-      ([[-.02, .07, true], [-.02, .04, true], [.18, .07, false], [.18, -.06, true, true], [.21, -.06, true, true], [.25, .14, false], [.25, .18, false],
-        [-.13, -.24, true], [-.13, -.27, true], [-.27, -.27, true, true], [.0, -.22, false, true], [.11, -.22, false, true], [.36, .06, false], [-.33, .02, true, true]] as [number, number, boolean, boolean?][])
-        .forEach(([a, b, c, v]) => smd(a, b, c, v));
-      // The test point the probe hooks onto.
-      via(-.3, -.22, 11);
-      // Silkscreen: part outlines, designators, pin names, the board's name.
-      x.strokeStyle = "#e9efe9"; x.fillStyle = "#e9efe9"; x.lineWidth = 2.5;
-      const box = (a: number, b: number, bw: number, bh: number) => { const [px, py] = P(a - bw / 2, b + bh / 2); x.strokeRect(px, py, bw * S, bh * S); };
-      box(-.17, .1, .3, .24); box(.08, -.02, .19, .19); box(-.05, -.355, .14, .07); box(.22, .02, .1, .06); box(-.2, -.15, .11, .1);
-      box(.17, -.28, .09, .09); box(.28, -.28, .09, .09);
-      for (const a of [-.45, .45]) box(a, -.003, .055, .66);
-      { const [px, py] = P(.08 - .095, -.02 + .095); x.beginPath(); x.arc(px - 8, py - 8, 4, 0, Math.PI * 2); x.fill(); }
-      x.font = `600 15px ${MONO}`;
-      ([["U1", -.02, -.1], ["U2 SX1262", -.3, .245], ["Y1", .19, .07], ["U3", -.25, -.08], ["J1", .37, .31], ["J2 USB", -.15, -.3], ["RST", .14, -.36], ["BOOT", .24, -.36],
-        ["TP1", -.36, -.25], ["TX", .39, .21], ["PWR", .39, .155], ["3V3", -.4, .335], ["GND", .36, .335]] as [string, number, number][])
-        .forEach(([s, a, b]) => x.fillText(s, ...P(a, b)));
-      x.font = `500 11px ${MONO}`;
-      const pins = ["3V3", "GND", "IO1", "IO2", "IO3", "IO4", "SDA", "SCL", "TX", "RX", "A0", "A1", "EN", "VIN"];
-      pins.forEach((s, i) => { const [lx, ly] = P(-.415, .3 - i * .046); x.fillText(s, lx, ly + 4); const [rx, ry] = P(.36, .3 - i * .046); x.fillText(pins[13 - i], rx, ry + 4); });
-      x.font = `700 22px ${SANS}`; x.fillText("LoRa NODE", ...P(-.08, -.25)); x.font = `500 13px ${MONO}`; x.fillText("rev B  ·  868/915 MHz", ...P(-.08, -.285));
-    });
-    const pcbMat = std({ color: 0x2d4a32, roughness: .7 });
-    const pcb = mesh(geo(new THREE.BoxGeometry(BW, .03, BH)), [pcbMat, pcbMat, pcbMat, std({ map: pcbTex, roughness: .42 }), pcbMat, pcbMat]);
-    pcb.rotation.x = -.28; pcb.position.set(4.35, WY - .2, SH + .38); wall.add(pcb);
-    // The parts on the board. Its front face is at y = -.015; each part sits on it.
+  /* Built on approach (see scene.ts: as the projects come into view, or in idle time a few seconds
+     after the opening), not with the desk: it is the biggest part of the set and nobody sees it until
+     More work. Until then the group is empty and hidden, so it adds nothing to the startup shaders. */
+  let wallBuilt = false;
+  function buildWall() {
+    if (wallBuilt) return wall;
+    wallBuilt = true;
     {
-      const part = (g: THREE.BufferGeometry, m: THREE.Material, a: number, depth: number, b: number) => {
-        const p = mesh(geo(g), m, false); p.position.set(a, -.015 - depth / 2, b); pcb.add(p); return p;
-      };
-      const black = std({ color: 0x151515, roughness: .45 }), gold = std({ color: 0xd4aa52, roughness: .3, metalness: .9 });
-      part(new THREE.BoxGeometry(.14, .012, .14), black, .08, .012, -.02); // MCU
-      part(new THREE.BoxGeometry(.28, .03, .22), metal, -.17, .03, .1); // the radio's shield can
-      part(new THREE.BoxGeometry(.24, .002, .18), std({ color: 0xb9bdc2, roughness: .45, metalness: .8 }), -.17, .032, .1); // its lid, a touch duller
-      part(new RoundedBoxGeometry(.08, .02, .035, 2, .008), metal, .22, .02, .02); // crystal
-      part(new THREE.BoxGeometry(.07, .016, .06), black, -.2, .016, -.15); // regulator
-      part(new THREE.BoxGeometry(.06, .006, .022), metal, -.2, .006, -.105); // its tab
-      part(new RoundedBoxGeometry(.1, .034, .06, 2, .012), metal, -.05, .034, -.345); // USB-C
-      for (const a of [.17, .28]) { part(new THREE.BoxGeometry(.07, .022, .07), metal, a, .022, -.28); part(new THREE.CylinderGeometry(.018, .018, .02, 16), black, a, .062, -.28); }
-      // The antenna connector at the top edge: a gold SMA, standing up.
-      const sma = new THREE.Group(); sma.position.set(.3, -.04, .36); pcb.add(sma);
-      const hex = mesh(geo(new THREE.CylinderGeometry(.034, .034, .03, 6)), gold, false); hex.rotation.x = Math.PI / 2; hex.position.z = .015; sma.add(hex);
-      const barrel = mesh(geo(new THREE.CylinderGeometry(.022, .022, .07, 20)), gold, false); barrel.rotation.x = Math.PI / 2; barrel.position.z = .065; sma.add(barrel);
-      // Pin headers down each side: the black strip, and the pins through it (one instanced mesh).
-      const pinGeo = geo(new THREE.BoxGeometry(.008, .07, .008));
-      const pinsMesh = new THREE.InstancedMesh(pinGeo, gold, 28); const m4 = new THREE.Matrix4();
-      [-.45, .45].forEach((a, s) => {
-        part(new THREE.BoxGeometry(.034, .03, .65), black, a, .03, -.003);
-        for (let i = 0; i < 14; i++) pinsMesh.setMatrixAt(s * 14 + i, m4.makeTranslation(a, -.05, .3 - i * .046));
+      const plaster = picture("/textures/plaster.webp", true);
+      plaster.wrapS = plaster.wrapT = THREE.ClampToEdgeWrapping;
+      // The room's lights reach this wall unevenly (the sun is behind it, the window patch and the
+      // shadow frusta end partway up), which split it into bands. It carries its own soft, even light
+      // instead: the plaster texture as its glow, and no shadows thrown onto it.
+      const face = mesh(geo(new THREE.PlaneGeometry(40, 10)), std({ map: plaster, emissiveMap: plaster, emissive: 0xffffff, emissiveIntensity: .55, roughness: .95 }), false);
+      face.receiveShadow = false;
+      face.rotation.x = Math.PI / 2; face.position.set(0, WY, 4.94); wall.add(face);
+      const skirting = mesh(geo(new THREE.BoxGeometry(40, .12, .36)), std({ color: 0x6b4a32, roughness: .55 }));
+      skirting.position.set(0, WY - .06, .12); wall.add(skirting);
+
+      // Pegboard on the left, with what hangs on it. Phones leave it out: there is room for the shelf
+      // and the clock only.
+      const pb = new THREE.Group(); wall.add(pb); pb.visible = !phone;
+      const pegTex = picture("/textures/pegboard.webp", true);
+      if (!phone) pegTex.wrapS = pegTex.wrapT = THREE.ClampToEdgeWrapping;
+      const edgeMat = std({ color: 0x8d6b48 });
+      // Box faces run +x, -x, +y, -y, +z, -z; the side facing the room (and the camera) is -y.
+      const board = mesh(geo(new THREE.BoxGeometry(6.2, .07, 2.4)), [edgeMat, edgeMat, edgeMat, std({ map: pegTex, roughness: .85 }), edgeMat, edgeMat]);
+      board.position.set(phone ? -.7 : -4.1, WY - .05, phone ? 2.5 : 2.35); pb.add(board);
+      if (phone) { board.scale.set(1.5 / 6.2, 1, 1.8 / 2.4); pegTex.repeat.set(1.5 / 6.2, 1.8 / 2.4); }
+      const pegMat = std({ color: 0x9a9a9a, metalness: .8, roughness: .3 });
+      const peg = (x: number, z: number) => { const o = mesh(geo(new THREE.CylinderGeometry(.025, .025, .22, 8)), pegMat); o.position.set(x, WY - .19, z); pb.add(o); };
+      // A coil of cable, two loops hanging on a peg: it swings.
+      const [CX, CZ] = phone ? [-1.15, 3.1] : [-6.2, 3.15];
+      const coil = new THREE.Group(); coil.position.set(CX, WY - .2, CZ); pb.add(coil); peg(CX, CZ);
+      if (phone) coil.scale.setScalar(.7);
+      const cableMat = std({ color: 0xc4552c, roughness: .45 });
+      [[0, 0], [.07, -.06]].forEach(([dx, dz]) => { const c = mesh(geo(new THREE.TorusGeometry(.42, .045, 12, 56)), cableMat); c.rotation.x = Math.PI / 2; c.position.set(dx, 0, -.4 + dz); coil.add(c); });
+      gadgets.push(swinger(coil, "Click to swing the cable", { k: 9, damp: .9 }));
+      // Screwdrivers, hanging handle-up from their pegs: they swing.
+      ([[0xb3361f, -5.1, -.75], [0xd39a3c, -4.8, -.55], [0x2e5a49, -4.5, -.35]] as [number, number, number][]).forEach(([color, dx, px]) => {
+        const x = phone ? px : dx;
+        const sd = new THREE.Group(); sd.position.set(x, WY - .16, phone ? 3.25 : 3.28); pb.add(sd);
+        const handle = mesh(geo(new THREE.CylinderGeometry(.07, .06, .42, 16)), std({ color, roughness: .4 }));
+        handle.rotation.x = Math.PI / 2; handle.position.z = -.23; sd.add(handle);
+        const shaft = mesh(geo(new THREE.CylinderGeometry(.018, .018, .55, 8)), std({ color: 0xbfc3c7, metalness: .9, roughness: .25 }));
+        shaft.rotation.x = Math.PI / 2; shaft.position.z = -.72; sd.add(shaft);
+        gadgets.push(swinger(sd, "Click to knock it", { k: 14, damp: 1.1 }));
       });
-      pcb.add(pinsMesh);
-      // The test point: a wire loop for the probe's hook.
-      const loop = mesh(geo(new THREE.TorusGeometry(.016, .0035, 6, 18)), metal, false); loop.position.set(-.3, -.03, -.205); loop.rotation.y = Math.PI / 2; pcb.add(loop);
-      // The power LED, always on.
-      part(new THREE.BoxGeometry(.04, .02, .025), new THREE.MeshBasicMaterial({ color: 0x39ff6a, toneMapped: false }), .36, .02, .14);
+      // A steel rule across the bottom of the board.
+      const rule = mesh(geo(new THREE.BoxGeometry(2.6, .02, .14)), std({ color: 0xc9ccd0, metalness: .85, roughness: .3 }));
+      if (phone) { rule.scale.x = .5; rule.position.set(-.7, WY - .12, 1.8); pb.add(rule); peg(-1.25, 1.91); peg(-.15, 1.91); }
+      else { rule.position.set(-4.4, WY - .12, 1.55); pb.add(rule); peg(-5.5, 1.66); peg(-3.3, 1.66); }
+      // Sticky notes, in the notebook's hand: working notes from a range test, not slogans. Pinned at the
+      // top, they flap away from the wall. Phones have room for two, lower on the smaller board.
+      type Doodle = (c: CanvasRenderingContext2D, w: number, h: number) => void;
+      // Each note is a quick sketch in pen: a LoRa chirp with its frequency ramp, the log visualizer's
+      // to-do list, and the path a packet takes.
+      const ink = (c: CanvasRenderingContext2D, wd = 5) => { c.strokeStyle = c.fillStyle = "#2a2a3a"; c.lineWidth = wd; c.lineCap = c.lineJoin = "round"; };
+      const chirp: Doodle = (c, w) => {
+        ink(c, 4);
+        c.beginPath();
+        for (let px = 0; px <= 196; px++) { const u = px / 196, y = 92 - 38 * Math.sin(Math.PI * 2 * (1.5 * u + 4 * u * u)); if (px) c.lineTo(30 + px, y); else c.moveTo(30 + px, y); }
+        c.stroke();
+        // The same chirp as frequency over time: ramps that wrap round, three symbols.
+        c.beginPath(); c.moveTo(28, 150); c.lineTo(28, 222); c.lineTo(w - 24, 222); c.stroke();
+        ink(c, 5); c.beginPath();
+        for (let i = 0; i < 3; i++) { const x0 = 36 + i * 62; c.moveTo(x0, 212); c.lineTo(x0 + 58, 160); if (i < 2) c.lineTo(x0 + 62, 212); }
+        c.stroke();
+      };
+      const todo: Doodle = (c) => {
+        ink(c, 4); c.font = `700 46px ${HAND}`; c.textAlign = "left";
+        [["parser", true], ["charts", true], ["export", false]].forEach(([word, done], i) => {
+          const y = 62 + i * 68;
+          c.strokeRect(30, y - 26, 30, 30);
+          if (done) { c.beginPath(); c.moveTo(34, y - 12); c.lineTo(44, y); c.lineTo(66, y - 34); c.stroke(); }
+          c.fillText(word as string, 78, y + 2);
+        });
+      };
+      const flow: Doodle = (c) => {
+        ink(c, 4); c.font = `700 40px ${HAND}`; c.textAlign = "center";
+        const node = (cx: number, cy: number, label: string) => { c.strokeRect(cx - 46, cy - 26, 92, 48); c.fillText(label, cx, cy + 12); };
+        const arrow = (x0: number, y0: number, x1: number, y1: number) => {
+          c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+          const a = Math.atan2(y1 - y0, x1 - x0); c.beginPath(); c.moveTo(x1 - 13 * Math.cos(a - .5), y1 - 13 * Math.sin(a - .5)); c.lineTo(x1, y1); c.lineTo(x1 - 13 * Math.cos(a + .5), y1 - 13 * Math.sin(a + .5)); c.stroke();
+        };
+        node(70, 66, "node"); node(186, 66, "gw"); node(186, 190, "web");
+        arrow(118, 64, 138, 64); arrow(186, 94, 186, 160);
+        // Radio waves off the node's antenna.
+        for (const r of [12, 22]) { c.beginPath(); c.arc(70, 40, r, -Math.PI * .8, -Math.PI * .2); c.stroke(); }
+      };
+      const notes: [Doodle, number][] = [[chirp, 0xf2d36b], [todo, 0xf0a7a0], [flow, 0xbfe3a8]];
+      ((phone ? [[...notes[0], -.95, 2.3, .08], [...notes[1], -.35, 2.25, -.1]] : [[...notes[0], -3.2, 3.05, .08], [...notes[1], -2.3, 2.78, -.1], [...notes[2], -2.9, 2.2, .05]]) as [Doodle, number, number, number, number][]).forEach(([doodle, color, x, z, a]) => {
+        const paint: Doodle = (c, w, h) => { c.fillStyle = "#" + color.toString(16).padStart(6, "0"); c.fillRect(0, 0, w, h); doodle(c, w, h); };
+        const t = tex(256, 256, paint);
+        // The handwriting arrives later than the wall is built: draw the note again once it has.
+        document.fonts?.load(`700 46px ${HAND}`).then(() => { const cv = t.image as HTMLCanvasElement; paint(cv.getContext("2d")!, cv.width, cv.height); t.needsUpdate = true; }).catch(() => {});
+        const hinge = new THREE.Group(); hinge.position.set(x, WY - .1, z + .275); hinge.rotation.y = a; pb.add(hinge);
+        const flap = new THREE.Group(); hinge.add(flap);
+        const note = mesh(geo(new THREE.PlaneGeometry(.55, .55)), std({ map: t, roughness: .9, side: THREE.DoubleSide }), false);
+        note.rotation.x = Math.PI / 2; note.position.z = -.275; flap.add(note);
+        // Flapping lifts the note off the wall (about its top edge), never into it.
+        const g = swinger(flap, "Click to flick it", { k: 30, damp: 2.4, kick: 6, axis: "x", nudge: 2 });
+        const step = g.update;
+        g.update = (dt) => { const m = step(dt); flap.rotation.x = -Math.abs(flap.rotation.x); return m; };
+        gadgets.push(g);
+      });
+
+      // Shelf on the right, lit from underneath.
+      const wood = std({ color: 0x5b3b24, roughness: .55 });
+      // Phones: a short shelf under the clock, right of the board.
+      const SX = phone ? .45 : 3.9, SW = phone ? 2.1 : 6.4, SZ = phone ? 2.3 : 1.9;
+      const shelf = mesh(geo(new THREE.BoxGeometry(SW, .7, .09)), wood); shelf.position.set(SX, WY - .35, SZ); wall.add(shelf);
+      (phone ? [-.5, 1.4] : [1.2, 6.6]).forEach((x) => { const b = mesh(geo(new THREE.BoxGeometry(.08, .55, .45)), std({ color: 0x1d1d1d, metalness: .6, roughness: .4 })); b.position.set(x, WY - .28, SZ - .25); wall.add(b); });
+      const strip = new THREE.Mesh(geo(new THREE.BoxGeometry(SW - .4, .05, .02)), new THREE.MeshBasicMaterial({ color: 0xffc48a, toneMapped: false }));
+      strip.position.set(SX, WY - .55, SZ - .06); wall.add(strip);
+      // Present from the start (at zero) so raising the wall never recompiles the lit materials.
+      const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2); stripLight.position.set(SX, WY - 1.1, SZ - .3); wall.add(stripLight);
+      wallRise.light = stripLight;
+      const SH = SZ + .05; // the shelf's top
+      /* A bench scope, drawn after a real two-channel DSO: a screen with the instrument's own interface
+         (status bar, dotted graticule, channel and trigger markers, scale and measurement readouts), a
+         front panel with soft keys, knobs and BNC inputs, and (desktop) a probe on channel 1 clipped to
+         the dev board beside it. A click cycles what it is measuring. The case is 1.7 wide, .62 deep,
+         .95 tall; its front face is at y = -.31 (toward the camera). */
+      const SCR_W = 768, SCR_H = 464;
+      const scopeTex = tex(SCR_W, SCR_H, () => {});
+      let trace = 0;
+      const MODES = [
+        { label: "RING-DOWN", time: "50.0µs", ch1: "1.00V", ch2: "", trig: .15, level: .5, meas: ["Freq 18.0kHz", "Vpp 6.02V", "τ 22.1µs"] },
+        { label: "CLK 1kHz", time: "200µs", ch1: "1.00V", ch2: "1.00V", trig: .45, level: .5, meas: ["Freq 1.000kHz", "Vpp 4.12V", "Rise 18.0ns"] },
+        { label: "NOISE FLOOR", time: "1.00µs", ch1: "5.00mV", ch2: "", trig: .5, level: .2, meas: ["Vrms 2.91mV", "Vpp 19.6mV", "Mean 0.04mV"] },
+        { label: "LoRa TX", time: "500µs", ch1: "500mV", ch2: "2.00V", trig: .2, level: .8, meas: ["Width 3.12ms", "Vpp 5.04V", "SF7 125kHz"] },
+      ];
+      const drawTrace = () => {
+        const x = (scopeTex.image as HTMLCanvasElement).getContext("2d")!, w = SCR_W, h = SCR_H, m = MODES[trace];
+        // Seeded, so a mode looks the same every time it comes round.
+        let seed = 11 + trace * 97;
+        const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+        const n = (a: number) => (rnd() + rnd() + rnd() - 1.5) / 1.5 * a;
+        const gx = 24, gy = 34, gw = 720, gh = 376, dx = gw / 10, dy = gh / 8;
+        const X = (t: number) => gx + t * gw, Y = (v: number) => gy + gh / 2 - v * dy;
+        x.setLineDash([]); x.globalAlpha = 1;
+        x.fillStyle = "#050607"; x.fillRect(0, 0, w, h);
+        // Status bar: run state, timebase, sample rate, memory depth, trigger.
+        x.fillStyle = "#16181a"; x.fillRect(0, 0, w, 28);
+        x.fillStyle = "#2fd16b"; x.beginPath(); x.roundRect(6, 5, 52, 19, 3); x.fill();
+        x.fillStyle = "#04140a"; x.font = `700 13px ${MONO}`; x.fillText("RUN", 18, 19);
+        x.fillStyle = "#e8e8e8"; x.font = `500 13px ${MONO}`;
+        x.fillText(`H ${m.time}`, 70, 19); x.fillText("Sa 1.00GSa/s", 170, 19); x.fillText("D 14.0Mpts", 300, 19);
+        const unit = m.ch1.replace(/[\d.]+/, ""), lvl = (m.level * Number.parseFloat(m.ch1)).toFixed(2);
+        x.fillStyle = "#ff9b2f"; x.fillText(`T ↑ CH1 ${lvl}${unit}`, 560, 19);
+        // Graticule: dotted divisions, the centre lines with fifth-division ticks, a frame.
+        x.strokeStyle = "rgba(150,150,150,.38)"; x.lineWidth = 1; x.setLineDash([1, 4]);
+        for (let i = 1; i < 10; i++) { x.beginPath(); x.moveTo(X(i / 10) + .5, gy); x.lineTo(X(i / 10) + .5, gy + gh); x.stroke(); }
+        for (let j = 1; j < 8; j++) { x.beginPath(); x.moveTo(gx, gy + j * dy + .5); x.lineTo(gx + gw, gy + j * dy + .5); x.stroke(); }
+        x.setLineDash([]); x.strokeStyle = "rgba(170,170,170,.55)";
+        for (let i = 0; i <= 50; i++) { const px = gx + i * dx / 5 + .5, k = i % 5 ? 3 : 5; x.beginPath(); x.moveTo(px, Y(0) - k); x.lineTo(px, Y(0) + k); x.stroke(); }
+        for (let j = 0; j <= 40; j++) { const py = gy + j * dy / 5 + .5, k = j % 5 ? 3 : 5; x.beginPath(); x.moveTo(X(.5) - k, py); x.lineTo(X(.5) + k, py); x.stroke(); }
+        x.strokeStyle = "rgba(170,170,170,.6)"; x.strokeRect(gx + .5, gy + .5, gw, gh);
+        // A trace: a soft wide pass for the glow, then the sharp line.
+        const plot = (f: (t: number) => number, color: string, glow: string, alpha = 1) => {
+          const pts: [number, number][] = [];
+          for (let px = 0; px <= gw; px++) pts.push([gx + px, Y(Math.max(-4.2, Math.min(4.2, f(px / gw))))]);
+          x.save(); x.beginPath(); x.rect(gx, gy, gw, gh); x.clip(); x.globalAlpha = alpha; x.lineJoin = "round";
+          for (const [lw, c] of [[5, glow], [1.6, color]] as const) {
+            x.strokeStyle = c; x.lineWidth = lw; x.beginPath();
+            pts.forEach(([px, py], i) => (i ? x.lineTo(px, py) : x.moveTo(px, py))); x.stroke();
+          }
+          x.restore();
+        };
+        const Y1 = "#ffe14a", Y1G = "rgba(255,225,74,.22)", C2 = "#35d6f0", C2G = "rgba(53,214,240,.22)";
+        // Each channel's ground level, in divisions.
+        const g1 = trace === 1 || trace === 3 ? 1.6 : 0, g2 = -2.2;
+        if (trace === 0) {
+          // A struck resonator: flat until the trigger, then a decaying ring.
+          plot((t) => { const u = t - m.trig; return (u < 0 ? 0 : 3 * Math.sin(Math.PI * 2 * 9 * u) * Math.exp(-u * 4.5)) + n(.04); }, Y1, Y1G);
+        } else if (trace === 1) {
+          // A 1 kHz clock with a real edge (rise time, overshoot, ringing) and its RC-filtered copy on CH2.
+          const edge = (t: number) => { const p = (t * 2 + .05) % 1; return p < .5 ? { L: 1, te: p } : { L: -1, te: p - .5 }; };
+          plot((t) => { const { L, te } = edge(t); return g1 + L * (1 - 2 * Math.exp(-te * 140) * Math.cos(te * 260)) + n(.03); }, Y1, Y1G);
+          plot((t) => { const { L, te } = edge(t); return g2 + L * .9 * (1 - 2 * Math.exp(-te * 9)) + n(.02); }, C2, C2G);
+        } else if (trace === 2) {
+          // The noise floor, with persistence: earlier sweeps stay faintly on screen.
+          for (let k = 0; k < 7; k++) plot(() => n(.7), Y1, Y1G, .16);
+          plot(() => n(.7), Y1, Y1G);
+        } else {
+          // A LoRa packet: up-chirps (each sweeping up through the band, then wrapping) on a short ramp,
+          // with the radio's TX-enable line on CH2.
+          const end = .86;
+          const env = (t: number) => Math.max(0, Math.min(1, (t - m.trig) / .02, (end - t) / .02));
+          plot((t) => {
+            if (t < m.trig || t > end) return g1 + n(.03);
+            const u = ((t - m.trig) % .08) / .08;
+            return g1 + 2.2 * env(t) * Math.sin(Math.PI * 2 * (3 * u + 3 * u * u)) + n(.04);
+          }, Y1, Y1G);
+          plot((t) => (t > m.trig - .015 && t < end + .015 ? g2 + .9 : g2 - .9) + n(.02), C2, C2G);
+        }
+        // Markers: channel ground levels on the left, the trigger level on the right, the trigger
+        // position along the top.
+        const tag = (px: number, py: number, color: string, text: string, left: boolean) => {
+          const s = left ? 1 : -1;
+          x.fillStyle = color; x.beginPath();
+          x.moveTo(px, py - 8); x.lineTo(px + s * 14, py - 8); x.lineTo(px + s * 20, py); x.lineTo(px + s * 14, py + 8); x.lineTo(px, py + 8);
+          x.closePath(); x.fill();
+          x.fillStyle = "#000"; x.font = `700 12px ${MONO}`; x.fillText(text, left ? px + 3 : px - 13, py + 4);
+        };
+        tag(2, Y(g1), Y1, "1", true);
+        if (m.ch2) tag(2, Y(g2), C2, "2", true);
+        tag(w - 2, Y(g1 + m.level), "#ff9b2f", "T", false);
+        x.fillStyle = "#ff9b2f"; x.beginPath(); x.moveTo(X(m.trig) - 7, gy); x.lineTo(X(m.trig) + 7, gy); x.lineTo(X(m.trig), gy + 9); x.closePath(); x.fill();
+        // The channel's label, as the instrument lets you set one.
+        x.fillStyle = Y1; x.font = `600 13px ${MONO}`; x.fillText(m.label, gx + 8, gy + 18);
+        // Bottom bar: channel scales, then the measurements.
+        x.fillStyle = "#16181a"; x.fillRect(0, h - 46, w, 46);
+        const chip = (px: number, color: string, num: string, text: string) => {
+          x.fillStyle = color; x.beginPath(); x.roundRect(px, h - 38, 18, 18, 2); x.fill();
+          x.fillStyle = "#000"; x.font = `700 12px ${MONO}`; x.fillText(num, px + 5, h - 24);
+          x.strokeStyle = color; x.lineWidth = 1; x.strokeRect(px + 18.5, h - 37.5, 82, 17);
+          x.fillStyle = color; x.font = `500 12px ${MONO}`; x.fillText(text, px + 25, h - 24);
+        };
+        chip(8, Y1, "1", `${m.ch1} DC`);
+        if (m.ch2) chip(118, C2, "2", `${m.ch2} DC`);
+        x.fillStyle = "#d8d8d8"; x.font = `500 13px ${MONO}`;
+        m.meas.forEach((s, i) => x.fillText(s, 250 + i * 172, h - 24));
+        x.fillStyle = "#7b7f84"; x.font = `500 11px ${MONO}`; x.fillText("Measure · CH1", 250, h - 8);
+        scopeTex.needsUpdate = true;
+      };
+      drawTrace();
+      const scope = new THREE.Group(); scope.position.set(phone ? .1 : 2.5, WY - .45, SH); wall.add(scope);
+      if (phone) scope.scale.setScalar(.72);
+      const scase = mesh(geo(new RoundedBoxGeometry(1.7, .62, .95, 3, .05)), std({ color: 0x3a3d41, roughness: .55, metalness: .25 })); scase.position.z = .475; scope.add(scase);
+      // A carry handle folded back over the top.
+      const handle = mesh(geo(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-.66, .26, .95), new THREE.Vector3(-.66, .02, .975), new THREE.Vector3(-.5, -.04, .98),
+        new THREE.Vector3(.5, -.04, .98), new THREE.Vector3(.66, .02, .975), new THREE.Vector3(.66, .26, .95),
+      ]), 40, .018, 8)), std({ color: 0x1d1f21, roughness: .5 })); scope.add(handle);
+      // The front face: the printed panel (section frames, labels, the screen's bezel, the coloured rings
+      // round the inputs) is a texture; the controls themselves are geometry on top of it.
+      const FW = 1.62, FH = .88, FZ = .475, FT = FZ + FH / 2;
+      const panelTex = tex(1024, 556, (x, w, h) => {
+        const P = (px: number, pz: number): [number, number] => [(px + FW / 2) / FW * w, (FT - pz) / FH * h];
+        const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#3a3e42"); g.addColorStop(1, "#2c2f32");
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+        for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(255,255,255,${.01 + (i % 7) * .002})`; x.fillRect(0, (i * 37) % h, w, 1); }
+        // The screen's bezel.
+        const [sx0, sy0] = P(-.8, .845), [sx1, sy1] = P(.2, .215);
+        x.fillStyle = "#0c0d0e"; x.beginPath(); x.roundRect(sx0, sy0, sx1 - sx0, sy1 - sy0, 10); x.fill();
+        x.fillStyle = "#c9ccd0"; x.font = `600 15px ${SANS}`; x.fillText("DSO 2104", ...P(-.79, .875));
+        x.fillStyle = "#8d9296"; x.font = `500 12px ${MONO}`; x.fillText("100 MHz  ·  1 GSa/s  ·  4 CH", ...P(-.6, .875));
+        x.fillText("DIGITAL STORAGE OSCILLOSCOPE", ...P(-.12, .875));
+        // Sections on the right, framed and titled.
+        const frame = (a: number, b: number, c: number, d: number, title: string) => {
+          const [x0, y0] = P(a, b), [x1, y1] = P(c, d);
+          x.strokeStyle = "rgba(200,205,210,.32)"; x.lineWidth = 1.5; x.beginPath(); x.roundRect(x0, y0, x1 - x0, y1 - y0, 6); x.stroke();
+          if (!title) return;
+          x.font = `600 11px ${MONO}`; const tw = x.measureText(title).width;
+          x.fillStyle = "#383c40"; x.fillRect(x0 + 8, y0 - 7, tw + 8, 12); x.fillStyle = "#b9bec3"; x.fillText(title, x0 + 12, y0 + 4);
+        };
+        frame(.3, .86, .79, .755, "MENU");
+        frame(.3, .735, .47, .555, "");
+        frame(.5, .735, .66, .555, "HORIZONTAL");
+        frame(.68, .735, .79, .555, "TRIGGER");
+        frame(.3, .535, .79, .21, "VERTICAL");
+        x.fillStyle = "#a9aeb3"; x.font = `500 10px ${MONO}`;
+        ([["Measure", .35, .775], ["Acquire", .43, .775], ["Cursor", .51, .775], ["Display", .59, .775], ["RUN/STOP", .675, .775], ["SINGLE", .76, .775],
+          ["SCALE", .555, .575], ["POS", .63, .575], ["LEVEL", .735, .575], ["MATH", .655, .455], ["REF", .655, .375], ["AUTO", .745, .455], ["CLEAR", .745, .375],
+          ["CH1", .37, .225], ["CH2", .53, .225], ["EXT", .67, .225]] as [string, number, number][])
+          .forEach(([s, a, b]) => { const [px, py] = P(a, b); x.fillText(s, px - x.measureText(s).width / 2, py); });
+        { const [px, py] = P(.78, .055); x.fillText("1kHz 3V", px - 30, py); }
+        // Coloured rings round the channel inputs and their scale knobs.
+        for (const [a, b, c, r] of [[.37, .12, "#ffe14a", 28], [.53, .12, "#35d6f0", 28], [.37, .33, "#ffe14a", 34], [.53, .33, "#35d6f0", 34]] as [number, number, string, number][]) {
+          const [px, py] = P(a, b); x.strokeStyle = c; x.lineWidth = 3; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.stroke();
+        }
+        // Power and USB, bottom left.
+        x.fillStyle = "#8d9296"; x.font = `500 10px ${MONO}`; x.fillText("POWER", ...P(-.785, .045)); x.fillText("USB", ...P(-.6, .045));
+        const [ux, uy] = P(-.62, .14); x.fillStyle = "#111"; x.fillRect(ux, uy, 34, 14); x.fillStyle = "#555"; x.fillRect(ux + 5, uy + 4, 24, 5);
+      });
+      const faceMesh = mesh(geo(new THREE.PlaneGeometry(FW, FH)), std({ map: panelTex, roughness: .6, metalness: .1 }), false);
+      faceMesh.rotation.x = Math.PI / 2; faceMesh.position.set(0, -.311, FZ); scope.add(faceMesh);
+      const sscreen = new THREE.Mesh(geo(new THREE.PlaneGeometry(.94, .568)), new THREE.MeshBasicMaterial({ map: scopeTex, toneMapped: false }));
+      sscreen.rotation.x = Math.PI / 2; sscreen.position.set(-.3, -.313, .53); scope.add(sscreen);
+      // Controls. They face the camera (-y), and cylinders already run along y.
+      const knobMat = std({ color: 0x1a1b1d, roughness: .45 }), capMat = std({ color: 0x2c2e31, roughness: .35, metalness: .2 });
+      const markMat = std({ color: 0xd8dade, roughness: .5 });
+      const knob = (a: number, b: number, r: number) => {
+        const k = new THREE.Group(); k.position.set(a, -.311, b); scope.add(k);
+        const body = mesh(geo(new THREE.CylinderGeometry(r * .96, r, .05, 32)), knobMat, false); body.position.y = -.025; k.add(body);
+        const cap = mesh(geo(new THREE.CylinderGeometry(r * .8, r * .8, .012, 32)), capMat, false); cap.position.y = -.056; k.add(cap);
+        const mark = mesh(geo(new THREE.BoxGeometry(r * .12, .006, r * .55)), markMat, false); mark.position.set(0, -.062, r * .45); k.add(mark);
+        return k;
+      };
+      const keyMat = std({ color: 0x55595e, roughness: .5 });
+      const key = (a: number, b: number, wd = .062, hg = .034, mat: THREE.Material = keyMat) => {
+        const k = mesh(geo(new RoundedBoxGeometry(wd, .022, hg, 2, .008)), mat, false); k.position.set(a, -.322, b); scope.add(k); return k;
+      };
+      const multi = knob(.385, .645, .05);
+      knob(.555, .645, .04); knob(.63, .645, .028); knob(.735, .645, .04);
+      knob(.37, .33, .042); knob(.53, .33, .042); knob(.37, .45, .026); knob(.53, .45, .026);
+      [.35, .43, .51, .59].forEach((a) => key(a, .805));
+      key(.675, .805, .07, .036, new THREE.MeshBasicMaterial({ color: 0x35d16b, toneMapped: false }));
+      key(.76, .805, .07, .036, std({ color: 0x6b5a2e, roughness: .5 }));
+      [[.655, .48], [.655, .4], [.745, .48], [.745, .4]].forEach(([a, b]) => key(a, b, .056, .03));
+      // Soft keys down the right of the screen, and the power key.
+      [.76, .65, .54, .43, .32].forEach((b) => key(.245, b, .05, .05));
+      const power = mesh(geo(new THREE.CylinderGeometry(.03, .03, .02, 24)), keyMat, false); power.position.set(-.74, -.32, .1); scope.add(power);
+      // BNC inputs: a flange, the barrel, the insulator, and the two bayonet studs.
+      const metal = std({ color: 0xcfd3d8, roughness: .25, metalness: .95 }), insul = std({ color: 0xe8e2d4, roughness: .6 });
+      const bnc = (a: number, b: number) => {
+        const g = new THREE.Group(); g.position.set(a, -.311, b); scope.add(g);
+        const flange = mesh(geo(new THREE.CylinderGeometry(.042, .042, .01, 6)), metal, false); flange.position.y = -.005; g.add(flange);
+        const barrel = mesh(geo(new THREE.CylinderGeometry(.027, .027, .06, 24, 1, true)), metal, false); barrel.position.y = -.035; g.add(barrel);
+        const ins = mesh(geo(new THREE.CylinderGeometry(.02, .02, .05, 20)), insul, false); ins.position.y = -.03; g.add(ins);
+        for (const s of [-1, 1]) { const stud = mesh(geo(new THREE.CylinderGeometry(.006, .006, .02, 8)), metal, false); stud.rotation.z = Math.PI / 2; stud.position.set(s * .033, -.05, 0); g.add(stud); }
+      };
+      bnc(.37, .12); bnc(.53, .12); bnc(.67, .12);
+      // The probe-compensation tabs.
+      for (const a of [.76, .8]) { const tab = mesh(geo(new THREE.BoxGeometry(.016, .03, .03)), metal, false); tab.position.set(a, -.326, .12); scope.add(tab); }
+      let scopeBump = 0;
+      gadgets.push({
+        obj: scope, hint: "Click to change the trace",
+        press() { trace = (trace + 1) % MODES.length; drawTrace(); scopeBump = 1; },
+        update(dt) { scopeBump = Math.max(0, scopeBump - dt * 4); multi.rotation.y = trace * 1.2 + scopeBump; scope.position.z = SH + Math.sin(scopeBump * Math.PI) * .03; return scopeBump > 0; },
+      });
+      /* A dev board leaning on the wall: a small LoRa node, 1.0 wide and .72 tall, its front face toward
+         the camera (-y). The printed side (solder mask over copper pour, routed traces, vias, pads and
+         the silkscreen) is a texture; the parts on it are geometry. Its TX LED flashes when clicked; the
+         scope's probe hooks onto its TP1 test point. */
+      const BW = 1.0, BH = .72;
+      const pcbTex = tex(1024, 737, (x, w, h) => {
+        const P = (a: number, b: number): [number, number] => [(a + BW / 2) / BW * w, (BH / 2 - b) / BH * h];
+        const S = w / BW; // texture pixels per unit
+        // Solder mask, with the ground pour under it a shade lighter.
+        x.fillStyle = "#17532f"; x.fillRect(0, 0, w, h);
+        x.fillStyle = "#1d6339"; x.beginPath(); x.roundRect(18, 18, w - 36, h - 36, 14); x.fill();
+        // Traces, routed at 45°: each is cut out of the pour (the clearance), then laid in copper.
+        const traces: [number, number][][] = [
+          // MCU to the left header.
+          [[.01, .03], [-.06, .03], [-.12, -.03], [-.39, -.03], [-.42, -.06]],
+          [[.01, .0], [-.05, .0], [-.09, -.04], [-.09, -.1], [-.39, -.1], [-.42, -.13]],
+          [[.01, -.03], [-.03, -.07], [-.03, -.16], [-.39, -.16], [-.42, -.19]],
+          // MCU to the right header.
+          [[.15, .06], [.26, .06], [.3, .1], [.39, .1], [.42, .13]],
+          [[.15, .02], [.3, .02], [.34, -.02], [.39, -.02], [.42, -.05]],
+          [[.15, -.02], [.26, -.02], [.29, -.05], [.29, -.11], [.39, -.11], [.42, -.14]],
+          // MCU to the radio under the can (SPI).
+          [[.04, .05], [.04, .09], [.0, .13], [-.03, .13]],
+          [[.08, .05], [.08, .11], [.03, .16], [-.03, .16]],
+          [[.12, .05], [.12, .13], [.07, .18], [.07, .21], [-.03, .21]],
+          // USB to the MCU, as a pair.
+          [[-.07, -.33], [-.07, -.26], [.03, -.16], [.03, -.09]],
+          [[-.03, -.33], [-.03, -.27], [.07, -.17], [.07, -.09]],
+          // To the LEDs and the buttons.
+          [[.15, .04], [.22, .11], [.32, .11], [.33, .12]],
+          [[.15, -.06], [.17, -.08], [.17, -.24]],
+          [[.13, -.09], [.13, -.16], [.27, -.16], [.28, -.17], [.28, -.24]],
+          // Regulator to the 3V3 rail and the test point.
+          [[-.2, -.18], [-.2, -.22], [-.27, -.22]],
+          [[-.24, -.12], [-.31, -.12], [-.36, -.07], [-.39, -.07]],
+        ];
+        const path = (pts: [number, number][]) => { x.beginPath(); pts.forEach(([a, b], i) => (i ? x.lineTo(...P(a, b)) : x.moveTo(...P(a, b)))); };
+        x.lineCap = "round"; x.lineJoin = "round";
+        for (const t of traces) { path(t); x.strokeStyle = "#17532f"; x.lineWidth = 15; x.stroke(); }
+        for (const t of traces) { path(t); x.strokeStyle = "#36a463"; x.lineWidth = 8; x.stroke(); }
+        // The 50 Ω RF line from the radio to the antenna connector, wide, fenced with ground vias.
+        const rf: [number, number][] = [[-.04, .2], [.12, .2], [.18, .26], [.27, .26], [.3, .29], [.3, .33]];
+        path(rf); x.strokeStyle = "#17532f"; x.lineWidth = 30; x.stroke();
+        path(rf); x.strokeStyle = "#3aab68"; x.lineWidth = 14; x.stroke();
+        const via = (a: number, b: number, r = 6) => {
+          const [px, py] = P(a, b);
+          x.fillStyle = "#c9a54b"; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+          x.fillStyle = "#0d2416"; x.beginPath(); x.arc(px, py, r * .45, 0, Math.PI * 2); x.fill();
+        };
+        for (let i = 0; i <= 8; i++) { const a = -.02 + i * .016; via(a, .245, 4.5); via(a, .155, 4.5); }
+        [[.25, .3], [.22, .22], [.33, .27]].forEach(([a, b]) => via(a, b, 4.5));
+        // Vias at the bends, and stitching the pour.
+        for (const t of traces) { const [a, b] = t[t.length - 1]; if (Math.abs(a) < .38) via(a, b); }
+        for (let a = -.36; a <= .37; a += .12) for (const b of [.31, -.3]) via(a, b, 4);
+        // Pads: the QFN under the MCU, and the header rows down each side (pin 1 square).
+        { const [cx, cy] = P(.08, -.02), half = .085 * S; x.fillStyle = "#d4b05a";
+          for (let i = 0; i < 9; i++) { const o = -half * .8 + i * half * .2; x.fillRect(cx + o - 3, cy - half - 8, 6, 12); x.fillRect(cx + o - 3, cy + half - 4, 6, 12); x.fillRect(cx - half - 8, cy + o - 3, 12, 6); x.fillRect(cx + half - 4, cy + o - 3, 12, 6); } }
+        for (const a of [-.45, .45]) for (let i = 0; i < 14; i++) {
+          const [px, py] = P(a, .3 - i * .046);
+          x.fillStyle = "#d4b05a"; if (i === 0) x.fillRect(px - 11, py - 11, 22, 22); else { x.beginPath(); x.arc(px, py, 11, 0, Math.PI * 2); x.fill(); }
+          x.fillStyle = "#0b1a10"; x.beginPath(); x.arc(px, py, 5, 0, Math.PI * 2); x.fill();
+        }
+        // Mounting holes, plated.
+        for (const [a, b] of [[-.455, .325], [.455, .325], [-.455, -.325], [.455, -.325]]) {
+          const [px, py] = P(a, b); x.fillStyle = "#d4b05a"; x.beginPath(); x.arc(px, py, 19, 0, Math.PI * 2); x.fill();
+          x.fillStyle = "#0b0b0b"; x.beginPath(); x.arc(px, py, 10, 0, Math.PI * 2); x.fill();
+        }
+        // Small parts (0603 resistors black, capacitors tan), with their tinned ends.
+        const smd = (a: number, b: number, cap: boolean, vert = false) => {
+          const [px, py] = P(a, b), lw = vert ? 10 : 20, lh = vert ? 20 : 10;
+          x.fillStyle = cap ? "#b89468" : "#1e1e1e"; x.fillRect(px - lw / 2, py - lh / 2, lw, lh);
+          x.fillStyle = "#cfd2d4";
+          if (vert) { x.fillRect(px - lw / 2, py - lh / 2, lw, 4); x.fillRect(px - lw / 2, py + lh / 2 - 4, lw, 4); }
+          else { x.fillRect(px - lw / 2, py - lh / 2, 4, lh); x.fillRect(px + lw / 2 - 4, py - lh / 2, 4, lh); }
+        };
+        ([[-.02, .07, true], [-.02, .04, true], [.18, .07, false], [.18, -.06, true, true], [.21, -.06, true, true], [.25, .14, false], [.25, .18, false],
+          [-.13, -.24, true], [-.13, -.27, true], [-.27, -.27, true, true], [.0, -.22, false, true], [.11, -.22, false, true], [.36, .06, false], [-.33, .02, true, true]] as [number, number, boolean, boolean?][])
+          .forEach(([a, b, c, v]) => smd(a, b, c, v));
+        // The test point the probe hooks onto.
+        via(-.3, -.22, 11);
+        // Silkscreen: part outlines, designators, pin names, the board's name.
+        x.strokeStyle = "#e9efe9"; x.fillStyle = "#e9efe9"; x.lineWidth = 2.5;
+        const box = (a: number, b: number, bw: number, bh: number) => { const [px, py] = P(a - bw / 2, b + bh / 2); x.strokeRect(px, py, bw * S, bh * S); };
+        box(-.17, .1, .3, .24); box(.08, -.02, .19, .19); box(-.05, -.355, .14, .07); box(.22, .02, .1, .06); box(-.2, -.15, .11, .1);
+        box(.17, -.28, .09, .09); box(.28, -.28, .09, .09);
+        for (const a of [-.45, .45]) box(a, -.003, .055, .66);
+        { const [px, py] = P(.08 - .095, -.02 + .095); x.beginPath(); x.arc(px - 8, py - 8, 4, 0, Math.PI * 2); x.fill(); }
+        x.font = `600 15px ${MONO}`;
+        ([["U1", -.02, -.1], ["U2 SX1262", -.3, .245], ["Y1", .19, .07], ["U3", -.25, -.08], ["J1", .37, .31], ["J2 USB", -.15, -.3], ["RST", .14, -.36], ["BOOT", .24, -.36],
+          ["TP1", -.36, -.25], ["TX", .39, .21], ["PWR", .39, .155], ["3V3", -.4, .335], ["GND", .36, .335]] as [string, number, number][])
+          .forEach(([s, a, b]) => x.fillText(s, ...P(a, b)));
+        x.font = `500 11px ${MONO}`;
+        const pins = ["3V3", "GND", "IO1", "IO2", "IO3", "IO4", "SDA", "SCL", "TX", "RX", "A0", "A1", "EN", "VIN"];
+        pins.forEach((s, i) => { const [lx, ly] = P(-.415, .3 - i * .046); x.fillText(s, lx, ly + 4); const [rx, ry] = P(.36, .3 - i * .046); x.fillText(pins[13 - i], rx, ry + 4); });
+        x.font = `700 22px ${SANS}`; x.fillText("LoRa NODE", ...P(-.08, -.25)); x.font = `500 13px ${MONO}`; x.fillText("rev B  ·  868/915 MHz", ...P(-.08, -.285));
+      });
+      const pcbMat = std({ color: 0x2d4a32, roughness: .7 });
+      const pcb = mesh(geo(new THREE.BoxGeometry(BW, .03, BH)), [pcbMat, pcbMat, pcbMat, std({ map: pcbTex, roughness: .42 }), pcbMat, pcbMat]);
+      pcb.rotation.x = -.28; pcb.position.set(4.35, WY - .2, SH + .38); wall.add(pcb);
+      // The parts on the board. Its front face is at y = -.015; each part sits on it.
+      {
+        const part = (g: THREE.BufferGeometry, m: THREE.Material, a: number, depth: number, b: number) => {
+          const p = mesh(geo(g), m, false); p.position.set(a, -.015 - depth / 2, b); pcb.add(p); return p;
+        };
+        const black = std({ color: 0x151515, roughness: .45 }), gold = std({ color: 0xd4aa52, roughness: .3, metalness: .9 });
+        part(new THREE.BoxGeometry(.14, .012, .14), black, .08, .012, -.02); // MCU
+        part(new THREE.BoxGeometry(.28, .03, .22), metal, -.17, .03, .1); // the radio's shield can
+        part(new THREE.BoxGeometry(.24, .002, .18), std({ color: 0xb9bdc2, roughness: .45, metalness: .8 }), -.17, .032, .1); // its lid, a touch duller
+        part(new RoundedBoxGeometry(.08, .02, .035, 2, .008), metal, .22, .02, .02); // crystal
+        part(new THREE.BoxGeometry(.07, .016, .06), black, -.2, .016, -.15); // regulator
+        part(new THREE.BoxGeometry(.06, .006, .022), metal, -.2, .006, -.105); // its tab
+        part(new RoundedBoxGeometry(.1, .034, .06, 2, .012), metal, -.05, .034, -.345); // USB-C
+        for (const a of [.17, .28]) { part(new THREE.BoxGeometry(.07, .022, .07), metal, a, .022, -.28); part(new THREE.CylinderGeometry(.018, .018, .02, 16), black, a, .062, -.28); }
+        // The antenna connector at the top edge: a gold SMA, standing up.
+        const sma = new THREE.Group(); sma.position.set(.3, -.04, .36); pcb.add(sma);
+        const hex = mesh(geo(new THREE.CylinderGeometry(.034, .034, .03, 6)), gold, false); hex.rotation.x = Math.PI / 2; hex.position.z = .015; sma.add(hex);
+        const barrel = mesh(geo(new THREE.CylinderGeometry(.022, .022, .07, 20)), gold, false); barrel.rotation.x = Math.PI / 2; barrel.position.z = .065; sma.add(barrel);
+        // Pin headers down each side: the black strip, and the pins through it (one instanced mesh).
+        const pinGeo = geo(new THREE.BoxGeometry(.008, .07, .008));
+        const pinsMesh = new THREE.InstancedMesh(pinGeo, gold, 28); const m4 = new THREE.Matrix4();
+        [-.45, .45].forEach((a, s) => {
+          part(new THREE.BoxGeometry(.034, .03, .65), black, a, .03, -.003);
+          for (let i = 0; i < 14; i++) pinsMesh.setMatrixAt(s * 14 + i, m4.makeTranslation(a, -.05, .3 - i * .046));
+        });
+        pcb.add(pinsMesh);
+        // The test point: a wire loop for the probe's hook.
+        const loop = mesh(geo(new THREE.TorusGeometry(.016, .0035, 6, 18)), metal, false); loop.position.set(-.3, -.03, -.205); loop.rotation.y = Math.PI / 2; pcb.add(loop);
+        // The power LED, always on.
+        part(new THREE.BoxGeometry(.04, .02, .025), new THREE.MeshBasicMaterial({ color: 0x39ff6a, toneMapped: false }), .36, .02, .14);
+      }
+      // No room for the dev board or the antenna on a phone's shelf.
+      pcb.visible = !phone;
+      // The scope's channel 1 probe: a lead from its BNC, looping down over the shelf's edge and back up
+      // to a probe hooked onto the board's lower edge. Desktop only, like the board.
+      if (!phone) {
+        scope.updateMatrix(); pcb.updateMatrix();
+        const inScope = (a: number, b: number, c: number) => new THREE.Vector3(a, b, c).applyMatrix4(scope.matrix);
+        const onBoard = (a: number, b: number, c: number) => new THREE.Vector3(a, b, c).applyMatrix4(pcb.matrix);
+        const clip = onBoard(-.3, -.02, -.22), out = new THREE.Vector3(0, -.85, -.45).normalize();
+        const tail = clip.clone().addScaledVector(out, .26);
+        const plug = inScope(.37, -.39, .12);
+        const lead = new THREE.CatmullRomCurve3([
+          plug, inScope(.37, -.47, .1), inScope(.42, -.55, -.12), inScope(.62, -.5, -.42),
+          new THREE.Vector3(tail.x - .35, WY - .82, SH - .3), new THREE.Vector3(tail.x - .12, WY - .74, SH - .02),
+          new THREE.Vector3(tail.x - .05, WY - .64, SH + .03), tail.clone().addScaledVector(out, .05), tail,
+        ]);
+        const leadMat = std({ color: 0x1b1c1e, roughness: .6 });
+        wall.add(mesh(geo(new THREE.TubeGeometry(lead, 120, .013, 8)), leadMat));
+        // The cable's BNC plug on the scope, with its strain relief.
+        const plugG = new THREE.Group(); plugG.position.copy(plug); wall.add(plugG);
+        const shell = mesh(geo(new THREE.CylinderGeometry(.031, .031, .05, 24)), metal); shell.position.y = .02; plugG.add(shell);
+        const boot = mesh(geo(new THREE.CylinderGeometry(.016, .026, .06, 16)), leadMat); boot.position.y = -.03; plugG.add(boot);
+        // The probe: a grey body with a coloured band, and a sprung hook at the tip.
+        const probe = new THREE.Group(); probe.position.copy(tail); probe.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), out.clone().negate()); wall.add(probe);
+        const pBody = mesh(geo(new THREE.CylinderGeometry(.024, .02, .2, 20)), std({ color: 0x5c6066, roughness: .45 })); pBody.position.y = .1; probe.add(pBody);
+        const band = mesh(geo(new THREE.CylinderGeometry(.0245, .0245, .02, 20)), std({ color: 0xffd23a, roughness: .5 })); band.position.y = .05; probe.add(band);
+        const nose = mesh(geo(new THREE.CylinderGeometry(.01, .018, .05, 16)), std({ color: 0x2a2c2f, roughness: .5 })); nose.position.y = .225; probe.add(nose);
+        const hook = mesh(geo(new THREE.TorusGeometry(.012, .003, 6, 16, Math.PI * 1.4)), metal); hook.position.y = .255; hook.rotation.y = Math.PI / 2; probe.add(hook);
+      }
+      const ledMat = new THREE.MeshBasicMaterial({ color: 0x3a0d08, toneMapped: false });
+      const led = new THREE.Mesh(geo(new THREE.BoxGeometry(.04, .02, .025)), ledMat); led.position.set(.36, -.025, .2); pcb.add(led);
+      let blink = 0;
+      gadgets.push({
+        obj: pcb, hint: "Click to flash it",
+        press() { blink = 2.4; },
+        update(dt) { blink = Math.max(0, blink - dt); ledMat.color.setHex(blink > 0 && Math.floor(blink * 6) % 2 === 0 ? 0xff3b1f : 0x3a0d08); return blink > 0; },
+      });
+      // An antenna on a small base: it springs side to side.
+      const abase = mesh(geo(new THREE.BoxGeometry(.32, .32, .14)), std({ color: 0x222222, roughness: .5 })); abase.position.set(5.3, WY - .4, SH + .07); wall.add(abase); abase.visible = !phone;
+      const mast = new THREE.Group(); mast.position.set(5.3, WY - .4, SH + .14); wall.add(mast); mast.visible = !phone;
+      const rod = mesh(geo(new THREE.CylinderGeometry(.014, .02, 1.3, 10)), std({ color: 0x1a1a1a, roughness: .4 })); rod.rotation.x = Math.PI / 2; rod.position.z = .65; mast.add(rod);
+      const tip = mesh(geo(new THREE.SphereGeometry(.035, 12, 8)), std({ color: 0x1a1a1a, roughness: .4 })); tip.position.z = 1.3; mast.add(tip);
+      gadgets.push(swinger(mast, "Click to twang it", { k: 60, damp: 1.4, kick: 7 }));
+      // A plant: its leaves sway when touched.
+      const pot = mesh(geo(new THREE.CylinderGeometry(.2, .15, .34, 24)), std({ color: 0xc46f35, roughness: .7 })); pot.rotation.x = Math.PI / 2; pot.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .17); wall.add(pot);
+      const crown = new THREE.Group(); crown.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .32); wall.add(crown);
+      const leafMat = std({ color: 0x4d6b36, roughness: .7 });
+      for (let i = 0; i < 7; i++) {
+        const leaf = mesh(geo(new THREE.SphereGeometry(.16, 12, 8)), leafMat); leaf.scale.set(.55, .55, 1.6);
+        const a = i / 7 * Math.PI * 2; leaf.rotation.set(Math.cos(a) * .5, Math.sin(a) * .5, 0);
+        leaf.position.set(Math.cos(a) * .1, Math.sin(a) * .1, .2); crown.add(leaf);
+      }
+      gadgets.push(swinger(crown, "Click to ruffle it", { k: 22, damp: 2, kick: 3 }));
+      // A clock over the middle, telling the real time; a click sends its hands round once.
+      const clock = new THREE.Group(); clock.position.set(phone ? -1.1 : .9, WY - .08, phone ? 3.35 : 2.95); clock.rotation.x = Math.PI / 2; wall.add(clock);
+      const dial = tex(256, 256, (x, w) => {
+        x.fillStyle = "#fbf6ec"; x.beginPath(); x.arc(w / 2, w / 2, w / 2, 0, Math.PI * 2); x.fill();
+        x.fillStyle = "#2a2420";
+        for (let i = 0; i < 12; i++) { x.save(); x.translate(w / 2, w / 2); x.rotate(i / 12 * Math.PI * 2); x.fillRect(-3, -w / 2 + 12, 6, i % 3 ? 14 : 26); x.restore(); }
+      });
+      clock.add(mesh(geo(new THREE.CircleGeometry(.5, 48)), std({ map: dial, roughness: .6 }), false));
+      const rim = mesh(geo(new THREE.TorusGeometry(.52, .045, 12, 48)), std({ color: 0x1d1d1d, roughness: .4 })); clock.add(rim);
+      const hand = (len: number, w: number) => { const g = new THREE.Group(); const m = new THREE.Mesh(geo(new THREE.PlaneGeometry(w, len)), new THREE.MeshBasicMaterial({ color: 0x1d1a18 })); m.position.set(0, len / 2 - .04, .01); g.add(m); clock.add(g); return g; };
+      clockHands = { h: hand(.28, .045), m: hand(.4, .03) };
+      gadgets.push({
+        obj: clock, hint: "Click to wind it",
+        press() { clockSpin += Math.PI * 2; },
+        update(dt) {
+          if (!clockHands) return false;
+          clockSpin = Math.max(0, clockSpin - dt * Math.max(1.5, clockSpin * 2.2));
+          const now = new Date(), m = now.getMinutes() + now.getSeconds() / 60, h = (now.getHours() % 12) + m / 60;
+          clockHands.m.rotation.z = -m / 60 * Math.PI * 2 - clockSpin * 12; clockHands.h.rotation.z = -h / 12 * Math.PI * 2 - clockSpin;
+          return clockSpin > 0;
+        },
+      });
     }
-    // No room for the dev board or the antenna on a phone's shelf.
-    pcb.visible = !phone;
-    // The scope's channel 1 probe: a lead from its BNC, looping down over the shelf's edge and back up
-    // to a probe hooked onto the board's lower edge. Desktop only, like the board.
-    if (!phone) {
-      scope.updateMatrix(); pcb.updateMatrix();
-      const inScope = (a: number, b: number, c: number) => new THREE.Vector3(a, b, c).applyMatrix4(scope.matrix);
-      const onBoard = (a: number, b: number, c: number) => new THREE.Vector3(a, b, c).applyMatrix4(pcb.matrix);
-      const clip = onBoard(-.3, -.02, -.22), out = new THREE.Vector3(0, -.85, -.45).normalize();
-      const tail = clip.clone().addScaledVector(out, .26);
-      const plug = inScope(.37, -.39, .12);
-      const lead = new THREE.CatmullRomCurve3([
-        plug, inScope(.37, -.47, .1), inScope(.42, -.55, -.12), inScope(.62, -.5, -.42),
-        new THREE.Vector3(tail.x - .35, WY - .82, SH - .3), new THREE.Vector3(tail.x - .12, WY - .74, SH - .02),
-        new THREE.Vector3(tail.x - .05, WY - .64, SH + .03), tail.clone().addScaledVector(out, .05), tail,
-      ]);
-      const leadMat = std({ color: 0x1b1c1e, roughness: .6 });
-      wall.add(mesh(geo(new THREE.TubeGeometry(lead, 120, .013, 8)), leadMat));
-      // The cable's BNC plug on the scope, with its strain relief.
-      const plugG = new THREE.Group(); plugG.position.copy(plug); wall.add(plugG);
-      const shell = mesh(geo(new THREE.CylinderGeometry(.031, .031, .05, 24)), metal); shell.position.y = .02; plugG.add(shell);
-      const boot = mesh(geo(new THREE.CylinderGeometry(.016, .026, .06, 16)), leadMat); boot.position.y = -.03; plugG.add(boot);
-      // The probe: a grey body with a coloured band, and a sprung hook at the tip.
-      const probe = new THREE.Group(); probe.position.copy(tail); probe.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), out.clone().negate()); wall.add(probe);
-      const pBody = mesh(geo(new THREE.CylinderGeometry(.024, .02, .2, 20)), std({ color: 0x5c6066, roughness: .45 })); pBody.position.y = .1; probe.add(pBody);
-      const band = mesh(geo(new THREE.CylinderGeometry(.0245, .0245, .02, 20)), std({ color: 0xffd23a, roughness: .5 })); band.position.y = .05; probe.add(band);
-      const nose = mesh(geo(new THREE.CylinderGeometry(.01, .018, .05, 16)), std({ color: 0x2a2c2f, roughness: .5 })); nose.position.y = .225; probe.add(nose);
-      const hook = mesh(geo(new THREE.TorusGeometry(.012, .003, 6, 16, Math.PI * 1.4)), metal); hook.position.y = .255; hook.rotation.y = Math.PI / 2; probe.add(hook);
+    // Everything on the wall is built at desk scale; real bench gear is bigger than a mug, so it is all
+    // scaled up together about the foot of the wall (the plaster and skirting stay as they are).
+    {
+      const GS = 1.35, rig = new THREE.Group();
+      [...wall.children].slice(2).forEach((c) => rig.add(c));
+      rig.scale.setScalar(GS); rig.position.set(0, WY * (1 - GS), -.55); wall.add(rig);
     }
-    const ledMat = new THREE.MeshBasicMaterial({ color: 0x3a0d08, toneMapped: false });
-    const led = new THREE.Mesh(geo(new THREE.BoxGeometry(.04, .02, .025)), ledMat); led.position.set(.36, -.025, .2); pcb.add(led);
-    let blink = 0;
-    gadgets.push({
-      obj: pcb, hint: "Click to flash it",
-      press() { blink = 2.4; },
-      update(dt) { blink = Math.max(0, blink - dt); ledMat.color.setHex(blink > 0 && Math.floor(blink * 6) % 2 === 0 ? 0xff3b1f : 0x3a0d08); return blink > 0; },
-    });
-    // An antenna on a small base: it springs side to side.
-    const abase = mesh(geo(new THREE.BoxGeometry(.32, .32, .14)), std({ color: 0x222222, roughness: .5 })); abase.position.set(5.3, WY - .4, SH + .07); wall.add(abase); abase.visible = !phone;
-    const mast = new THREE.Group(); mast.position.set(5.3, WY - .4, SH + .14); wall.add(mast); mast.visible = !phone;
-    const rod = mesh(geo(new THREE.CylinderGeometry(.014, .02, 1.3, 10)), std({ color: 0x1a1a1a, roughness: .4 })); rod.rotation.x = Math.PI / 2; rod.position.z = .65; mast.add(rod);
-    const tip = mesh(geo(new THREE.SphereGeometry(.035, 12, 8)), std({ color: 0x1a1a1a, roughness: .4 })); tip.position.z = 1.3; mast.add(tip);
-    gadgets.push(swinger(mast, "Click to twang it", { k: 60, damp: 1.4, kick: 7 }));
-    // A plant: its leaves sway when touched.
-    const pot = mesh(geo(new THREE.CylinderGeometry(.2, .15, .34, 24)), std({ color: 0xc46f35, roughness: .7 })); pot.rotation.x = Math.PI / 2; pot.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .17); wall.add(pot);
-    const crown = new THREE.Group(); crown.position.set(phone ? 1.15 : 6.2, WY - .4, SH + .32); wall.add(crown);
-    const leafMat = std({ color: 0x4d6b36, roughness: .7 });
-    for (let i = 0; i < 7; i++) {
-      const leaf = mesh(geo(new THREE.SphereGeometry(.16, 12, 8)), leafMat); leaf.scale.set(.55, .55, 1.6);
-      const a = i / 7 * Math.PI * 2; leaf.rotation.set(Math.cos(a) * .5, Math.sin(a) * .5, 0);
-      leaf.position.set(Math.cos(a) * .1, Math.sin(a) * .1, .2); crown.add(leaf);
-    }
-    gadgets.push(swinger(crown, "Click to ruffle it", { k: 22, damp: 2, kick: 3 }));
-    // A clock over the middle, telling the real time; a click sends its hands round once.
-    const clock = new THREE.Group(); clock.position.set(phone ? -1.1 : .9, WY - .08, phone ? 3.35 : 2.95); clock.rotation.x = Math.PI / 2; wall.add(clock);
-    const dial = tex(256, 256, (x, w) => {
-      x.fillStyle = "#fbf6ec"; x.beginPath(); x.arc(w / 2, w / 2, w / 2, 0, Math.PI * 2); x.fill();
-      x.fillStyle = "#2a2420";
-      for (let i = 0; i < 12; i++) { x.save(); x.translate(w / 2, w / 2); x.rotate(i / 12 * Math.PI * 2); x.fillRect(-3, -w / 2 + 12, 6, i % 3 ? 14 : 26); x.restore(); }
-    });
-    clock.add(mesh(geo(new THREE.CircleGeometry(.5, 48)), std({ map: dial, roughness: .6 }), false));
-    const rim = mesh(geo(new THREE.TorusGeometry(.52, .045, 12, 48)), std({ color: 0x1d1d1d, roughness: .4 })); clock.add(rim);
-    const hand = (len: number, w: number) => { const g = new THREE.Group(); const m = new THREE.Mesh(geo(new THREE.PlaneGeometry(w, len)), new THREE.MeshBasicMaterial({ color: 0x1d1a18 })); m.position.set(0, len / 2 - .04, .01); g.add(m); clock.add(g); return g; };
-    clockHands = { h: hand(.28, .045), m: hand(.4, .03) };
-    gadgets.push({
-      obj: clock, hint: "Click to wind it",
-      press() { clockSpin += Math.PI * 2; },
-      update(dt) {
-        if (!clockHands) return false;
-        clockSpin = Math.max(0, clockSpin - dt * Math.max(1.5, clockSpin * 2.2));
-        const now = new Date(), m = now.getMinutes() + now.getSeconds() / 60, h = (now.getHours() % 12) + m / 60;
-        clockHands.m.rotation.z = -m / 60 * Math.PI * 2 - clockSpin * 12; clockHands.h.rotation.z = -h / 12 * Math.PI * 2 - clockSpin;
-        return clockSpin > 0;
-      },
-    });
-  }
-  // Everything on the wall is built at desk scale; real bench gear is bigger than a mug, so it is all
-  // scaled up together about the foot of the wall (the plaster and skirting stay as they are).
-  {
-    const GS = 1.35, rig = new THREE.Group();
-    [...wall.children].slice(2).forEach((c) => rig.add(c));
-    rig.scale.setScalar(GS); rig.position.set(0, WY * (1 - GS), -.55); wall.add(rig);
+    return wall;
   }
   // The gadget under a ray, while the wall is up.
   const gadgetAt = (ray: THREE.Ray) => {
@@ -1725,9 +1737,12 @@ export function buildDesk(kit: DeskKit): Desk {
     mugTop: () => mug?.top() ?? null,
     book: (state) => notebook?.book(state),
     prewarm(on, holo = on) { wall.visible = on; notebook?.prewarm(holo); },
+    buildWall,
     setWall(rise) {
       if (Math.abs(rise - wallRise.v) < .0005) return;
       wallRise.v = rise;
+      // Reached before it was built on approach (a jump straight to More work): build it now.
+      if (rise > .002) buildWall();
       wall.visible = rise > .002;
       // The wall stands still; only the camera moves. It is simply there from the moment the camera
       // starts to come down (from straight overhead it would only block the view, so it is off then).

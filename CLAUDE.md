@@ -106,8 +106,10 @@ be usable in the first ten seconds before it is impressive.
 - Shadow maps are static (`shadowMap.autoUpdate = false`); `frame()` redraws them only when a caster
   moves or shows/hides. Anything new that moves on its own must report it (via `deskSet.update`'s
   return value) or its shadow will freeze.
-- Desktop quality steps down (no composer/AO, pixel ratio 1) if the first ~2s after the reveal run under
-  50 fps; `data-snap` always gets full quality.
+- Quality steps down if the first ~2s after the reveal run under 50 fps: desktop loses the composer/AO
+  and goes from pixel ratio 1.25 to 1; phones go from 2 to 1.25. `data-snap` always gets full quality.
+- The More work wall is built on approach (`prepareWall` in `scene.ts`, `buildWall` in `desk.ts`), not
+  with the desk; it stays hidden until its shader states have compiled.
 - Background work goes through `idleQueue` / `afterOpening`; never re-request an idle callback with a
   fresh timeout (the hero's loop keeps idle slots short and the job starves).
 

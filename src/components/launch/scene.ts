@@ -52,8 +52,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   const MONO = rootStyle.getPropertyValue("--font-jetbrains").trim() || "monospace";
   const HAND = rootStyle.getPropertyValue("--font-caveat").trim() || "cursive";
 
-  // 1.25 at most (more costs fill rate an integrated GPU does not have); the low tier drops to 1.
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.25));
+  /* Pixel ratio, high tier and low (see Adaptive quality). Desktop: 1.25 at most (more costs fill rate
+     an integrated GPU does not have, and its composer multisamples), 1 when it steps down. Phones:
+     their screens are 2 to 3x, and 1.25 looked soft, so up to 2; they have no composer and draw only
+     when something moves. A phone that cannot keep up steps back to 1.25. */
+  const PIXELS = small() ? { high: 2, low: 1.25 } : { high: 1.25, low: 1 };
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, PIXELS.high));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
   renderer.shadowMap.enabled = true;
@@ -326,6 +330,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   function choreograph() {
     const intro = byId("intro"), ships = byId("ships"), work = byId("work"), book = byId("more-work"), after = byId("experience");
     const vh = innerHeight, mob = small(), base = mob ? .72 : 1;
+    // Approaching More work (the projects about to come into view, a few screens before it): get its
+    // wall ready now. Anywhere past that point counts too.
+    if (rect(work).top < vh * 1.5) prepareWall();
     const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: base, veil: 0, spot: 0, show: 1, spin: 0, low: 0, crane: 0 };
     let backdrop: "desk" | "void" = "desk";
     // Each beat's words show only inside that beat's own stretch, decided afresh every frame, so a
@@ -410,7 +417,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* ---------- Adaptive quality ---------- */
   /* For two seconds once the desk is first on show, the loop is kept running and the frame rate
      measured. Under 50 fps (an integrated GPU driving a big window), the scene steps down: the
-     composer and its ambient occlusion go, and the pixel ratio drops to 1. The desk's shaders for
+     composer and its ambient occlusion go (desktop), and the pixel ratio drops to its low tier. The desk's shaders for
      drawing straight to the screen are compiled first, in the background, and the switch waits for
      them, so stepping down never stalls a frame. Measured once per visit; a hidden tab measures again
      when it comes back. */
@@ -440,7 +447,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       composer = null; composerTarget = null;
       disposeComposer?.(); disposeComposer = null;
     }
-    renderer.setPixelRatio(1);
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, PIXELS.low));
     resize();
   }
 
@@ -813,6 +820,19 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
      a shallow clone (same geometry and material, so the same program) against the real scene's
      lights; whatever is switched for the state is switched back within the same slot, before any
      frame can see it. */
+  /* The More work wall: built in an idle moment, its textures uploaded in idle time, then its two
+     states compiled a slice at a time. It stays hidden throughout (its light included, so the desk's
+     own shaders are untouched). If More work is reached first, setWall builds it on the spot. */
+  let wallPrepared = false;
+  function prepareWall() {
+    if (wallPrepared || disposed) return;
+    wallPrepared = true;
+    void (async () => {
+      await slot(); if (disposed) return;
+      uploadIdle(deskSet.buildWall());
+      for (const set of ["wall", "wall+holo"] as const) await compileFor(set);
+    })();
+  }
   const compileFor = async (state: "desk" | "dark" | "wall" | "wall+holo", target = composerTarget) => {
     const dark = state === "dark";
     const meshes: THREE.Object3D[] = [];
@@ -852,23 +872,25 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     await Promise.all([inTarget, compile(screenPasses, camera)]);
   }
   hooks.onProgress?.(.94);
-  // The others are started now too, while the loading sheet is still up, but not waited for: their
-  // synchronous part (building the sources) happens here rather than in the middle of the hero, and the
-  // compiling itself finishes in the background long before anyone scrolls to them.
-  void (async () => { for (const set of ["dark", "wall", "wall+holo"] as const) await compileFor(set); })();
+  // The dark scenes are started now too, but not waited for: they finish in the background long
+  // before anyone scrolls to them. The wall's states wait for the wall (prepareWall below).
+  void compileFor("dark");
   // Upload every texture now too (the hidden parts' and the notebook pages'), one per idle moment,
-  // rather than the first time each is drawn.
-  {
+  // rather than the first time each is drawn: after the reveal has played (the sheet lifting, the
+  // desk's entrance), and then only in real idle time, so it never competes with the opening.
+  const uploadIdle = (root: THREE.Object3D) => {
     const textures = new Set<THREE.Texture>();
-    scene.traverse((o) => {
+    root.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       for (const mat of m ? (Array.isArray(m) ? m : [m]) : []) for (const v of Object.values(mat)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
     });
     const queue = [...textures];
-    // After the reveal has played (the sheet lifting, the desk's entrance), and then only in real
-    // idle time, one texture at a time: preparation never competes with the opening for frames.
-    afterOpening(() => idleQueue(() => { const t = queue.shift(); if (!t) return false; renderer.initTexture(t); return true; }));
-  }
+    idleQueue(() => { const t = queue.shift(); if (!t) return false; renderer.initTexture(t); return true; });
+  };
+  afterOpening(() => uploadIdle(scene));
+  // The More work wall is built on approach: as the projects come into view (see choreograph()), or
+  // in idle time a while after the opening, whichever comes first.
+  afterOpening(() => window.setTimeout(() => { if (!disposed) prepareWall(); }, 4000));
   // Hand More work its projects then too, so its pages are drawn in idle time long before it is reached.
   afterOpening(() => moreWork());
   await envArrived;
