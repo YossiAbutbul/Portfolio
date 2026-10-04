@@ -1,0 +1,16 @@
+/* Fill backwards only: once the fade ends the wrapper has no opacity and no stacking context. */
+.fade {
+  animation: page-fade 180ms ease-out backwards;
+}
+
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    animation: none;
+  }
+}

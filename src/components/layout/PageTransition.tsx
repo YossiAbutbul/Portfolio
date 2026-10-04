@@ -1,18 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { motion } from "motion/react";
+import styles from "./PageTransition.module.css";
 
+// The key remounts the wrapper on every route change, which restarts the CSS fade.
 export default function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <motion.div
-      key={pathname}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.18, ease: "easeOut" }}
-    >
+    <div key={pathname} className={styles.fade}>
       {children}
-    </motion.div>
+    </div>
   );
 }

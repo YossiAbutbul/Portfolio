@@ -11,7 +11,7 @@ be usable in the first ten seconds before it is impressive.
 - Fonts: Figtree (sans, 800 uppercase for headings) and JetBrains Mono (labels, numbers, units) via
   `next/font/google`. Canvas text reads the hashed family names from `--font-figtree` /
   `--font-jetbrains`.
-- Motion: `gsap` + `ScrollTrigger`, `lenis`, `three` (launch scene only), `motion` (route fade only).
+- Motion: `gsap` + `ScrollTrigger`, `lenis`, `three` (launch scene only). The route fade is a CSS animation (`PageTransition`), not a library.
   All are dynamically imported; keep it that way.
 
 ## Folders
