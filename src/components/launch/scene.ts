@@ -400,6 +400,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       if (onScreen) word.style.transform = `translate3d(${lerp(innerWidth, -word.offsetWidth - word.offsetHeight * .35, prog(ships))}px, 0, 0)`;
     }
     // Reduced motion lists More work as a page instead; the desk's notebook stays put.
+    // Until the wall's shaders are ready, More work shows without the wall and the hologram (their
+    // lights would change every lit shader); they come in as soon as it is.
+    if (book_ && !wallReady) book_.rise = 0;
     deskSet.book(bookOn && !reduce.matches ? book_ : null);
     // The notebook's pages turn with scroll while the pose stands still: their shadows must follow.
     const pages = book_ ? `${book_.rise.toFixed(4)}|${book_.u.toFixed(4)}` : "";
@@ -547,7 +550,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // From the low camera it looks a little up, over the book, so the wall behind the desk fills the
     // top of the frame instead of more table.
     camera.lookAt(0, 1.2 * cur.low, 1 * cur.low);
-    deskSet.setWall(cur.low);
+    deskSet.setWall(wallReady ? cur.low : 0);
     placeSteam();
     if (unseen) { /* hidden: skip drawing */ }
     else if (composer && desk.visible) {
@@ -823,7 +826,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* The More work wall: built in an idle moment, its textures uploaded in idle time, then its two
      states compiled a slice at a time. It stays hidden throughout (its light included, so the desk's
      own shaders are untouched). If More work is reached first, setWall builds it on the spot. */
-  let wallPrepared = false;
+  let wallPrepared = false, wallReady = false;
   function prepareWall() {
     if (wallPrepared || disposed) return;
     wallPrepared = true;
@@ -831,6 +834,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       await slot(); if (disposed) return;
       uploadIdle(deskSet.buildWall());
       for (const set of ["wall", "wall+holo"] as const) await compileFor(set);
+      if (disposed) return;
+      wallReady = true;
+      kick();
     })();
   }
   const compileFor = async (state: "desk" | "dark" | "wall" | "wall+holo", target = composerTarget) => {
@@ -889,8 +895,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   };
   afterOpening(() => uploadIdle(scene));
   // The More work wall is built on approach: as the projects come into view (see choreograph()), or
-  // in idle time a while after the opening, whichever comes first.
-  afterOpening(() => window.setTimeout(() => { if (!disposed) prepareWall(); }, 4000));
+  // once the opening has played, whichever comes first (slow phones need the head start).
+  afterOpening(() => prepareWall());
   // Hand More work its projects then too, so its pages are drawn in idle time long before it is reached.
   afterOpening(() => moreWork());
   await envArrived;

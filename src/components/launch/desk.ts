@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 /**
  * The desk set: wood, the cutting mat, and the tools on it. Every tool is a small rigid body on the
@@ -790,6 +791,7 @@ export function buildDesk(kit: DeskKit): Desk {
        blue onto the pages. Additive and unlit, over smoked glass. A turning page passes through the
        beam, as it would through light. */
     const holo = new THREE.Group(); holo.position.set(0, 0, top(0) + .01); holo.visible = false; nb.add(holo);
+    let holoWas = false;
     const HW = 2.4, HH = .95, HZ = 1.15;
     const additive = (map: THREE.Texture | null, extra: THREE.MeshBasicMaterialParameters = {}) => new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, ...extra });
     const holoTex = tex(1024, 432, () => {});
@@ -934,7 +936,8 @@ export function buildDesk(kit: DeskKit): Desk {
     const hover = (ray: THREE.Ray | null) => notebook?.hover(ray);
     notebook = {
       book,
-      prewarm(on) { holo.visible = on; },
+      // Shown for a compile and then put back exactly as it was (it may be on show at the time).
+      prewarm(on) { if (on) { holoWas = holo.visible; holo.visible = true; } else holo.visible = holoWas; },
       setMoreWork(list) {
         more = list;
         // Draw every More work page ahead of time, one per idle moment, so turning a page later is only
@@ -1033,10 +1036,43 @@ export function buildDesk(kit: DeskKit): Desk {
   };
   let clockHands: { h: THREE.Object3D; m: THREE.Object3D } | null = null;
   let clockSpin = 0;
+  /* The wall is a hundred-odd small pieces, and three's per-object work for each one, every frame,
+     was what slowed More work on slow phones. Nothing on it moves except the gadgets, so the pieces
+     that share a material (and shadow settings and vertex layout) are merged into one mesh each, in
+     place; what stays separate stops recomputing its transform every frame. Gadgets keep their own
+     pieces (they move, and the pointer finds them by their objects); hidden, see-through, instanced and
+     mirrored pieces are left as they are. */
+  function freezeWall() {
+    wall.updateMatrixWorld(true);
+    const toWall = wall.matrixWorld.clone().invert(), at = new THREE.Matrix4();
+    const moving = new Set<THREE.Object3D>();
+    for (const g of gadgets) g.obj.traverse((o) => moving.add(o));
+    const shown = (o: THREE.Object3D | null) => { for (; o && o !== wall; o = o.parent) if (!o.visible) return false; return true; };
+    const sets = new Map<string, { mat: THREE.Material; cast: boolean; receive: boolean; parts: THREE.BufferGeometry[]; from: THREE.Mesh[] }>();
+    wall.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || (m as THREE.InstancedMesh).isInstancedMesh || moving.has(m) || Array.isArray(m.material) || m.material.transparent || m.renderOrder || !shown(m) || m.matrixWorld.determinant() < 0) return;
+      const g = m.geometry, key = [m.material.uuid, m.castShadow, m.receiveShadow, Object.keys(g.attributes).sort().join(), !!g.index].join("|");
+      let set = sets.get(key);
+      if (!set) sets.set(key, set = { mat: m.material, cast: m.castShadow, receive: m.receiveShadow, parts: [], from: [] });
+      set.parts.push(g.clone().applyMatrix4(at.multiplyMatrices(toWall, m.matrixWorld))); set.from.push(m);
+    });
+    for (const set of sets.values()) {
+      const merged = set.parts.length > 1 ? mergeGeometries(set.parts) : null;
+      set.parts.forEach((g) => g.dispose());
+      if (!merged) continue;
+      const one = new THREE.Mesh(geo(merged), set.mat); one.castShadow = set.cast; one.receiveShadow = set.receive;
+      for (const m of set.from) m.removeFromParent();
+      wall.add(one);
+    }
+    // Everything left that does not move keeps the transform it has.
+    wall.traverse((o) => { if (o !== wall && !moving.has(o)) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
+  }
+
   /* Built on approach (see scene.ts: as the projects come into view, or in idle time a few seconds
      after the opening), not with the desk: it is the biggest part of the set and nobody sees it until
      More work. Until then the group is empty and hidden, so it adds nothing to the startup shaders. */
-  let wallBuilt = false;
+  let wallBuilt = false, wallWas = false;
   function buildWall() {
     if (wallBuilt) return wall;
     wallBuilt = true;
@@ -1569,6 +1605,7 @@ export function buildDesk(kit: DeskKit): Desk {
       [...wall.children].slice(2).forEach((c) => rig.add(c));
       rig.scale.setScalar(GS); rig.position.set(0, WY * (1 - GS), -.55); wall.add(rig);
     }
+    freezeWall();
     return wall;
   }
   // The gadget under a ray, while the wall is up.
@@ -1736,7 +1773,13 @@ export function buildDesk(kit: DeskKit): Desk {
     },
     mugTop: () => mug?.top() ?? null,
     book: (state) => notebook?.book(state),
-    prewarm(on, holo = on) { wall.visible = on; notebook?.prewarm(holo); },
+    // The wall (and the hologram) are shown for a compile and then put back exactly as they were: the
+    // compile can run while More work is on screen (opened straight at #more-work), and forcing them
+    // hidden then left the wall gone for good.
+    prewarm(on, holo = on) {
+      if (on) { wallWas = wall.visible; wall.visible = true; if (holo) notebook?.prewarm(true); }
+      else { wall.visible = wallWas; notebook?.prewarm(false); }
+    },
     buildWall,
     setWall(rise) {
       if (Math.abs(rise - wallRise.v) < .0005) return;
