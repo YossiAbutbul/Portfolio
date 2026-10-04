@@ -117,12 +117,16 @@
   .scroll { display: none; }
 }
 
-/* Entrance, as the opening sheet lifts (--lift): the name rises in, then the line under it, the card
-   and the cue. CSS alone, from the first paint: it never waits for scripts or the 3D scene. Reduced
-   motion (no sheet) and no-JS (Home's noscript) get the text simply there. */
-.word { animation: rise 1s var(--ease-out) calc(var(--lift) + 0.05s) both; }
-.card { animation: rise 0.9s var(--ease-out) calc(var(--lift) + 0.3s) both; }
-.scroll { animation: fade 0.8s var(--ease-out) calc(var(--lift) + 1s) both; }
+/* Entrance, as the opening sheet lifts: the name rises in, then the line under it, the card and the
+   cue. Reduced motion (no sheet) and no-JS (Home's noscript) get the text simply there. */
+.word { animation: rise 1s var(--ease-out) 0.05s both; }
+.card { animation: rise 0.9s var(--ease-out) 0.3s both; }
+.scroll { animation: fade 0.8s var(--ease-out) 1s both; }
+
+/* Held at their start, under the sheet, until it lifts (LaunchLoader sets data-entering). */
+:global(html:has([data-launch-loader]):not([data-entering])) :is(.word, .card, .scroll) {
+  animation-play-state: paused;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .word, .card, .scroll { animation: none; }
@@ -212,7 +216,8 @@
 .shipsKick {
   position: absolute;
   left: var(--gutter);
-  top: 30svh;
+  /* Just above the word's line box (centred, line-height 1), so the "i" never covers it. */
+  bottom: calc(50% + var(--ships-word) * 0.5 + 0.4rem);
   color: var(--cream);
   font-weight: 800;
   text-transform: uppercase;

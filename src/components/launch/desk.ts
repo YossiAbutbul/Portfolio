@@ -188,6 +188,7 @@ export function buildDesk(kit: DeskKit): Desk {
   let notebookOn = true;
   // The pencil, so More work can bring it forward on phones (and put it back after).
   let pencil: Tool | null = null, pencilHome: [number, number] = [0, 0];
+  const PENCIL_FOOT = 7.2; // the length of its contact shadow
   let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"]; prewarm: (on: boolean) => void } | null = null;
   function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number]; hint?: string }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
@@ -203,7 +204,7 @@ export function buildDesk(kit: DeskKit): Desk {
     // through it, which is what leaves the scalloped paint edge, bare wood with grain, a graphite
     // point, a gold stamp on the top face, and a plain painted end (no eraser).
     const AP = .1, CR = AP / Math.cos(Math.PI / 6); // hex apothem and corner radius
-    const Y0 = -2, CUT = 1.62, TIP = 2.62;            // barrel start, where the cone starts, the point: a fairly new pencil
+    const Y0 = -3, CUT = 1.62, TIP = 2.62;          // barrel start, where the cone starts, the point: a fairly new pencil
     const hexR = (th: number) => {
       // Facets centred on +z (the face the camera sees), corners rounded off a little like real paint.
       const f = ((th - Math.PI / 2 + Math.PI / 6) % (Math.PI / 3) + Math.PI / 3) % (Math.PI / 3) - Math.PI / 6;
@@ -238,7 +239,10 @@ export function buildDesk(kit: DeskKit): Desk {
     // Gold foil stamp on the face toward the camera, running along the barrel.
     const stamp = mesh(geo(new THREE.PlaneGeometry(1.9, .1)), new THREE.MeshStandardMaterial({ transparent: true, metalness: .8, roughness: .35, color: 0xd8b25a, map: tex(1024, 54, (x) => { x.fillStyle = "#fff"; x.font = `700 34px ${MONO}`; x.fillText("ABUTBUL  ·  HB  ·  No. 2", 10, 40); }) }), false);
     stamp.rotation.z = Math.PI / 2; stamp.position.set(0, .1, AP + .002); body.add(stamp);
-    addTool(g, { x: -4.1, y: -2.2, a: .55, rest: AP, circles: line(8, 3.4, .13).map(([cx, cy, r]) => [cx + .9, cy, r] as [number, number, number]), mass: .36, foot: [5.3, .45], roll: AP, onPhone: [-2.45, -1.38, .06], enter: [2.8 * Math.sin(.55), -2.8 * Math.cos(.55), .85], hint: "Push to roll" });
+    // Home: its point stops about 0.2 short of the device's collision circles (scene.ts, obstacles),
+    // or the collision would push it off home and it would snap back once the device lifts.
+    const A = .42;
+    addTool(g, { x: -4.9, y: -2.5, a: A, rest: AP, circles: line(10, 4.5, .13).map(([cx, cy, r]) => [cx + 1.45, cy, r] as [number, number, number]), mass: .36, foot: [PENCIL_FOOT, .45], roll: AP, onPhone: [-2.45, -1.38, .06], enter: [2.8 * Math.sin(A), -2.8 * Math.cos(A), .85], hint: "Push to roll" });
     pencil = tools[tools.length - 1]; pencilHome = [pencil.hx, pencil.hy];
   }
 
@@ -275,7 +279,7 @@ export function buildDesk(kit: DeskKit): Desk {
     let flip = -1, roll = -1;
     // The roll in: from off the left edge, end over end along its own length (about its short
     // axis), two full turns, landing face up where it lies.
-    const ROLL_D = 4.6, ROLL_TURNS = 2, ROLL_AT = .35, ROLL_S = 1.3;
+    const ROLL_D = 4.6, ROLL_TURNS = 2, ROLL_AT = .35, ROLL_S = 1.1;
     const rollPose = (e: number) => {
       const back = (1 - e) * ROLL_D, a = -(1 - e) * ROLL_TURNS * Math.PI * 2;
       holder.position.set(EX - Math.cos(EA) * back, EY - Math.sin(EA) * back, H / 2);
@@ -294,9 +298,9 @@ export function buildDesk(kit: DeskKit): Desk {
       press(ray) { if (!eraser!.hit(ray)) return false; if (flip < 0) flip = 0; return true; },
       update(dt) {
         if (roll !== -1) {
-          // A short wait (roll below zero), then the roll itself, eased to a stop.
+          // A short wait (roll below zero), then the roll itself, slowing at a constant rate to a stop.
           roll = Math.min(1, roll + dt / ROLL_S);
-          rollPose(1 - Math.pow(1 - Math.max(0, roll), 3));
+          rollPose(1 - Math.pow(1 - Math.max(0, roll), 2));
           if (roll >= 1) roll = -1;
           return true;
         }
@@ -893,7 +897,7 @@ export function buildDesk(kit: DeskKit): Desk {
         holo.visible = false; holoLight.intensity = 0; rise = 0; holoAt = -1;
         eraser?.aside(0);
         if (mugRig) { mugRig.aside = false; mugRig.g.position.x = mugRig.pad.position.x = mugRig.x; mugRig.g.position.y = mugRig.pad.position.y = mugRig.y; mugRig.g.scale.setScalar(mugRig.s); mugRig.pad.scale.set(2.5, 2.3, 1); }
-        if (pencil) { pencil.hx = pencilHome[0]; pencil.hy = pencilHome[1]; pencil.group.scale.setScalar(1); pencil.shadow.scale.set(5.3, .45, 1); }
+        if (pencil) { pencil.hx = pencilHome[0]; pencil.hy = pencilHome[1]; pencil.group.scale.setScalar(1); pencil.shadow.scale.set(PENCIL_FOOT, .45, 1); }
         notebookOn = true;
         return;
       }
@@ -928,7 +932,7 @@ export function buildDesk(kit: DeskKit): Desk {
       }
       if (phone && pencil) {
         pencil.hx = -1.95; pencil.hy = -1.5;
-        pencil.group.scale.setScalar(.72); pencil.shadow.scale.set(5.3 * .72, .45 * .72, 1);
+        pencil.group.scale.setScalar(.72); pencil.shadow.scale.set(PENCIL_FOOT * .72, .45 * .72, 1);
       }
       const open = Math.round(u);
       if (open !== holoAt) drawHolo(open);
@@ -980,7 +984,7 @@ export function buildDesk(kit: DeskKit): Desk {
         let moving = false;
         if (mode === "more") return updateHolo(dt);
         if (enterT >= 0 && enterT < 1.9) {
-          const e = 1 - Math.pow(1 - Math.min(1, Math.max(0, (enterT - .35) / 1.2)), 3), k = 1 - e;
+          const e = 1 - Math.pow(1 - Math.min(1, Math.max(0, (enterT - .35) / 1.05)), 2), k = 1 - e;
           nb.position.set(NX + 3.6 * k, NY - 3.6 * k, 0); nb.rotation.z = NA - .35 * k;
           pad.position.set(nb.position.x, nb.position.y, .004); pad.rotation.z = nb.rotation.z;
           moving = true;
@@ -1627,12 +1631,19 @@ export function buildDesk(kit: DeskKit): Desk {
 
   const worldOf = (t: Tool, lx: number, ly: number) => { const c = Math.cos(t.a), s = Math.sin(t.a); return [t.x + lx * c - ly * s, t.y + lx * s + ly * c]; };
 
+  const TOOL_ENTER_S = .9;
   function update(dt: number, bounds: { w: number; h: number }, obstacles: [number, number, number][]) {
     let moving = false;
     const sub = 3, h = dt / sub;
     if (enterT >= 0) {
       enterT += dt;
-      for (const t of tools) if (t.held && t.enter && enterT >= t.enter.at) { t.held = false; t.free = true; }
+      // Rolled in along a set path, slowing at a constant rate like a real roll under friction (an
+      // ease-out quad), then handed to the physics at rest at home: the spring's long creep is skipped.
+      for (const t of tools) if (t.held && t.enter && enterT >= t.enter.at) {
+        const p = Math.min(1, (enterT - t.enter.at) / TOOL_ENTER_S), k = Math.pow(1 - p, 2);
+        t.x = t.hx + t.enter.dx * k; t.y = t.hy + t.enter.dy * k;
+        if (p >= 1) { t.held = false; t.vx = t.vy = t.va = 0; }
+      }
     }
     for (let step = 0; step < sub; step++) {
       for (const t of tools) {

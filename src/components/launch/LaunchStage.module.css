@@ -120,45 +120,11 @@
   pointer-events: none;
   color: var(--cream);
   font-weight: 800;
-  font-size: clamp(8rem, 26vw, 26rem);
+  font-size: var(--ships-word);
   letter-spacing: -0.06em;
   line-height: 1;
   opacity: 0;
   will-change: transform;
-}
-
-/* The poster: a still of the scene's first frame (scripts/bake-poster.mjs), framed the way the camera
-   frames the desk. The camera's vertical field of view is fixed and it looks straight down the middle,
-   so the shot scales with the viewport's height and crops evenly at the sides: a wide still with
-   cover sizing matches it at any desktop shape. Phones have their own layout and lens. It fades with
-   the hero as the page scrolls on (where scroll timelines exist), and goes once the canvas is in. */
-.poster {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  /* Captured with the canvas's warm grade already on. */
-  background: url("/textures/poster.webp") center / cover no-repeat;
-  transition: opacity 0.4s var(--ease-out) 0.8s, visibility 0s linear 1.2s;
-}
-
-.poster[data-off="true"] {
-  opacity: 0;
-  visibility: hidden;
-}
-
-@supports (animation-timeline: scroll()) {
-  .poster:not([data-off="true"]) {
-    animation: poster-away linear both;
-    animation-timeline: scroll(root);
-    animation-range: 0 60vh;
-  }
-}
-
-@keyframes poster-away { to { opacity: 0; } }
-
-@media (max-width: 720px) {
-  .poster { background-image: url("/textures/poster-phone.webp"); }
 }
 
 .canvas {

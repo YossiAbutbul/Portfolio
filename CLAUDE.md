@@ -33,12 +33,11 @@ be usable in the first ten seconds before it is impressive.
   or removing a section id changes the choreography.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
-  `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) is a short
-  title card: it lifts on its own CSS clock (`--lift` in `tokens.css`, 1.6s; 1s on a reload in the
-  same tab via `sessionStorage` `launch:seen`, read by a head script in the root layout) and never waits
-  for the scene. The hero's entrance is CSS timed from `--lift`. Until the scene's first frame,
-  `LaunchStage` shows a poster of the desk (`public/textures/poster*.webp`), then crossfades to the
-  canvas. Reduced motion and no-JS never see the sheet.
+  `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) holds the
+  page until the scene's first frame is up (`launch:progress` reaching 1), at least 1.6s (1s on a
+  reload in the same tab via `sessionStorage` `launch:seen`, read by a head script in the root layout)
+  and at most 8s, then lifts straight onto the live desk; there is no poster. The hero's entrance is CSS,
+  paused until the sheet sets `data-entering`. Reduced motion and no-JS never see the sheet.
 - `content/projects.ts` project data; `src/types/project.ts` its type.
 - `public/` CV PDF, project screenshots/posters, `og.jpg` (1200 x 630, the hero desk with the name).
 
@@ -50,8 +49,6 @@ be usable in the first ten seconds before it is impressive.
 - `npm run bake:textures` re-renders the desk's procedural textures and the baked environment light
   (`scripts/bake-textures/`) into `public/textures`. Edit textures in `draw.js`, never back in
   `desk.ts` (drawing them at startup froze the page for seconds).
-- `npm run bake:poster` (after `npm run build`) re-renders the desk posters; rerun whenever the desk,
-  its layout or the hero camera changes, or the poster and the live scene will not line up.
 - `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`; ESLint 10 is not yet supported by
   `eslint-config-next`'s parser, so don't upgrade it).
 - No test suite. Verify in the browser at desktop and 375px mobile, and with reduced motion. For
@@ -106,8 +103,10 @@ be usable in the first ten seconds before it is impressive.
 - Shadow maps are static (`shadowMap.autoUpdate = false`); `frame()` redraws them only when a caster
   moves or shows/hides. Anything new that moves on its own must report it (via `deskSet.update`'s
   return value) or its shadow will freeze.
-- Quality steps down if the first ~2s after the reveal run under 50 fps: desktop loses the composer/AO
-  and goes from pixel ratio 1.25 to 1; phones go from 2 to 1.25. `data-snap` always gets full quality.
+- Quality steps down if the ~2s after the desk's entrance run under 50 fps: desktop loses the
+  composer/AO and goes from pixel ratio 1.25 to 1; phones go from 2 to 1.25. `data-snap` always gets
+  full quality. Deferred setup (`afterOpening`) also waits for the entrance, and the dark scenes compile
+  before the opening sheet lifts, so nothing heavy lands while the entrance plays.
 - The More work wall is built on approach (`prepareWall` in `scene.ts`, `buildWall` in `desk.ts`), not
   with the desk; it stays hidden until its shader states have compiled.
 - Background work goes through `idleQueue` / `afterOpening`; never re-request an idle callback with a

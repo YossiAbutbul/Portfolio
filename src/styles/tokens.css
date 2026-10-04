@@ -74,6 +74,8 @@
   --content-max: 44rem;
   --label-col: 8.5rem;
   --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  /* The giant "it ships." word (LaunchStage), and its kicker sits just above it (LaunchIntro). */
+  --ships-word: clamp(8rem, 26vw, 26rem);
 
   /* Motion - one easing family. Amplitude stays small on this ground; a
      document does not bounce. */
@@ -84,12 +86,3 @@
   --dur-slow: 620ms;
 }
 
-/* When the opening sheet lifts (LaunchLoader); the hero's entrance is timed from it. A reload in the
-   same tab (data-seen, set by a head script) opens sooner. */
-:root {
-  --lift: 1.6s;
-}
-
-:root[data-seen] {
-  --lift: 1s;
-}

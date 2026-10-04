@@ -6,10 +6,9 @@
   display: grid;
   place-items: center;
   background: var(--paper-lift);
-  /* The sketch plays at this pace (1 was its original, slower drawing) so it is finished as the sheet
-     lifts. The lift is CSS too, at --lift (LaunchLoader.tsx), so it never waits on scripts. */
+  /* The sketch plays at this pace (1 was its original, slower drawing) so it is finished by the
+     sheet's shortest time. The sheet lifts when LaunchLoader.tsx sets data-phase. */
   --pace: 0.75;
-  animation: lift 0.7s var(--ease-out) var(--lift) forwards;
 }
 
 .sheet[data-phase="leaving"] {
@@ -17,8 +16,6 @@
   visibility: hidden;
   transition: opacity 0.7s var(--ease-out), visibility 0s linear 0.7s;
 }
-
-@keyframes lift { to { opacity: 0; visibility: hidden; } }
 
 /* The drawing sits exactly where the 3D device will be, so the sheet can simply fade off it. The
    scene's camera has a fixed vertical field of view, so the device's place and size on screen are a

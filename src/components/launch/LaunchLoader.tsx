@@ -3,18 +3,19 @@
 import { cloneElement, useEffect, useRef, useState } from "react";
 import styles from "./LaunchLoader.module.css";
 
-/** When the sheet starts to lift; LaunchLoader.module.css and LaunchIntro.module.css use the same
- *  times (--lift), so the sheet and the hero's entrance run on CSS alone even if scripts are slow. */
+/** The sheet's shortest time, so the sketch is seen; it then waits for the 3D scene's first frame. */
 const LIFT_MS = 1600;
 /** On a reload in the same tab. */
 const LIFT_SEEN_MS = 1000;
+/** The longest it holds the page: a slow or failed scene never keeps the hero's words away. */
+const LIFT_MAX_MS = 8000;
 let firstMount = true;
 
 /**
  * A blueprint of the device, drawn on a dark sheet as the page opens: dashed outlines, Bézier
- * handles, construction lines, and a fill that sweeps round as it is drawn. It is a short title card,
- * not a loading screen: it lifts on its own clock and never waits for the 3D scene (the desk's poster
- * stands in until the scene is ready), so the hero's words are up within about two seconds.
+ * handles, construction lines, and a fill that sweeps round with the scene's loading. It lifts once
+ * the sketch has been seen and the 3D scene's first frame is ready (LaunchStage reports progress), so
+ * the page opens straight onto the live desk; LIFT_MAX_MS caps the wait.
  */
 export default function LaunchLoader() {
   const [phase, setPhase] = useState<"loading" | "leaving" | "gone">("loading");
@@ -28,6 +29,12 @@ export default function LaunchLoader() {
     if (reduce) return;
     // Seen already in this tab (a reload): the sheet lifts sooner.
     const liftMs = root.hasAttribute("data-seen") ? LIFT_SEEN_MS : LIFT_MS;
+    // The hero's entrance and the scene wait for this sheet's lift (coming back from a project page too).
+    root.removeAttribute("data-entering");
+    // The scene's progress, 0 to 1 (1 once its first frame is up, or when there is no WebGL).
+    let scene = 0;
+    const onProgress = (e: Event) => { scene = Math.max(scene, (e as CustomEvent<number>).detail); };
+    window.addEventListener("launch:progress", onProgress);
 
     // On the page's first load the clock starts with the page, as the CSS animations do, not when
     // React gets here; coming back from another page it starts now.
@@ -55,8 +62,9 @@ export default function LaunchLoader() {
       const elapsed = now - start;
       // Eased in and out over the sheet's time, by the clock (a late frame moves it further).
       const t = Math.min(1, elapsed / liftMs);
-      draw(t * t * (3 - 2 * t));
-      if (elapsed >= liftMs) { draw(1); leave(); return; }
+      // The fill follows the slower of the clock and the scene.
+      draw(Math.min(t * t * (3 - 2 * t), .15 + .85 * scene));
+      if ((elapsed >= liftMs && scene >= 1) || elapsed >= LIFT_MAX_MS) { draw(1); leave(); return; }
       frame = requestAnimationFrame(tick);
     };
     function draw(p: number) {
@@ -72,6 +80,7 @@ export default function LaunchLoader() {
     return () => {
       cancelAnimationFrame(frame);
       clearInterval(muzzle);
+      window.removeEventListener("launch:progress", onProgress);
       root.style.overflow = overflowWas;
       window.__lenis?.start();
     };

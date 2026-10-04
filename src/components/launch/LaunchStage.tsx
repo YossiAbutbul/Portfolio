@@ -7,11 +7,10 @@ import styles from "./LaunchStage.module.css";
 type Backdrop = "desk" | "void";
 
 /**
- * The fixed layers behind the page: a backdrop glow that matches the scene's veil, a poster of the
- * desk, then the WebGL canvas. The poster (rendered from the scene by scripts/bake-poster.mjs) is in
- * the HTML, so the desk is there from the first paint; the three.js module is fetched only once the
- * browser is idle after that paint, and the canvas fades in over the poster when its first frame is
- * ready. Without WebGL the poster simply stays.
+ * The fixed layers behind the page: a backdrop glow that matches the scene's veil, then the WebGL
+ * canvas. The three.js module is fetched once the browser is idle after the first paint, while the
+ * opening sheet (LaunchLoader) is up; the sheet waits for the scene's first frame, so the page opens
+ * straight onto the live desk. Without WebGL the backdrop simply stays.
  */
 export default function LaunchStage() {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -41,7 +40,7 @@ export default function LaunchStage() {
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
       setReady(true);
     };
-    // After the first paint, once the browser is idle (the hero's text and the poster are already up):
+    // After the first paint, once the browser is idle (the hero's text and the opening sheet are already up):
     // soon on desktop, within about a second on phones; a scroll or touch before then hurries it.
     const phone = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
     // Safari has no requestIdleCallback: a short timeout stands in for it.
@@ -77,8 +76,6 @@ export default function LaunchStage() {
       </div>
       {/* The giant word slides between the backdrop and the device; the scene moves it. */}
       <div className={styles.word} id="launch-word" aria-hidden="true">it ships.</div>
-      {/* The desk as the scene first shows it, until the scene's own first frame is up. */}
-      <div className={styles.poster} data-off={ready} aria-hidden="true" />
       <canvas ref={canvas} className={styles.canvas} data-ready={ready} data-grade={backdrop === "desk"} aria-hidden="true" />
       {/* Steam off the mug: the scene pins it to the rim; CSS does the drifting. */}
       <div className={styles.steam} id="launch-steam" aria-hidden="true"><i /><i /><i /></div>

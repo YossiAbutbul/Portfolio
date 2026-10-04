@@ -191,8 +191,10 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     };
     requestIdleCallback(tick, { timeout: 2500 });
   };
+  // The desk's entrance (desk.ts) takes about 3 s; nothing heavy starts until it has played.
+  const ENTRANCE_MS = 3000, AFTER_ENTRANCE = ENTRANCE_MS + 500;
   const afterOpening = (run: () => void) => {
-    const go = () => window.setTimeout(() => { if (!disposed) run(); }, 2500);
+    const go = () => window.setTimeout(() => { if (!disposed) run(); }, AFTER_ENTRANCE);
     if (document.documentElement.hasAttribute("data-entering") || !document.querySelector("[data-launch-loader]")) go();
     else window.addEventListener("launch:revealed", go, { once: true });
   };
@@ -425,12 +427,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
      them, so stepping down never stalls a frame. Measured once per visit; a hidden tab measures again
      when it comes back. */
   let probe: { from: number; until: number; frames: number } | null = null, probed = false, reprobe = false;
-  function startProbe() {
+  function startProbe(wait = 400) {
     // Snapshots (data-snap) always show the full quality.
     if (probed || probe || disposed || document.documentElement.hasAttribute("data-snap")) return;
     reprobe = false;
-    // The first few frames after a reveal carry one-off work (texture uploads); they are not counted.
-    const now = performance.now(); probe = { from: now + 400, until: now + 2400, frames: 0 };
+    // The first few frames after a reveal carry one-off work (texture uploads), and the entrance is
+    // the heaviest moment the desk has: neither is counted, and a step down never lands mid-entrance.
+    const now = performance.now(); probe = { from: now + wait, until: now + wait + 2000, frames: 0 };
     kick();
   }
   function measure(now: number) {
@@ -689,19 +692,18 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointermove", onMove);
   const onLeave = () => { deskSet.hover(null); showHint(null); if (!turning) canvas.style.cursor = ""; };
-  /* The entrance plays as the opening sheet lifts, if the scene is ready by then. If it is not, the
-     poster has shown the desk with everything in its place, so the scene takes over from it as it is
-     (no entrance: the tools must not jump away from where the poster showed them). Reduced motion
-     and snapshot mode get the finished desk. */
-  const onRevealed = () => {
-    if (!ready) { introAt = 0; return; }
-    startProbe();
-    if (introAt >= 0 || reduce.matches || document.documentElement.hasAttribute("data-snap")) return;
+  /* The entrance plays as the opening sheet lifts. The sheet waits for the scene, so it is normally
+     ready by then; if the sheet stopped waiting, the entrance plays as soon as the scene is ready.
+     Reduced motion and snapshot mode get the finished desk. */
+  let revealed = false;
+  const entrance = () => {
+    const plays = introAt < 0 && !reduce.matches && !document.documentElement.hasAttribute("data-snap");
+    startProbe(plays ? ENTRANCE_MS : 400);
+    if (!plays) return;
     introAt = performance.now(); deskSet.enter(); kick();
   };
+  const onRevealed = () => { revealed = true; if (ready) entrance(); };
   window.addEventListener("launch:revealed", onRevealed);
-  // Ready after the sheet has gone: no entrance (onRevealed above), the canvas fades in over the poster.
-  if (!document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) introAt = Math.max(introAt, 0);
   canvas.addEventListener("pointerleave", onLeave);
   const onVisibility = () => { if (!document.hidden) { kick(); if (reprobe) startProbe(); } };
   document.addEventListener("visibilitychange", onVisibility);
@@ -886,9 +888,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     await Promise.all([inTarget, compile(screenPasses, camera)]);
   }
   hooks.onProgress?.(.94);
-  // The dark scenes are started now too, but not waited for: they finish in the background long
-  // before anyone scrolls to them. The wall's states wait for the wall (prepareWall below).
-  void compileFor("dark");
+  // The dark scenes are compiled now too, and waited for: the opening sheet holds until the scene is
+  // ready, and compiling them under it keeps the GPU free for the entrance once it lifts (started in
+  // the background, they stalled its first second). The wall's states wait for the wall (prepareWall).
+  await compileFor("dark");
+  if (signal?.aborted) return abandon();
   // Upload every texture now too (the hidden parts' and the notebook pages'), one per idle moment,
   // rather than the first time each is drawn: after the reveal has played (the sheet lifting, the
   // desk's entrance), and then only in real idle time, so it never competes with the opening.
@@ -912,7 +916,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
   ready = true;
   frame();
-  if (!document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) startProbe();
+  // The sheet has already lifted (it stopped waiting, or the event came before this scene listened).
+  if (revealed || !document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) entrance();
   hooks.onProgress?.(1);
 
   return {

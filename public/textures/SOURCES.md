@@ -12,7 +12,3 @@ every page load:
 - coffee.webp, plaster.webp, pegboard.webp
 - room-env.webp: three's PMREM of its RoomEnvironment (the scene's environment light), stored as RGBE
   in a lossless WebP and decoded on the GPU by scene.ts
-
-Rendered by `npm run bake:poster` (scripts/bake-poster.mjs) from the built site:
-
-- poster.webp, poster-phone.webp: the hero's first frame, shown until the live scene is ready
