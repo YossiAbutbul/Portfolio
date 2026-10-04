@@ -73,7 +73,7 @@ export default function LaunchContact() {
           <li>
             <a className={styles.panel} href={CV_PDF} download onClick={countCvDownload}>
               {top("04", "Download PDF")}
-              <span><Mark kind="cv" /><span className={styles.panelWord}>CV</span><span className={styles.panelDetail}>Updated September 2026</span></span>
+              <span><Mark kind="cv" /><span className={styles.panelWord}>CV</span><span className={styles.panelDetail}>Updated October 2026</span></span>
             </a>
           </li>
         </ul>
