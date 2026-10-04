@@ -30,11 +30,11 @@ export default function LaunchIntro() {
         <div className={styles.frame}>
           <div className={styles.duo}>
             <h2 id="intro-title" className={styles.fade} data-fade>
-              I build<br />what&apos;s missing.
+              Half curiosity,<br />half craft.
             </h2>
             <p className={styles.fade} data-fade>
-              When something at work or at home takes too long, I make the tool that fixes it: the
-              UI, the API, the data, and the drivers when there&apos;s hardware.
+              When something at work or at home takes too long, I make the tool that fixes it. Most
+              of what follows started that way.
             </p>
           </div>
         </div>
