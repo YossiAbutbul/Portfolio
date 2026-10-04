@@ -34,7 +34,7 @@ be usable in the first ten seconds before it is impressive.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
   `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) is a short
-  title card: it lifts on its own CSS clock (`--lift` in `tokens.css`, 1.1s; 0.6s on a reload in the
+  title card: it lifts on its own CSS clock (`--lift` in `tokens.css`, 1.6s; 1s on a reload in the
   same tab via `sessionStorage` `launch:seen`, read by a head script in the root layout) and never waits
   for the scene. The hero's entrance is CSS timed from `--lift`. Until the scene's first frame,
   `LaunchStage` shows a poster of the desk (`public/textures/poster*.webp`), then crossfades to the

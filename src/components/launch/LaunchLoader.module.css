@@ -8,7 +8,7 @@
   background: var(--paper-lift);
   /* The sketch plays at this pace (1 was its original, slower drawing) so it is finished as the sheet
      lifts. The lift is CSS too, at --lift (LaunchLoader.tsx), so it never waits on scripts. */
-  --pace: 0.5;
+  --pace: 0.75;
   animation: lift 0.7s var(--ease-out) var(--lift) forwards;
 }
 

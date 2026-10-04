@@ -87,9 +87,9 @@
 /* When the opening sheet lifts (LaunchLoader); the hero's entrance is timed from it. A reload in the
    same tab (data-seen, set by a head script) opens sooner. */
 :root {
-  --lift: 1.1s;
+  --lift: 1.6s;
 }
 
 :root[data-seen] {
-  --lift: 0.6s;
+  --lift: 1s;
 }

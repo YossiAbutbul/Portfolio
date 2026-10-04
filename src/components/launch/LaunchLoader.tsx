@@ -5,16 +5,16 @@ import styles from "./LaunchLoader.module.css";
 
 /** When the sheet starts to lift; LaunchLoader.module.css and LaunchIntro.module.css use the same
  *  times (--lift), so the sheet and the hero's entrance run on CSS alone even if scripts are slow. */
-const LIFT_MS = 1100;
+const LIFT_MS = 1600;
 /** On a reload in the same tab. */
-const LIFT_SEEN_MS = 600;
+const LIFT_SEEN_MS = 1000;
 let firstMount = true;
 
 /**
  * A blueprint of the device, drawn on a dark sheet as the page opens: dashed outlines, Bézier
  * handles, construction lines, and a fill that sweeps round as it is drawn. It is a short title card,
  * not a loading screen: it lifts on its own clock and never waits for the 3D scene (the desk's poster
- * stands in until the scene is ready), so the hero's words are up within about a second.
+ * stands in until the scene is ready), so the hero's words are up within about two seconds.
  */
 export default function LaunchLoader() {
   const [phase, setPhase] = useState<"loading" | "leaving" | "gone">("loading");
