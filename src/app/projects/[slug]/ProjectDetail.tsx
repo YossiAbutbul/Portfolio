@@ -86,8 +86,8 @@ export default function ProjectDetail({ project }: { project: Project }) {
             )}
           </div>
 
-          <aside className={styles.aside}>
-            <h2 className={`mono ${styles.sectionHeading}`}>Specifications</h2>
+          <section className={styles.aside} aria-labelledby="specs-title">
+            <h2 id="specs-title" className={`mono ${styles.sectionHeading}`}>Specifications</h2>
             <dl className={styles.spec}>
               <div>
                 <dt className="mono">Year</dt>
@@ -127,7 +127,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
                 </dd>
               </div>
             </dl>
-          </aside>
+          </section>
         </div>
 
         <nav className={styles.pager} aria-label="Other case studies">
