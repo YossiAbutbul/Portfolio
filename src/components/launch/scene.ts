@@ -154,7 +154,20 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const o = new THREE.Mesh(g, m); o.castShadow = cast; o.receiveShadow = true; return o;
   }
 
-  const abandon = () => { disposables.forEach((d) => d.dispose()); renderer.dispose(); return null; };
+  /* three polls each compileAsync on a timer, reading the materials' programs: releasing them while a
+     poll is pending makes it throw. Compiles are tracked, and the release waits for them to settle. */
+  const compiling = new Set<Promise<unknown>>();
+  const compile = (...args: Parameters<THREE.WebGLRenderer["compileAsync"]>) => {
+    const p = renderer.compileAsync(...args).catch(() => {});
+    compiling.add(p); void p.then(() => compiling.delete(p));
+    return p;
+  };
+  const release = () => {
+    disposed = true;
+    const free = () => { disposables.forEach((d) => d.dispose()); renderer.dispose(); };
+    if (compiling.size) void Promise.all(compiling).then(free); else free();
+  };
+  const abandon = () => { release(); return null; };
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
@@ -821,7 +834,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
         const src = helper ? helperMeshes[i - meshes.length] : meshes[i];
         renderer.setRenderTarget(helper ? helperTarget : dark ? null : target);
         const batch = new THREE.Group(); batch.add(src.clone(false));
-        pending.push(renderer.compileAsync(batch, camera, scene).catch(() => {}));
+        pending.push(compile(batch, camera, scene));
         i++;
       } while (i < meshes.length + helperMeshes.length && performance.now() < until);
       if (state !== "desk" && !dark) deskSet.prewarm(false);
@@ -834,9 +847,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   hooks.onProgress?.(.88);
   if (composer) {
     renderer.setRenderTarget(helperTarget);
-    const inTarget = renderer.compileAsync(passMaterials, camera).catch(() => {});
+    const inTarget = compile(passMaterials, camera);
     renderer.setRenderTarget(null);
-    await Promise.all([inTarget, renderer.compileAsync(screenPasses, camera).catch(() => {})]);
+    await Promise.all([inTarget, compile(screenPasses, camera)]);
   }
   hooks.onProgress?.(.94);
   // The others are started now too, while the loading sheet is still up, but not waited for: their
@@ -874,8 +887,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       removeEventListener("pointermove", onPointer); removeEventListener("resize", resize); removeEventListener("scroll", kick);
       canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerleave", onLeave); canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onUp); window.removeEventListener("launch:revealed", onRevealed);
       document.removeEventListener("visibilitychange", onVisibility);
-      disposables.forEach((d) => d.dispose());
-      renderer.dispose();
+      release();
     },
   };
 }
