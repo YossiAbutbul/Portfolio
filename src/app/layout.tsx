@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Caveat, Figtree, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 import Nav from "@/components/layout/Nav";
@@ -100,6 +102,9 @@ export default function RootLayout({
             <PageTransition>{children}</PageTransition>
           </main>
         </SmoothScroll>
+        {/* Cookieless page views and real-visitor vitals; both scripts load deferred, after the page. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
