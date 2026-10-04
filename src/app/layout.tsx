@@ -8,6 +8,8 @@ import Nav from "@/components/layout/Nav";
 import SkipToContent from "@/components/layout/SkipToContent";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import PageTransition from "@/components/layout/PageTransition";
+import Scrollbar from "@/components/layout/Scrollbar";
+import { PROFILES, SITE_URL } from "@/lib/site";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -31,7 +33,7 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://yossiabutbul.vercel.app/"),
+  metadataBase: new URL(`${SITE_URL}/`),
   title: "Yossi Abutbul",
   description:
     "Test automation and measurement software for RF hardware. One platform took a three-day qualification cycle down to about eight minutes.",
@@ -70,6 +72,17 @@ export const metadata: Metadata = {
   },
 };
 
+// Tells search engines the site, the GitHub and the LinkedIn profiles are one person, so a search
+// for the name finds them together.
+const person = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: "Yossi Abutbul",
+  url: `${SITE_URL}/`,
+  image: `${SITE_URL}/og.jpg`,
+  sameAs: PROFILES,
+};
+
 export const viewport: Viewport = {
   themeColor: "#17110e",
 };
@@ -93,6 +106,10 @@ export default function RootLayout({
             __html: `try{if(sessionStorage.getItem("launch:seen"))document.documentElement.setAttribute("data-seen","")}catch(e){}`,
           }}
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(person) }}
+        />
       </head>
       <body>
         <SkipToContent />
@@ -102,6 +119,7 @@ export default function RootLayout({
             <PageTransition>{children}</PageTransition>
           </main>
         </SmoothScroll>
+        <Scrollbar />
         {/* Cookieless page views and real-visitor vitals; both scripts load deferred, after the page. */}
         <Analytics />
         <SpeedInsights />

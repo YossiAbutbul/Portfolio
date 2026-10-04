@@ -9,8 +9,8 @@
 html {
   background: var(--paper);
   scroll-behavior: auto;
-  /* No scrollbar for now: the loading sheet locks scrolling, and a bar that appears afterwards
-     shifts the whole page sideways. A custom one that overlays the page comes later. */
+  /* No native scrollbar: it would take width from the page (and shift it sideways when the loading
+     sheet lifts). The Scrollbar component draws one over the content instead. */
   scrollbar-width: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
