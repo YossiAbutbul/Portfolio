@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { CV_PDF, countCvDownload } from "@/lib/cv";
+import PrivacyLink from "@/components/site/PrivacyLink";
 import { say } from "./LaunchToast";
 import styles from "./LaunchSections.module.css";
 
@@ -80,7 +80,7 @@ export default function LaunchContact() {
       </section>
       <footer className={`${styles.footer} ${styles.cap}`}>
         <span>Yossi Abutbul · 2026</span>
-        <Link href="/privacy">Privacy</Link>
+        <PrivacyLink />
       </footer>
     </>
   );
