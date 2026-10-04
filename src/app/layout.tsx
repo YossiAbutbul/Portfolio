@@ -57,7 +57,7 @@ export const metadata: Metadata = {
         url: "og.jpg",
         width: 1200,
         height: 630,
-        alt: "The name Yossi Abutbul over a desk with a handheld device, an open notebook, a pencil and a mug",
+        alt: "The name Yossi Abutbul over a desk with a handheld device, an open notebook, a pencil, an eraser and a mug",
       },
     ],
   },
