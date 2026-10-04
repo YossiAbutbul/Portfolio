@@ -11,7 +11,7 @@ const LIFT_SEEN_MS = 600;
 let firstMount = true;
 
 /**
- * A blueprint of the device, drawn on an olive sheet as the page opens: dashed outlines, Bézier
+ * A blueprint of the device, drawn on a dark sheet as the page opens: dashed outlines, Bézier
  * handles, construction lines, and a fill that sweeps round as it is drawn. It is a short title card,
  * not a loading screen: it lifts on its own clock and never waits for the 3D scene (the desk's poster
  * stands in until the scene is ready), so the hero's words are up within about a second.

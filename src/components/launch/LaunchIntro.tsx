@@ -25,7 +25,8 @@ export default function LaunchIntro() {
         </span>
       </section>
 
-      <section className={styles.pin} id="intro" aria-labelledby="intro-title">
+      {/* Linked as Intro: a link lands halfway through the beat, where its words are up. */}
+      <section className={styles.pin} id="intro" data-anchor="0.5" aria-labelledby="intro-title">
         <div className={styles.frame}>
           <div className={styles.duo}>
             <h2 id="intro-title" className={styles.fade} data-fade>

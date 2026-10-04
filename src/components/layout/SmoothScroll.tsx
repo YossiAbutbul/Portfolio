@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import type Lenis from "lenis";
 import { prefersReducedMotion } from "@/hooks/useReducedMotion";
+import { anchorTop } from "@/lib/anchor";
 
 declare global {
   interface Window {
@@ -76,7 +77,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
         const target = document.querySelector<HTMLElement>(hash);
         if (!target) return;
         event.preventDefault();
-        lenis.scrollTo(target, { offset: -16, duration: 1.05 });
+        lenis.scrollTo(anchorTop(target, -16), { duration: 1.05 });
       }
       document.addEventListener("click", handleAnchorClick);
 
@@ -117,7 +118,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
       const findAndScroll = () => {
         const target = document.getElementById(targetId!);
         if (target) {
-          const top = Math.max(0, target.offsetTop - 16);
+          const top = anchorTop(target, -16);
           if (lenis) lenis.scrollTo(top, { immediate: true, force: true });
           else window.scrollTo(0, top);
           lenis?.start();

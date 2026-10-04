@@ -1,11 +1,11 @@
-/* An olive drafting sheet: the device drawn as a blueprint while the scene loads. */
+/* A dark drafting sheet in the room's own warm dark: the device drawn as a blueprint as the page opens. */
 .sheet {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: grid;
   place-items: center;
-  background: #4b5a3d;
+  background: var(--paper-lift);
   /* The sketch plays at this pace (1 was its original, slower drawing) so it is finished as the sheet
      lifts. The lift is CSS too, at --lift (LaunchLoader.tsx), so it never waits on scripts. */
   --pace: 0.5;
@@ -64,11 +64,11 @@
 }
 
 .fill {
-  fill: rgba(196, 214, 176, 0.3);
+  fill: rgba(242, 230, 212, 0.12);
 }
 
 .screenHole {
-  fill: #4b5a3d;
+  fill: var(--paper-lift);
 }
 
 /* The pen stroke: drawn along the shape's path (pathLength 1), then it fades as the dashes come in. */

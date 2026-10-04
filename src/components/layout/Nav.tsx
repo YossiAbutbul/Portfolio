@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { withBasePath } from "@/lib/env";
+import { anchorTop } from "@/lib/anchor";
 import { usePathname } from "next/navigation";
 import styles from "./Nav.module.css";
 
 const LINKS = [
+  { href: "/#intro", label: "Intro", id: "intro" },
   { href: "/#work", label: "Work", id: "work" },
   { href: "/#experience", label: "Experience", id: "experience" },
   { href: "/#contact", label: "Contact", id: "contact" },
 ];
 
 // The sections the address follows as you scroll (the hero has none), and the link each one lights:
-// More work is still Work.
-const SECTIONS = ["work", "more-work", "experience", "contact"];
-const LINK_OF: Record<string, string> = { "more-work": "work" };
+// "it ships." is still the intro (and keeps its address), More work is still Work.
+const SECTIONS = ["intro", "ships", "work", "more-work", "experience", "contact"];
+const LINK_OF: Record<string, string> = { ships: "intro", "more-work": "work" };
+const HASH_OF: Record<string, string> = { ships: "intro" };
 
 /**
  * A transparent bar that inverts against whatever is behind it, so it reads on the desk, the dark
@@ -74,7 +77,7 @@ export default function Nav() {
       const at = SECTIONS.find((id) => { const s = document.getElementById(id)?.getBoundingClientRect(); return !!s && s.top <= mid && s.bottom > mid; }) ?? null;
       if (at !== current) {
         current = at;
-        history.replaceState(history.state, "", at ? `#${at}` : location.pathname + location.search);
+        history.replaceState(history.state, "", at ? `#${HASH_OF[at] ?? at}` : location.pathname + location.search);
         document.querySelectorAll<HTMLAnchorElement>("header a[data-section]").forEach((a) => {
           if (a.dataset.section === (at && (LINK_OF[at] ?? at))) a.setAttribute("aria-current", "location"); else a.removeAttribute("aria-current");
         });
@@ -95,8 +98,8 @@ export default function Nav() {
     const el = document.getElementById(id);
     if (el) {
       e.preventDefault();
-      if (window.__lenis) window.__lenis.scrollTo(el, { duration: 1.05 });
-      else el.scrollIntoView({ behavior: "smooth" });
+      if (window.__lenis) window.__lenis.scrollTo(anchorTop(el), { duration: 1.05 });
+      else window.scrollTo({ top: anchorTop(el), behavior: "smooth" });
       history.replaceState(null, "", `#${id}`);
     } else {
       // Coming from another page: the home page scrolls here once it has mounted.
