@@ -740,6 +740,14 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     // the occlusion and the denoise) and blended back up over the full-size image.
     class HalfGTAOPass extends GTAOPass {
       setSize(w: number, h: number) { super.setSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2))); }
+      // The veil is a sheet over the whole desk: in the occlusion's depth and normals it would hide
+      // every contact shadow the moment the room starts to dim. Leave it out of this pass only; the
+      // occlusion is then blended over the image that already has the veil in it.
+      render(r: THREE.WebGLRenderer, write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget, dt: number, mask: boolean) {
+        const shown = veil.visible; veil.visible = false;
+        super.render(r, write, read, dt, mask);
+        veil.visible = shown;
+      }
     }
     const gtao = new HalfGTAOPass(scene, camera, Math.round(buffer.x / 2), Math.round(buffer.y / 2));
     gtao.updateGtaoMaterial({ radius: .5, distanceExponent: 1.4, thickness: 1.2, scale: 1.3, samples: 8 });
