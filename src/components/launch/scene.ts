@@ -448,6 +448,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       for (const set of ["desk", "wall", "wall+holo"] as const) await compileFor(set, null);
       if (disposed) return;
       composer = null; composerTarget = null;
+      // Background compiles (the dark and wall states) may still be checking the occlusion's normal
+      // material through its stand-ins: drop the stand-ins, and release the passes once those settle.
+      helpers.remove(...aoHelpers);
+      await Promise.all(compiling);
+      if (disposed) return;
       disposeComposer?.(); disposeComposer = null;
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, PIXELS.low));
@@ -737,7 +742,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       helpers.add(new THREE.Mesh(tri, depth), new THREE.InstancedMesh(tri, depth, 1));
     }
   }
-  let composerTarget: THREE.WebGLRenderTarget | null = null, disposeComposer: (() => void) | null = null;
+  let composerTarget: THREE.WebGLRenderTarget | null = null, disposeComposer: (() => void) | null = null, aoHelpers: THREE.Object3D[] = [];
   if (!small()) {
     const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { OutputPass }] = await Promise.all([
       import("three/addons/postprocessing/EffectComposer.js"),
@@ -788,7 +793,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     }
     c.addPass(output);
     const normals = gtao.normalMaterial;
-    helpers.add(new THREE.Mesh(geo(new THREE.PlaneGeometry(1, 1)), normals), new THREE.InstancedMesh(geo(new THREE.PlaneGeometry(1, 1)), normals, 1));
+    aoHelpers = [new THREE.Mesh(geo(new THREE.PlaneGeometry(1, 1)), normals), new THREE.InstancedMesh(geo(new THREE.PlaneGeometry(1, 1)), normals, 1)];
+    helpers.add(...aoHelpers);
     c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);
     composer = c;
     // The passes' own materials (ambient occlusion, output) compile with the scene's below, in
@@ -858,6 +864,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       do {
         const helper = i >= meshes.length;
         const src = helper ? helperMeshes[i - meshes.length] : meshes[i];
+        // A stand-in dropped since this state began (the occlusion's, on stepping down) is skipped.
+        if (helper && src.parent !== helpers) { i++; continue; }
         renderer.setRenderTarget(helper ? helperTarget : dark ? null : target);
         const batch = new THREE.Group(); batch.add(src.clone(false));
         pending.push(compile(batch, camera, scene));
