@@ -88,10 +88,8 @@ export interface Desk {
    *  null puts it back on the desk as it was. */
   book: (state: { enter: number; rise: number; u: number } | null) => void;
   /** The projects for More work (read once from the section). */
-  setMoreWork: (list: MoreWork[]) => void;
-  /** Shows (true) or hides again (false) the parts that start hidden (the wall and, unless told
-   *  otherwise, the hologram), so the scene can compile their shaders before they are first needed. */
-  prewarm: (wall: boolean, holo?: boolean) => void;
+  /** Hands the notebook More work's projects; settles once every page has been drawn ahead. */
+  setMoreWork: (list: MoreWork[]) => Promise<void>;
   /** The wall behind the desk, seen only as the camera comes down for More work: rise is how far down
    *  the camera has come (0 overhead, the wall off; 1 low). It never moves itself. */
   setWall: (rise: number) => void;
@@ -102,11 +100,19 @@ export interface Desk {
   mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
   /** Settles once every picture the desk loads has arrived (or failed). */
   loaded: Promise<void>;
+  /** Settles once every picture asked for so far (the wall's included, once built) has arrived. */
+  pictures: () => Promise<void>;
 }
 
 export function buildDesk(kit: DeskKit): Desk {
   const { tex, std, geo, keep, mesh, SANS, MONO, HAND, phone, photo, upload } = kit;
   const group = new THREE.Group();
+  /* Lights of the parts shown later (the More work wall's strip, the hologram's glow) live here on the
+     desk from the start, at zero, not inside those hidden parts: three builds a shader per set of
+     visible lights, so with the set the same in every state the desk, the wall and the hologram share
+     one set of shaders, compiled once under the opening sheet. They are placed where their parts are. */
+  const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2), holoLight = new THREE.PointLight(0x7cc4ff, 0, 9, 2);
+  group.add(stripLight, holoLight);
 
   /* Every picture the desk shows is a file in public/textures: photographed (Poly Haven, CC0) or
      drawn once ahead of time by scripts/bake-textures (the generated wood, the mat's print, the
@@ -155,9 +161,12 @@ export function buildDesk(kit: DeskKit): Desk {
 
   /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
   const MAT_W = 11.2, MAT_H = 7.4;
+  // The mug's glaze (its cup and handle): a plain matte terracotta. Was blue 0x3f6283, until the mat
+  // turned blue.
+  const MUG_GLAZE = 0xc0583a;
   const matTex = picture(phone ? "/textures/mat-print-half.webp" : "/textures/mat-print.webp", true);
   matTex.wrapS = matTex.wrapT = THREE.ClampToEdgeWrapping;
-  const matSide = std({ color: 0x2c5039, roughness: .9 });
+  const matSide = std({ color: 0x1c4373, roughness: .9 }); // in step with MAT in scripts/bake-textures/draw.js
   const matTop = std({ map: matTex, roughness: 1 });
   const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, matTop, matSide], false);
   mat.position.set(1.9, .45, -.03); mat.rotation.z = -.07; group.add(mat);
@@ -189,7 +198,7 @@ export function buildDesk(kit: DeskKit): Desk {
   // The pencil, so More work can bring it forward on phones (and put it back after).
   let pencil: Tool | null = null, pencilHome: [number, number] = [0, 0];
   const PENCIL_FOOT = 7.2; // the length of its contact shadow
-  let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"]; prewarm: (on: boolean) => void } | null = null;
+  let notebook: { over: (ray: THREE.Ray) => boolean; hint: (ray: THREE.Ray) => string | null; hover: (ray: THREE.Ray | null) => void; press: (ray: THREE.Ray) => boolean; update: (dt: number) => boolean; enter: () => void; book: Desk["book"]; setMoreWork: Desk["setMoreWork"] } | null = null;
   function addTool(obj: THREE.Group, o: { x: number; y: number; a: number; rest: number; circles: [number, number, number][]; mass: number; foot: [number, number]; collide?: boolean; roll?: number; onPhone?: [number, number, number]; enter?: [dx: number, dy: number, at: number]; hint?: string }) {
     const g = new THREE.Group(); g.add(obj); group.add(g);
     const shadow = new THREE.Mesh(padGeo, padMat); shadow.scale.set(o.foot[0], o.foot[1], 1); shadow.position.z = .004; shadow.renderOrder = 1; group.add(shadow);
@@ -305,7 +314,7 @@ export function buildDesk(kit: DeskKit): Desk {
           return true;
         }
         if (flip < 0) return false;
-        flip = Math.min(1, flip + dt / .8);
+        flip = Math.min(1, flip + dt / .55);
         const e = flip < .5 ? 2 * flip * flip : 1 - Math.pow(-2 * flip + 2, 2) / 2;
         // Lifted clear of the desk while it turns (a corner reaches further than the half-height). Its
         // shadow is the scene's own, cast by the light (a contact pad shows as a pale box on the wood).
@@ -322,13 +331,14 @@ export function buildDesk(kit: DeskKit): Desk {
     const cup = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 72);
     cup.rotateX(Math.PI / 2);
     // Outside glaze vs. the cream inside: split by which side of the wall a vertex is on.
-    const cp = cup.attributes.position, cc = new Float32Array(cp.count * 3), glaze = new THREE.Color(0x3f6283), inside = new THREE.Color(0xeee4d2), cl = new THREE.Color();
+    const cp = cup.attributes.position, cc = new Float32Array(cp.count * 3), glaze = new THREE.Color(MUG_GLAZE), inside = new THREE.Color(0xeee4d2), cl = new THREE.Color();
     for (let i = 0; i < cp.count; i++) {
       const r = Math.hypot(cp.getX(i), cp.getY(i)), z = cp.getZ(i);
       cl.copy(r < RO - .04 && z > .09 ? inside : glaze); cc.set([cl.r, cl.g, cl.b], i * 3);
     }
     cup.setAttribute("color", new THREE.BufferAttribute(cc, 3)); cup.computeVertexNormals();
-    g.add(mesh(geo(cup), std({ vertexColors: true, roughness: .28, envMapIntensity: .7, side: THREE.DoubleSide })));
+    // A plain matte glaze: no gloss, only a faint sheen.
+    g.add(mesh(geo(cup), std({ vertexColors: true, roughness: .85, envMapIntensity: .25, side: THREE.DoubleSide })));
     // Coffee: a disc of rings so it can ripple. A click drops a "stone" where it lands; each drop
     // sends out a ring that fades as it travels, and the surface catches the light as it moves.
     const CR = RO - .052;
@@ -337,24 +347,36 @@ export function buildDesk(kit: DeskKit): Desk {
     // Dark in the middle, a ring of crema at the rim (baked).
     const coffeeTex = picture("/textures/coffee.webp", true);
     coffeeTex.wrapS = coffeeTex.wrapT = THREE.ClampToEdgeWrapping;
-    const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .32, envMapIntensity: .25 }), false);
+    // The crema turns about the middle when the coffee swirls (the texture turns, not the mesh, so the
+    // ripples stay where they were dropped).
+    coffeeTex.center.set(.5, .5);
+    // Liquid is glossy: a smooth surface, so the room and the ripples catch on it.
+    const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .14, envMapIntensity: .55 }), false);
     coffee.position.z = H2 - .22; g.add(coffee);
     const drops: { x: number; y: number; t: number; a: number }[] = [];
+    // The swirl: how fast the coffee turns (radians a second) and how far it has turned. A stir spins
+    // it up; on its own it slows the way a liquid does, quickly at first and then gently.
+    let swirlV = 0, swirlA = 0, swirlTarget = 0;
     const ripple = (dt: number) => {
       for (const d of drops) d.t += dt;
       while (drops.length && drops[0].t > 3) drops.shift();
+      swirlV += (swirlTarget - swirlV) * (1 - Math.exp(-dt * (swirlTarget ? 2.5 : .9)));
+      if (!swirlTarget && Math.abs(swirlV) < .02) swirlV = 0;
+      swirlA += swirlV * dt; coffeeTex.rotation = -swirlA;
+      // A turning liquid dips in the middle; the dip grows with the speed.
+      const dip = Math.min(.03, Math.abs(swirlV) * .0045);
       for (let i = 0; i < sp.count; i++) {
-        const vx = flat[i * 3], vy = flat[i * 3 + 1];
-        let h = 0;
+        const vx = flat[i * 3], vy = flat[i * 3 + 1], rr = Math.hypot(vx, vy);
+        let h = dip * ((rr / CR) * (rr / CR) - .6);
         for (const d of drops) {
           const r = Math.hypot(vx - d.x, vy - d.y), front = d.t * .32, u = r - front;
           h += d.a * Math.exp(-d.t * 1.6) * Math.sin(u * 46) * Math.exp(-(u * u) / .012);
         }
         // Calm at the rim, where the cup holds the coffee still.
-        sp.setZ(i, h * Math.min(1, (CR - Math.hypot(vx, vy)) / .05));
+        sp.setZ(i, h * Math.min(1, (CR - rr) / .05));
       }
       sp.needsUpdate = true; surface.computeVertexNormals();
-      return drops.length > 0;
+      return drops.length > 0 || swirlV !== 0;
     };
     // Teaspoon: only its handle shows, rising out of the coffee near the middle and leaning out over
     // the rim; the bowl is under the surface. It turns on the cup's axis, so a stir is a turn of this group.
@@ -387,20 +409,23 @@ export function buildDesk(kit: DeskKit): Desk {
     // Set once the mug's own turn is known (below): the rest angle is chosen on screen, not on the cup.
     let spoonRest = 0;
     // A stir, the way a hand does it: two calm turns with a soft start and stop, the handle tipping a
-    // little as it goes round, and small ripples trailing from where it meets the coffee.
+    // little as it goes round, a fine wake trailing from where it meets the coffee, and the coffee
+    // itself drawn round with it, still turning a while after the spoon stops.
     let stir = -1, trail = 0;
     const STIR = 4, TURNS = 2;
     const stirring = (dt: number) => {
       stir += dt;
       const t = Math.min(1, stir / STIR), e = (1 - Math.cos(t * Math.PI)) / 2;
       spoon.rotation.z = spoonRest + e * Math.PI * 2 * TURNS;
+      // The spoon's own speed, eased: the coffee follows at a little over half of it.
+      swirlTarget = t < 1 ? Math.sin(t * Math.PI) * Math.PI * Math.PI * TURNS / STIR * .55 : 0;
       const sway = Math.sin(t * Math.PI) * .06;
       spoon.rotation.x = Math.sin(stir * 3.1) * sway; spoon.rotation.y = Math.cos(stir * 2.3) * sway;
       trail -= dt;
       if (trail <= 0 && t < .95) {
-        trail = .1;
+        trail = .06;
         const a = spoon.rotation.z;
-        drops.push({ x: Math.cos(a) * SR, y: Math.sin(a) * SR, t: 0, a: .0035 });
+        drops.push({ x: Math.cos(a) * SR, y: Math.sin(a) * SR, t: 0, a: .0024 });
       }
       if (t >= 1) { stir = -1; spoon.rotation.set(0, 0, spoonRest); }
     };
@@ -418,7 +443,7 @@ export function buildDesk(kit: DeskKit): Desk {
         if (enterT >= 0 && enterT < 1.7) { mugAt(backOut(Math.min(1, Math.max(0, (enterT - .2) / 1.1)))); busy = true; }
         else if (enterT >= 1.7 && g.position.x !== MX && !mugRig?.aside) mugAt(1);
         if (stir >= 0) { stirring(dt); busy = true; }
-        return (drops.length ? ripple(dt) : false) || busy;
+        return (drops.length || swirlV || swirlTarget ? ripple(dt) : false) || busy;
       },
       // Where the steam leaves the cup, in world space, the cup's radius there, and how much steam
       // to show (none until the mug has landed after its entrance).
@@ -427,7 +452,7 @@ export function buildDesk(kit: DeskKit): Desk {
         return { at: rim, radius: CR * g.scale.x, fade: enterT < 0 ? 1 : Math.min(1, Math.max(0, (enterT - 1.3) / .9)) };
       },
     };
-    const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: 0x3f6283, roughness: .28, envMapIntensity: .7 }));
+    const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: MUG_GLAZE, roughness: .85, envMapIntensity: .25 }));
     handle.rotation.set(Math.PI / 2, 0, -Math.PI / 2); handle.position.set(RO - .01, 0, .52); handle.scale.set(1, 1, 1.15); g.add(handle);
     // Modelled small and scaled up to a real small mug, about 6 cm across next to the pencil.
     g.scale.setScalar(1.6);
@@ -795,7 +820,6 @@ export function buildDesk(kit: DeskKit): Desk {
        blue onto the pages. Additive and unlit, over smoked glass. A turning page passes through the
        beam, as it would through light. */
     const holo = new THREE.Group(); holo.position.set(0, 0, top(0) + .01); holo.visible = false; nb.add(holo);
-    let holoWas = false;
     const HW = 2.4, HH = .95, HZ = 1.15;
     const additive = (map: THREE.Texture | null, extra: THREE.MeshBasicMaterialParameters = {}) => new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide, ...extra });
     const holoTex = tex(1024, 432, () => {});
@@ -822,7 +846,8 @@ export function buildDesk(kit: DeskKit): Desk {
     const moteMat = new THREE.PointsMaterial({ map: dotTex, size: .07, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, sizeAttenuation: true });
     holo.add(new THREE.Points(geo(moteGeo), moteMat));
     // Present from the start (at zero) so switching it on never recompiles the lit materials.
-    const holoLight = new THREE.PointLight(0x7cc4ff, 0, 9, 2); holoLight.position.set(0, -.6, .9); holo.add(holoLight);
+    // Where the hologram's light sits in it (the light itself is the desk's; see the top).
+    const holoAt3 = new THREE.Vector3(0, -.6, .9);
 
     let holoAt = -1, flick = 0, rise = 0, clock = 0;
     function drawHolo(k: number) {
@@ -871,6 +896,8 @@ export function buildDesk(kit: DeskKit): Desk {
       sourceMat.opacity = rise * .9;
       moteMat.opacity = rise * .8;
       holoLight.intensity = rise * 7 * shimmer;
+      holo.updateWorldMatrix(true, false); group.updateWorldMatrix(true, false);
+      group.worldToLocal(holoLight.position.copy(holoAt3).applyMatrix4(holo.matrixWorld));
       for (let i = 0; i < MOTES; i++) {
         const sd = moteSeed[i];
         sd[3] = (sd[3] + dt * sd[2] * .45) % 1;
@@ -941,7 +968,6 @@ export function buildDesk(kit: DeskKit): Desk {
     notebook = {
       book,
       // Shown for a compile and then put back exactly as it was (it may be on show at the time).
-      prewarm(on) { if (on) { holoWas = holo.visible; holo.visible = true; } else holo.visible = holoWas; },
       setMoreWork(list) {
         more = list;
         // Draw every More work page ahead of time, one per idle moment, so turning a page later is only
@@ -950,17 +976,16 @@ export function buildDesk(kit: DeskKit): Desk {
         ahead.forEach((sp, i) => (["left", "right"] as const).forEach((side) => jobs.push(() => {
           pageCanvas(`more:${i}:${side}`, sp[side], i * 2 + (side === "left" ? 1 : 2) + 100);
         })));
-        // A page takes a few milliseconds to draw: wait for idle moments with room for it.
-        if (typeof requestIdleCallback !== "function") { const tick = () => { const job = jobs.shift(); if (job) { job(); setTimeout(tick, 80); } }; setTimeout(tick, 80); return; }
-        // The wait counts from the last page drawn, so short idle moments cannot starve it for good.
-        let since = performance.now();
-        const tick = (d: IdleDeadline) => {
-          if (d.timeRemaining() < 12 && !d.didTimeout && performance.now() - since < 3000) { requestIdleCallback(tick, { timeout: 3000 }); return; }
-          since = performance.now();
-          const job = jobs.shift(); if (!job) return; job();
-          if (jobs.length) requestIdleCallback(tick, { timeout: 3000 });
-        };
-        requestIdleCallback(tick, { timeout: 3000 });
+        // The scene does this under the opening sheet and waits for it: as many pages as fit in each
+        // idle moment (about 8 ms of drawing), so the waits between them stay few.
+        return new Promise<void>((done) => {
+          const run = () => {
+            const until = performance.now() + 8;
+            do { const job = jobs.shift(); if (!job) { done(); return; } job(); } while (performance.now() < until);
+            if (typeof requestIdleCallback === "function") requestIdleCallback(run, { timeout: 60 }); else setTimeout(run, 0);
+          };
+          run();
+        });
       },
       over: (ray) => !!local(ray),
       hint: (ray) => { const p = local(ray); return p ? (p.lx >= 0 ? "Click to turn page" : "Click to go back") : null; },
@@ -1073,10 +1098,10 @@ export function buildDesk(kit: DeskKit): Desk {
     wall.traverse((o) => { if (o !== wall && !moving.has(o)) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
   }
 
-  /* Built on approach (see scene.ts: as the projects come into view, or in idle time a few seconds
-     after the opening), not with the desk: it is the biggest part of the set and nobody sees it until
-     More work. Until then the group is empty and hidden, so it adds nothing to the startup shaders. */
-  let wallBuilt = false, wallWas = false;
+  /* Built after the desk, under the opening sheet (scene.ts, prepareWall), not with it: it is the
+     biggest part of the set, so the desk's first frame does not wait for it. It stays hidden until
+     More work. */
+  let wallBuilt = false;
   function buildWall() {
     if (wallBuilt) return wall;
     wallBuilt = true;
@@ -1111,20 +1136,37 @@ export function buildDesk(kit: DeskKit): Desk {
       const cableMat = std({ color: 0xc4552c, roughness: .45 });
       [[0, 0], [.07, -.06]].forEach(([dx, dz]) => { const c = mesh(geo(new THREE.TorusGeometry(.42, .045, 12, 56)), cableMat); c.rotation.x = Math.PI / 2; c.position.set(dx, 0, -.4 + dz); coil.add(c); });
       gadgets.push(swinger(coil, "Click to swing the cable", { k: 9, damp: .9 }));
-      // Screwdrivers, hanging handle-up from their pegs: they swing.
-      ([[0xb3361f, -5.1, -.75], [0xd39a3c, -4.8, -.55], [0x2e5a49, -4.5, -.35]] as [number, number, number][]).forEach(([color, dx, px]) => {
+      // Screwdrivers, hanging handle-up from their pegs: they swing. Each is turned like a real one: a
+      // domed butt, a waist and a neck, six grip flutes cut along the handle, a steel ferrule where the
+      // shaft goes in, and a tip (two flat blades and a Phillips).
+      const prof: [number, number][] = [[0, 0], [.03, .004], [.052, .014], [.064, .034], [.068, .06], [.068, .09], [.067, .2], [.065, .28], [.064, .3], [.06, .33], [.052, .36], [.04, .385], [.028, .4], [.024, .42]];
+      const turned = new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 48);
+      const tp = turned.attributes.position;
+      for (let i = 0; i < tp.count; i++) {
+        const vx = tp.getX(i), vy = tp.getY(i), vz = tp.getZ(i);
+        if (vy <= .07 || vy >= .31) continue;
+        // Flutes: six shallow grooves round the grip, easing out at both ends.
+        const ease = Math.min(1, (vy - .07) / .03, (.31 - vy) / .03), f = Math.pow(Math.max(0, Math.cos(Math.atan2(vz, vx) * 6)), 4) * .1 * ease;
+        tp.setX(i, vx * (1 - f)); tp.setZ(i, vz * (1 - f));
+      }
+      turned.computeVertexNormals();
+      const handleGeo = geo(turned);
+      const steel = std({ color: 0xc4c8cc, metalness: .9, roughness: .3 });
+      const ferruleGeo = geo(new THREE.CylinderGeometry(.026, .022, .05, 16)), shaftGeo = geo(new THREE.CylinderGeometry(.013, .013, .5, 10));
+      const bladeGeo = geo(new THREE.BoxGeometry(.042, .009, .06)), phillipsGeo = geo(new THREE.ConeGeometry(.017, .07, 4));
+      ([[0xb3361f, -5.1, -.75, "flat"], [0xd39a3c, -4.8, -.55, "phillips"], [0x2e5a49, -4.5, -.35, "flat"]] as [number, number, number, string][]).forEach(([color, dx, px, tip]) => {
         const x = phone ? px : dx;
         const sd = new THREE.Group(); sd.position.set(x, WY - .16, phone ? 3.25 : 3.28); pb.add(sd);
-        const handle = mesh(geo(new THREE.CylinderGeometry(.07, .06, .42, 16)), std({ color, roughness: .4 }));
-        handle.rotation.x = Math.PI / 2; handle.position.z = -.23; sd.add(handle);
-        const shaft = mesh(geo(new THREE.CylinderGeometry(.018, .018, .55, 8)), std({ color: 0xbfc3c7, metalness: .9, roughness: .25 }));
-        shaft.rotation.x = Math.PI / 2; shaft.position.z = -.72; sd.add(shaft);
+        // Glossy cellulose, like a real handle; the lathe's axis turned to hang down from the peg.
+        const handle = mesh(handleGeo, std({ color, roughness: .3, envMapIntensity: .8 }));
+        handle.rotation.x = -Math.PI / 2; handle.position.z = -.02; sd.add(handle);
+        const ferrule = mesh(ferruleGeo, steel); ferrule.rotation.x = Math.PI / 2; ferrule.position.z = -.465; sd.add(ferrule);
+        const shaft = mesh(shaftGeo, steel); shaft.rotation.x = Math.PI / 2; shaft.position.z = -.74; sd.add(shaft);
+        const end = mesh(tip === "flat" ? bladeGeo : phillipsGeo, steel);
+        if (tip === "flat") end.position.z = -1.02; else { end.rotation.x = -Math.PI / 2; end.position.z = -1.025; }
+        sd.add(end);
         gadgets.push(swinger(sd, "Click to knock it", { k: 14, damp: 1.1 }));
       });
-      // A steel rule across the bottom of the board.
-      const rule = mesh(geo(new THREE.BoxGeometry(2.6, .02, .14)), std({ color: 0xc9ccd0, metalness: .85, roughness: .3 }));
-      if (phone) { rule.scale.x = .5; rule.position.set(-.7, WY - .12, 1.8); pb.add(rule); peg(-1.25, 1.91); peg(-.15, 1.91); }
-      else { rule.position.set(-4.4, WY - .12, 1.55); pb.add(rule); peg(-5.5, 1.66); peg(-3.3, 1.66); }
       // Sticky notes, in the notebook's hand: working notes from a range test, not slogans. Pinned at the
       // top, they flap away from the wall. Phones have room for two, lower on the smaller board.
       type Doodle = (c: CanvasRenderingContext2D, w: number, h: number) => void;
@@ -1188,8 +1230,9 @@ export function buildDesk(kit: DeskKit): Desk {
       (phone ? [-.5, 1.4] : [1.2, 6.6]).forEach((x) => { const b = mesh(geo(new THREE.BoxGeometry(.08, .55, .45)), std({ color: 0x1d1d1d, metalness: .6, roughness: .4 })); b.position.set(x, WY - .28, SZ - .25); wall.add(b); });
       const strip = new THREE.Mesh(geo(new THREE.BoxGeometry(SW - .4, .05, .02)), new THREE.MeshBasicMaterial({ color: 0xffc48a, toneMapped: false }));
       strip.position.set(SX, WY - .55, SZ - .06); wall.add(strip);
-      // Present from the start (at zero) so raising the wall never recompiles the lit materials.
-      const stripLight = new THREE.PointLight(0xffb070, 0, 7, 2); stripLight.position.set(SX, WY - 1.1, SZ - .3); wall.add(stripLight);
+      // The strip's light is the desk's (see the top): put where the strip is, in the desk's own space.
+      wall.updateWorldMatrix(true, false); group.updateWorldMatrix(true, false);
+      group.worldToLocal(wall.localToWorld(stripLight.position.set(SX, WY - 1.1, SZ - .3)));
       wallRise.light = stripLight;
       const SH = SZ + .05; // the shelf's top
       /* A bench scope, drawn after a real two-channel DSO: a screen with the instrument's own interface
@@ -1755,6 +1798,7 @@ export function buildDesk(kit: DeskKit): Desk {
   return {
     group,
     loaded: Promise.all(arrivals).then(() => {}),
+    pictures: () => Promise.all(arrivals).then(() => {}),
     update,
     poke(ray) {
       raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
@@ -1787,10 +1831,6 @@ export function buildDesk(kit: DeskKit): Desk {
     // The wall (and the hologram) are shown for a compile and then put back exactly as they were: the
     // compile can run while More work is on screen (opened straight at #more-work), and forcing them
     // hidden then left the wall gone for good.
-    prewarm(on, holo = on) {
-      if (on) { wallWas = wall.visible; wall.visible = true; if (holo) notebook?.prewarm(true); }
-      else { wall.visible = wallWas; notebook?.prewarm(false); }
-    },
     buildWall,
     setWall(rise) {
       if (Math.abs(rise - wallRise.v) < .0005) return;
@@ -1803,7 +1843,7 @@ export function buildDesk(kit: DeskKit): Desk {
       if (wallRise.light) wallRise.light.intensity = rise * 9;
       for (const g of gadgets) g.update(0);
     },
-    setMoreWork: (list) => notebook?.setMoreWork(list),
+    setMoreWork: (list) => notebook?.setMoreWork(list) ?? Promise.resolve(),
     press: (ray) => {
       if ((notebookOn && notebook?.press(ray)) || mug?.press(ray) || eraser?.press(ray)) return true;
       const g = gadgetAt(ray); if (g) { g.press(); return true; }

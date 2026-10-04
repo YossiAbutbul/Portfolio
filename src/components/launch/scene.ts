@@ -175,29 +175,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   await yieldToMain(); if (signal?.aborted) return abandon();
 
   /* ---------- The desk ---------- */
-  /* Background preparation (texture uploads, drawing More work's pages) runs in idle time only: a
-     job runs when the browser has at least ~10 ms to spare (or has waited long enough), one per idle
-     moment. afterOpening holds it until the page has been revealed and the entrance has played. */
-  const idleQueue = (job: () => boolean) => {
-    if (typeof requestIdleCallback !== "function") { const tick = () => { if (!disposed && job()) setTimeout(tick, 50); }; setTimeout(tick, 50); return; }
-    // The wait is counted from when the job was queued: asking again with a fresh timeout would starve
-    // it for good while the desk animates (every idle moment between frames is short).
-    let since = performance.now();
-    const tick = (d: IdleDeadline) => {
-      if (disposed) return;
-      if (d.timeRemaining() < 10 && !d.didTimeout && performance.now() - since < 2500) { requestIdleCallback(tick, { timeout: 2500 }); return; }
-      since = performance.now();
-      if (job()) requestIdleCallback(tick, { timeout: 2500 });
-    };
-    requestIdleCallback(tick, { timeout: 2500 });
-  };
-  // The desk's entrance (desk.ts) takes about 3 s; nothing heavy starts until it has played.
-  const ENTRANCE_MS = 3000, AFTER_ENTRANCE = ENTRANCE_MS + 500;
-  const afterOpening = (run: () => void) => {
-    const go = () => window.setTimeout(() => { if (!disposed) run(); }, AFTER_ENTRANCE);
-    if (document.documentElement.hasAttribute("data-entering") || !document.querySelector("[data-launch-loader]")) go();
-    else window.addEventListener("launch:revealed", go, { once: true });
-  };
+  // The desk's entrance (desk.ts) takes about 3 s.
+  const ENTRANCE_MS = 3000;
   const quiet = (cb: () => void) => (typeof requestIdleCallback === "function" ? requestIdleCallback(cb, { timeout: 1000 }) : setTimeout(cb, 30));
   const deskSet = buildDesk({ tex, std, geo, keep, mesh, SANS, MONO, HAND, phone: small(), photo: !small(), upload: (t) => quiet(() => { if (!disposed) renderer.initTexture(t); }) });
   const desk = deskSet.group; scene.add(desk);
@@ -308,11 +287,11 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // The low camera's angle above the table.
   const LOW_ELEV = THREE.MathUtils.degToRad(20);
   // The More work projects, read once from the section (it carries them as JSON for the scene).
-  let moreList: MoreWork[] | null = null;
+  let moreList: MoreWork[] | null = null, pagesDrawn: Promise<void> = Promise.resolve();
   const moreWork = () => {
     if (!moreList) {
       try { moreList = JSON.parse(byId("more-work")?.dataset.projects ?? "[]") as MoreWork[]; } catch { moreList = []; }
-      deskSet.setMoreWork(moreList);
+      pagesDrawn = deskSet.setMoreWork(moreList);
     }
     return moreList;
   };
@@ -427,37 +406,36 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
      them, so stepping down never stalls a frame. Measured once per visit; a hidden tab measures again
      when it comes back. */
   let probe: { from: number; until: number; frames: number } | null = null, probed = false, reprobe = false;
-  function startProbe(wait = 400) {
+  // A probe's verdict, kept between visits: the device does not get faster or slower from one to the
+  // next. Phones and desktops are kept apart (a narrow window on a laptop is still the laptop).
+  const QUALITY_KEY = `launch:quality:${small() ? "phone" : "desktop"}`;
+  // Called once a probe has finished (and any step down with it), or could not run.
+  let probeSettled: (() => void) | null = null;
+  const settleProbe = () => { const done = probeSettled; probeSettled = null; done?.(); };
+  function startProbe(wait = 400, span = 2000) {
     // Snapshots (data-snap) always show the full quality.
-    if (probed || probe || disposed || document.documentElement.hasAttribute("data-snap")) return;
+    if (probed || probe || disposed || document.documentElement.hasAttribute("data-snap")) { settleProbe(); return; }
     reprobe = false;
-    // The first few frames after a reveal carry one-off work (texture uploads), and the entrance is
-    // the heaviest moment the desk has: neither is counted, and a step down never lands mid-entrance.
-    const now = performance.now(); probe = { from: now + wait, until: now + wait + 2000, frames: 0 };
+    // The first few frames carry one-off work (texture uploads); they are not counted.
+    const now = performance.now(); probe = { from: now + wait, until: now + wait + span, frames: 0 };
     kick();
   }
   function measure(now: number) {
     const p = probe!;
-    if (document.hidden) { probe = null; reprobe = true; return; }
+    if (document.hidden) { probe = null; reprobe = true; settleProbe(); return; }
     if (now >= p.from) p.frames++;
     if (now < p.until) return;
     probe = null; probed = true;
     const fps = p.frames / ((now - p.from) / 1000);
-    if (fps < 50) void stepDown();
+    // Remembered for this device (per screen size class), so the next visit skips the measuring.
+    try { localStorage.setItem(QUALITY_KEY, fps < 50 ? "low" : "full"); } catch {}
+    if (fps < 50) void stepDown().then(settleProbe); else settleProbe();
   }
   async function stepDown() {
-    if (composer) {
-      // Every state the page shows, compiled for the screen rather than the composer's buffer.
-      for (const set of ["desk", "wall", "wall+holo"] as const) await compileFor(set, null);
-      if (disposed) return;
-      composer = null; composerTarget = null;
-      // Background compiles (the dark and wall states) may still be checking the occlusion's normal
-      // material through its stand-ins: drop the stand-ins, and release the passes once those settle.
-      helpers.remove(...aoHelpers);
-      await Promise.all(compiling);
-      if (disposed) return;
-      disposeComposer?.(); disposeComposer = null;
-    }
+    // The ambient occlusion goes and the pixel ratio drops. The composer itself stays (its buffer, the
+    // device's own pass, the tone mapping), so every shader already compiled for it is still the one
+    // used: stepping down compiles nothing and takes effect on the next frame.
+    if (aoPass) aoPass.enabled = false;
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, PIXELS.low));
     resize();
   }
@@ -744,7 +722,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       helpers.add(new THREE.Mesh(tri, depth), new THREE.InstancedMesh(tri, depth, 1));
     }
   }
-  let composerTarget: THREE.WebGLRenderTarget | null = null, disposeComposer: (() => void) | null = null, aoHelpers: THREE.Object3D[] = [];
+  let composerTarget: THREE.WebGLRenderTarget | null = null, disposeComposer: (() => void) | null = null, aoPass: { enabled: boolean } | null = null;
   if (!small()) {
     const [{ EffectComposer }, { RenderPass }, { GTAOPass }, { OutputPass }] = await Promise.all([
       import("three/addons/postprocessing/EffectComposer.js"),
@@ -795,8 +773,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     }
     c.addPass(output);
     const normals = gtao.normalMaterial;
-    aoHelpers = [new THREE.Mesh(geo(new THREE.PlaneGeometry(1, 1)), normals), new THREE.InstancedMesh(geo(new THREE.PlaneGeometry(1, 1)), normals, 1)];
-    helpers.add(...aoHelpers);
+    helpers.add(new THREE.Mesh(geo(new THREE.PlaneGeometry(1, 1)), normals), new THREE.InstancedMesh(geo(new THREE.PlaneGeometry(1, 1)), normals, 1));
+    aoPass = gtao;
     c.setPixelRatio(renderer.getPixelRatio()); c.setSize(innerWidth, innerHeight);
     composer = c;
     // The passes' own materials (ambient occlusion, output) compile with the scene's below, in
@@ -814,12 +792,12 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   /* Compile every shader before it is first drawn, in the background (parallel compile): a shader
      first met mid-frame compiles on the spot and freezes the page for a few hundred milliseconds.
      three builds a separate variant of each material per render target (tone mapping and colour
-     space differ) and per set of lights, so each state the page shows needs its own set:
-       desk  the desk as it starts (desktop draws it into the composer's buffer)
+     space differ) and per set of visible lights. The wall's and the hologram's lights live on the desk
+     from the start (desk.ts), so the desk, More work's wall and the hologram all share one set:
+       desk  everything on the desk (desktop draws it into the composer's buffer)
        dark  the dark scenes: the desk hidden, and with it the window light and the wall fill (see
              frame()), drawn straight to the screen
-       wall  More work: the wall up (its strip light), then the hologram too (its own light)
-     The desk's set is compiled and waited for before the first frame; the others are started then too. */
+     Both are compiled, and waited for, under the opening sheet. */
   // One slot of background work: an idle moment, or a short wait at most, so setup never starves.
   const slot = () => new Promise<void>((resolve) => {
     if (typeof requestIdleCallback === "function") requestIdleCallback(() => resolve(), { timeout: 60 });
@@ -831,23 +809,22 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
      a shallow clone (same geometry and material, so the same program) against the real scene's
      lights; whatever is switched for the state is switched back within the same slot, before any
      frame can see it. */
-  /* The More work wall: built in an idle moment, its textures uploaded in idle time, then its two
-     states compiled a slice at a time. It stays hidden throughout (its light included, so the desk's
-     own shaders are untouched). If More work is reached first, setWall builds it on the spot. */
-  let wallPrepared = false, wallReady = false;
+  /* The More work wall: built under the opening sheet, then its new materials compiled a slice at a
+     time (it shares the desk's lights, so nothing else recompiles). It stays hidden until More work. */
+  let wallJob: Promise<void> | null = null, wallReady = false;
   function prepareWall() {
-    if (wallPrepared || disposed) return;
-    wallPrepared = true;
-    void (async () => {
+    if (!wallJob) wallJob = (async () => {
       await slot(); if (disposed) return;
-      uploadIdle(deskSet.buildWall());
-      for (const set of ["wall", "wall+holo"] as const) await compileFor(set);
+      deskSet.buildWall();
+      // The wall shares the desk's lights, so only its own new materials compile; the rest are found.
+      await compileFor("desk");
       if (disposed) return;
       wallReady = true;
       kick();
     })();
+    return wallJob;
   }
-  const compileFor = async (state: "desk" | "dark" | "wall" | "wall+holo", target = composerTarget) => {
+  const compileFor = async (state: "desk" | "dark", target = composerTarget) => {
     const dark = state === "dark";
     const meshes: THREE.Object3D[] = [];
     const take = (o: THREE.Object3D) => o.traverse((m) => { if ((m as THREE.Mesh).isMesh || (m as THREE.Points).isPoints) meshes.push(m); });
@@ -859,22 +836,20 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     for (let i = 0; i < meshes.length + helperMeshes.length;) {
       await slot();
       if (disposed) return;
-      if (state !== "desk" && !dark) deskSet.prewarm(true, state === "wall+holo");
-      const lit = lightsOf.map((l) => l.visible);
-      if (dark) lightsOf.forEach((l) => { l.visible = false; });
+      // The dark scenes draw with the desk (and the lights on it) gone, and the window light and the
+      // wall fill off (see frame()).
+      const lit = lightsOf.map((l) => l.visible), deskWas = desk.visible;
+      if (dark) { lightsOf.forEach((l) => { l.visible = false; }); desk.visible = false; }
       const until = performance.now() + 12;
       do {
         const helper = i >= meshes.length;
         const src = helper ? helperMeshes[i - meshes.length] : meshes[i];
-        // A stand-in dropped since this state began (the occlusion's, on stepping down) is skipped.
-        if (helper && src.parent !== helpers) { i++; continue; }
         renderer.setRenderTarget(helper ? helperTarget : dark ? null : target);
         const batch = new THREE.Group(); batch.add(src.clone(false));
         pending.push(compile(batch, camera, scene));
         i++;
       } while (i < meshes.length + helperMeshes.length && performance.now() < until);
-      if (state !== "desk" && !dark) deskSet.prewarm(false);
-      lightsOf.forEach((l, k) => { l.visible = lit[k]; });
+      lightsOf.forEach((l, k) => { l.visible = lit[k]; }); desk.visible = deskWas;
       renderer.setRenderTarget(null);
     }
     await Promise.all(pending);
@@ -893,29 +868,46 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // the background, they stalled its first second). The wall's states wait for the wall (prepareWall).
   await compileFor("dark");
   if (signal?.aborted) return abandon();
-  // Upload every texture now too (the hidden parts' and the notebook pages'), one per idle moment,
-  // rather than the first time each is drawn: after the reveal has played (the sheet lifting, the
-  // desk's entrance), and then only in real idle time, so it never competes with the opening.
-  const uploadIdle = (root: THREE.Object3D) => {
+  /* Everything else the page will ever need, done now, under the opening sheet, so that once it lifts
+     nothing heavy is left: More work's pages drawn, the wall built and its shaders compiled, and every
+     texture (the hidden parts', the wall's, the notebook pages') uploaded, one per slot. The sheet
+     waits for all of it (LaunchLoader caps the wait). */
+  moreWork();
+  await prepareWall();
+  if (signal?.aborted) return abandon();
+  await Promise.all([deskSet.pictures(), pagesDrawn]);
+  if (signal?.aborted) return abandon();
+  {
     const textures = new Set<THREE.Texture>();
-    root.traverse((o) => {
+    scene.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       for (const mat of m ? (Array.isArray(m) ? m : [m]) : []) for (const v of Object.values(mat)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
     });
+    // As many uploads as fit in about 8 ms per slot (a large one alone may take that).
     const queue = [...textures];
-    idleQueue(() => { const t = queue.shift(); if (!t) return false; renderer.initTexture(t); return true; });
-  };
-  afterOpening(() => uploadIdle(scene));
-  // The More work wall is built on approach: as the projects come into view (see choreograph()), or
-  // once the opening has played, whichever comes first (slow phones need the head start).
-  afterOpening(() => prepareWall());
-  // Hand More work its projects then too, so its pages are drawn in idle time long before it is reached.
-  afterOpening(() => moreWork());
+    while (queue.length) {
+      await slot(); if (signal?.aborted) return abandon();
+      const until = performance.now() + 8;
+      do renderer.initTexture(queue.shift()!); while (queue.length && performance.now() < until);
+    }
+  }
+  hooks.onProgress?.(.97);
   await envArrived;
   await yieldToMain(); if (signal?.aborted) return abandon();
   // Paint the first frame now, not on the next animation frame: rAF never fires in a background tab.
   ready = true;
   frame();
+  // Quality is measured now, under the sheet (about a second of the desk), and stepped down there if
+  // need be, so the switch never lands on a page someone is looking at. A device measured before
+  // takes its remembered verdict at once instead.
+  let known: string | null = null;
+  try { known = localStorage.getItem(QUALITY_KEY); } catch {}
+  if (document.documentElement.hasAttribute("data-snap")) { /* full quality, unmeasured */ }
+  else if (known === "low" || known === "full") { probed = true; if (known === "low") await stepDown(); }
+  else if (!revealed && document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) {
+    await new Promise<void>((done) => { probeSettled = done; startProbe(150, 900); });
+    if (signal?.aborted) return abandon();
+  }
   // The sheet has already lifted (it stopped waiting, or the event came before this scene listened).
   if (revealed || !document.querySelector('[data-launch-loader]:not([data-phase="leaving"])')) entrance();
   hooks.onProgress?.(1);

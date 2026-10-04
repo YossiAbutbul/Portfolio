@@ -98,19 +98,22 @@ be usable in the first ten seconds before it is impressive.
 - Check Lighthouse (LCP, CLS, INP) and the JS chunk sizes after any motion or asset change.
 - No shader may compile mid-scroll. three builds one variant per material for each render target and
   each set of visible lights, so `scene.ts` precompiles every state the page shows (`compileFor`:
-  desk, dark, wall, wall+holo). Toggling a light's `visible`, adding a light, or drawing to a new
-  target adds a state: add it there. Frames are held (`ready`) until the desk's set has compiled.
+  desk, dark). The wall's and the hologram's lights live on the desk from the start at zero, so the
+  desk, the wall and the hologram share one set. Keep it that way: switch a light off with
+  `intensity = 0`, never `visible = false`, and never add a light later or inside a hidden part;
+  each of those adds a whole new set to compile. Frames are held (`ready`) until the desk's set has
+  compiled.
 - Shadow maps are static (`shadowMap.autoUpdate = false`); `frame()` redraws them only when a caster
   moves or shows/hides. Anything new that moves on its own must report it (via `deskSet.update`'s
   return value) or its shadow will freeze.
-- Quality steps down if the ~2s after the desk's entrance run under 50 fps: desktop loses the
-  composer/AO and goes from pixel ratio 1.25 to 1; phones go from 2 to 1.25. `data-snap` always gets
-  full quality. Deferred setup (`afterOpening`) also waits for the entrance, and the dark scenes compile
-  before the opening sheet lifts, so nothing heavy lands while the entrance plays.
-- The More work wall is built on approach (`prepareWall` in `scene.ts`, `buildWall` in `desk.ts`), not
-  with the desk; it stays hidden until its shader states have compiled.
-- Background work goes through `idleQueue` / `afterOpening`; never re-request an idle callback with a
-  fresh timeout (the hero's loop keeps idle slots short and the job starves).
+- Everything heavy happens under the opening sheet, before the scene reports ready: every shader state
+  (desk, dark, wall, wall+holo), the More work wall (`prepareWall` / `buildWall`), the notebook's More
+  work pages, every texture upload, and the quality probe (~1s of frames). Nothing is deferred to after
+  the lift; new one-off work belongs there too, before `onProgress(1)`.
+- Quality steps down if that probe runs under 50 fps: desktop turns the AO pass off (the composer stays,
+  so nothing recompiles) and goes from pixel ratio 1.25 to 1; phones go from 2 to 1.25. The verdict is
+  kept in `localStorage` (`launch:quality:desktop` / `phone`), so return visits skip the probe.
+  `data-snap` always gets full quality.
 
 ## Accessibility requirements
 

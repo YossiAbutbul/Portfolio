@@ -52,21 +52,31 @@ function woodPass(W, H) {
   return (wood = { color, bump });
 }
 
+// The mat's colours: its print, the lighter and darker wear, and the pale flecks and cut marks (r,g,b).
+// Its edges are matSide in desk.ts; keep the two in step.
+const MAT = { base: "#24558f", light: "110,160,220", dark: "4,16,40", fleck: "215,230,248" };
+// Slate: { base: "#3d4b55", light: "140,160,175", dark: "6,12,18", fleck: "218,226,232" }, edges 0x313d46.
+// Oxblood: { base: "#5a2b24", light: "170,110,95", dark: "24,6,4", fleck: "238,214,204" }, edges 0x46201b.
+// Navy: { base: "#27384f", light: "120,145,180", dark: "4,10,22", fleck: "214,224,238" }, edges 0x1f2d40.
+// Charcoal: { base: "#2f3234", light: "150,152,154", dark: "0,0,0", fleck: "222,224,226" }, edges 0x26292b.
+// Was green: { base: "#3a6448", light: "90,140,120", dark: "10,30,24", fleck: "210,235,225" }, edges 0x2c5039.
+
 window.BAKES = [
   { name: "wood-color", w: 1024, h: 1024, draw: (x, w, h) => x.putImageData(woodPass(w, h).color, 0, 0) },
   { name: "wood-bump", w: 1024, h: 1024, draw: (x, w, h) => x.putImageData(woodPass(w, h).bump, 0, 0) },
   // The cutting mat: grid, rulers, speckle, a little wear, and old cut marks.
   { name: "mat-print", w: 2240, h: 1480, half: true, draw: (x, w, h) => {
-    x.fillStyle = "#3a6448"; x.fillRect(0, 0, w, h);
+    const C = MAT;
+    x.fillStyle = C.base; x.fillRect(0, 0, w, h);
     // Uneven tone from years of use.
     for (let i = 0; i < 900; i++) {
       const px = N.rand() * w, py = N.rand() * h, r = 40 + N.rand() * 160;
       const g = x.createRadialGradient(px, py, 0, px, py, r);
       const light = N.rand() > .5;
-      g.addColorStop(0, light ? "rgba(90,140,120,.035)" : "rgba(10,30,24,.05)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      g.addColorStop(0, light ? `rgba(${C.light},.035)` : `rgba(${C.dark},.05)`); g.addColorStop(1, "rgba(0,0,0,0)");
       x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
     }
-    for (let i = 0; i < 26000; i++) { x.fillStyle = N.rand() > .5 ? "rgba(210,235,225,.06)" : "rgba(0,20,14,.08)"; x.fillRect(N.rand() * w, N.rand() * h, 1.6, 1.6); }
+    for (let i = 0; i < 26000; i++) { x.fillStyle = N.rand() > .5 ? `rgba(${C.fleck},.06)` : `rgba(${C.dark},.08)`; x.fillRect(N.rand() * w, N.rand() * h, 1.6, 1.6); }
     // A printed border carries the rulers; the grid sits inside it, like a real self-healing mat.
     const m = 96, gw = w - m * 2, gh = h - m * 2, cells = 50, cm = gw / cells;
     x.strokeStyle = "rgba(238,228,206,.5)"; x.lineWidth = 2.4; x.strokeRect(m, m, gw, gh);
@@ -84,21 +94,44 @@ window.BAKES = [
     // Old knife cuts: thin pale scratches.
     for (let i = 0; i < 70; i++) {
       const px = N.rand() * w, py = N.rand() * h, len = 30 + N.rand() * 180, ang = (N.rand() - .5) * .6 + (N.rand() > .5 ? 0 : Math.PI / 2);
-      x.strokeStyle = `rgba(200,230,215,${.05 + N.rand() * .09})`; x.lineWidth = .8; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
+      x.strokeStyle = `rgba(${C.fleck},${.05 + N.rand() * .09})`; x.lineWidth = .8; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
     }
     x.font = `700 24px ${SANS}`; x.fillStyle = "rgba(240,230,210,.45)"; x.fillText("SELF-HEALING · 3 PLY · A3", w - 470, h - 34);
   } },
   // Speckled relief for the mat (phones; desktop uses the photographed linoleum).
   { name: "mat-bump", w: 512, h: 340, draw: (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); } },
-  // The coffee in the mug, with a ring of crema at the rim.
-  { name: "coffee", w: 512, h: 512, draw: (x, w, h) => {
-    const gr = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-    gr.addColorStop(0, "#0d0603"); gr.addColorStop(.6, "#170a04"); gr.addColorStop(.86, "#2a1408"); gr.addColorStop(.95, "#6b4122"); gr.addColorStop(1, "#9a6a3e");
-    x.fillStyle = gr; x.fillRect(0, 0, w, h);
-    for (let i = 0; i < 500; i++) {
-      const a = N.rand() * Math.PI * 2, r = (.86 + N.rand() * .14) * w / 2;
-      x.fillStyle = `rgba(200,150,100,${.12 + N.rand() * .2})`;
-      x.beginPath(); x.arc(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, .6 + N.rand() * 1.6, 0, Math.PI * 2); x.fill();
+  // The coffee in the mug: crema over most of it, marbled in toward a darker middle, fine bubbles
+  // gathered at the rim and a bright meniscus where it meets the cup. Its own noise (seed 23).
+  { name: "coffee", w: 1024, h: 1024, draw: (x, w, h) => {
+    const N = makeNoise(23);
+    // Crema over most of it: only the middle shows the darker coffee through.
+    const stops = [[0, [48, 24, 11]], [.3, [64, 34, 15]], [.55, [104, 63, 31]], [.75, [146, 98, 55]], [.9, [170, 120, 72]], [.985, [190, 140, 90]], [1, [214, 172, 122]]];
+    const at = (d) => {
+      for (let k = 1; k < stops.length; k++) if (d <= stops[k][0]) {
+        const [d0, a] = stops[k - 1], [d1, b] = stops[k], t = (d - d0) / (d1 - d0), e = t * t * (3 - 2 * t);
+        return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e, a[2] + (b[2] - a[2]) * e];
+      }
+      return stops[stops.length - 1][1];
+    };
+    const crema = [176, 126, 76], img = x.createImageData(w, h), c = w / 2;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const dx = (i - c) / c, dy = (j - c) / c, d = Math.min(1, Math.hypot(dx, dy));
+      // Crema drawn in toward the middle in soft fingers: warped noise, only within the band.
+      const warp = N.fbm(dx * 2.2 + 3, dy * 2.2, 3) * 2.4;
+      const m = N.fbm(dx * 5 + warp, dy * 5 - warp, 4);
+      const band = Math.max(0, Math.min(1, (d - .12) / .4)) * (1 - Math.max(0, (d - .92) / .08));
+      const swirl = Math.min(1, Math.max(0, (m - .4) * 2.6)) * band * .9;
+      const col = at(d), grain = (N.fbm(i / 7, j / 7, 2) - .5) * 10, k = (j * w + i) * 4;
+      for (let ch = 0; ch < 3; ch++) img.data[k + ch] = col[ch] + (crema[ch] - col[ch]) * swirl + grain;
+      img.data[k + 3] = 255;
+    }
+    x.putImageData(img, 0, 0);
+    // Fine bubbles in the crema at the rim: a dark body with a pale lit edge.
+    for (let n = 0; n < 2600; n++) {
+      const a = N.rand() * Math.PI * 2, d = .86 + Math.pow(N.rand(), .6) * .125, r = .7 + Math.pow(N.rand(), 3) * 3.2;
+      const px = c + Math.cos(a) * d * c, py = c + Math.sin(a) * d * c;
+      x.fillStyle = `rgba(110,72,40,${.25 + N.rand() * .25})`; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = `rgba(232,200,158,${.3 + N.rand() * .35})`; x.lineWidth = .6; x.beginPath(); x.arc(px - r * .2, py - r * .2, r * .8, Math.PI * 1.05, Math.PI * 1.75); x.stroke();
     }
   } },
   // The More work wall's plaster.

@@ -23,11 +23,14 @@ export default function LaunchStage() {
     let scene: LaunchScene | null = null;
     const abort = new AbortController();
 
+    // The scene's code (three included) is fetched at once, while the hero paints and the opening
+    // sheet is up; the scene itself is built once the browser is idle (below).
+    const code = import("./scene");
     let loading = false;
     const load = async () => {
       if (loading) return;
       loading = true;
-      const { createLaunchScene } = await import("./scene");
+      const { createLaunchScene } = await code;
       if (abort.signal.aborted) return;
       scene = await createLaunchScene(el, {
         onBackdrop: setBackdrop,
