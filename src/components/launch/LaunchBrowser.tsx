@@ -263,7 +263,7 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
               return (
                 <div key={project.slug} className={styles.shot} data-shot data-on={i === 0 ? "" : undefined}>
                   {demo ? (
-                    <video src={withBasePath(demo.src)} poster={withBasePath(demo.poster)} width={demo.w} height={demo.h} muted loop playsInline preload={i === 0 ? "auto" : "none"} />
+                    <video src={withBasePath(demo.src)} poster={withBasePath(demo.poster)} width={demo.w} height={demo.h} muted loop playsInline preload="none" />
                   ) : preview ? (
                     <img src={withBasePath(preview)} alt="" width={1280} height={720} loading="lazy" decoding="async" />
                   ) : null}
