@@ -28,6 +28,12 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     const items = [...root.querySelectorAll<HTMLElement>("[data-item]")];
     const shots = [...frame.querySelectorAll<HTMLElement>("[data-shot]")];
+    // How far through the section the page is: a thin line along the top of the screen while it holds
+    // the screen. It lives on the body, above the nav's shade, so the section's stacking does not dim it.
+    const meter = document.createElement("span");
+    meter.className = styles.meter; meter.setAttribute("aria-hidden", "true");
+    const fill = meter.appendChild(document.createElement("i"));
+    document.body.append(meter);
     const n = items.length;
     let raf = 0, focus = 0, typing = 0, loaded = 0, shown = 0;
 
@@ -93,14 +99,20 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
       }, 25);
     }
     const progressOf = (r: DOMRect) => Math.min(1, Math.max(0, -r.top / Math.max(1, r.height - innerHeight)));
+    function measure(r: DOMRect | null) {
+      meter.toggleAttribute("data-on", !!r && r.top <= 1 && r.bottom > innerHeight * .5);
+      if (r) fill.style.transform = `scaleX(${progressOf(r)})`;
+    }
     function update() {
       raf = 0;
       if (reduce.matches) {
+        measure(null);
         items.forEach((item) => { item.removeAttribute("data-off"); item.inert = false; item.style.transform = ""; });
         root!.querySelectorAll("video").forEach((v) => v.pause());
         return;
       }
       const r = root!.getBoundingClientRect();
+      measure(r);
       // Until the section arrives, the window waits with an empty address bar, so the first project's
       // URL types as you reach it (and again each time you come back down to it).
       if (r.top > innerHeight * .5) {
@@ -189,6 +201,7 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
+      meter.remove();
       cancelAnimationFrame(raf); clearInterval(typing); clearTimeout(loaded); clearTimeout(quiet); clearTimeout(accReset);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);

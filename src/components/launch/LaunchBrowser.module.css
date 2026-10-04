@@ -13,6 +13,34 @@
   overflow: hidden;
 }
 
+/* Progress through the section: a hairline along the top of the screen, cork over a faint track,
+   shown only while the section holds the screen (LaunchBrowser.tsx sets data-on and the scale). */
+.meter {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  height: 2px;
+  background: var(--rule);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-med) var(--ease-out);
+}
+
+.meter[data-on] {
+  opacity: 1;
+}
+
+.meter i {
+  position: absolute;
+  inset: 0;
+  background: var(--mark);
+  transform: scaleX(0);
+  transform-origin: left;
+  will-change: transform;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -336,6 +364,7 @@
 
 /* Reduced motion: no pinning or typing; the labels list, the window shows the first project. */
 @media (prefers-reduced-motion: reduce) {
+  .meter { display: none; }
   .pin { height: auto; }
   .frame { position: relative; height: auto; overflow: visible; padding: 9svh var(--gutter) 6svh; }
   .head { position: relative; left: 0; top: 0; margin-bottom: 2rem; }
