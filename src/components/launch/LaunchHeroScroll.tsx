@@ -9,6 +9,10 @@ import { useEffect } from "react";
  *   link (same font, size, colour and shadow, so the swap is invisible). At the top the bar shows no name.
  * - the card's lines (its headline, then its sentence) slide down out of sight, each behind its own mask,
  *   one after another, while the card itself holds still on screen and fades away; the scroll cue fades as soon as you scroll.
+ * The name and the card are fixed to the screen while this runs (they sit exactly where the hero puts
+ * them at the top), so nothing is moved against the scroll: a phone scrolls on its own thread and a
+ * position corrected a frame later shook. Height-only resizes (a phone's address bar showing or
+ * hiding) change nothing here, so the lines are not re-split mid-scroll.
  * Reduced motion: nothing moves; the bar's name simply appears once the hero is half gone.
  */
 export default function LaunchHeroScroll() {
@@ -44,15 +48,17 @@ export default function LaunchHeroScroll() {
     };
 
     /* ---- The name's flight to the bar. ---- */
-    // Measured with nothing applied: the name's box in page coordinates, the bar link's on screen.
-    let nameLeft = 0, nameMid = 0, toLeft = 0, toMid = 0, k = 1;
+    // Measured with nothing applied: the name's box and the bar link's, both on screen. The hero's
+    // run is measured once per width, so the address bar coming and going does not move anything.
+    let nameLeft = 0, nameMid = 0, toLeft = 0, toMid = 0, k = 1, run = innerHeight * .45, width = innerWidth;
     const measure = () => {
       name.style.translate = name.style.scale = "";
+      run = innerHeight * .45; width = innerWidth;
       // The target is the bar's name text itself (not its pill): the full name, or the initials on
       // small screens, whichever is showing.
       const text = [...brand.querySelectorAll<HTMLElement>("[data-brand-text]")].find((s) => s.offsetWidth > 0) ?? brand;
       const n = name.getBoundingClientRect(), b = text.getBoundingClientRect();
-      nameLeft = n.left; nameMid = n.top + scrollY + n.height / 2;
+      nameLeft = n.left; nameMid = n.top + n.height / 2;
       toLeft = b.left; toMid = b.top + b.height / 2;
       k = parseFloat(getComputedStyle(text).fontSize) / parseFloat(getComputedStyle(name).fontSize);
       split();
@@ -63,12 +69,11 @@ export default function LaunchHeroScroll() {
     const show = (el: HTMLElement, o: number) => { el.style.opacity = String(o); el.style.visibility = o < .02 ? "hidden" : ""; };
     const update = () => {
       frame = 0;
-      const p = clamp(scrollY / (innerHeight * .45));
+      const p = clamp(scrollY / run);
       if (reduce) { show(brand, p >= 1 ? 1 : 0); return; }
       const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-      // Where the name's centre should be on screen: from where it starts toward the bar.
-      const mid = nameMid + (toMid - nameMid) * e;
-      name.style.translate = `${(toLeft - nameLeft) * e}px ${mid - (nameMid - scrollY)}px`;
+      // From where it starts toward the bar (it is fixed to the screen, so scroll plays no part).
+      name.style.translate = `${(toLeft - nameLeft) * e}px ${(toMid - nameMid) * e}px`;
       const sc = 1 + (k - 1) * e;
       name.style.scale = String(sc);
       // The shadow is scaled with the name, so set it so that on screen it moves from the hero's soft
@@ -89,16 +94,21 @@ export default function LaunchHeroScroll() {
       // The scroll cue has done its job as soon as scrolling starts.
       if (cue) { const c = clamp(p / .2); cue.style.opacity = String(1 - c); cue.style.visibility = c > .98 ? "hidden" : ""; }
       // Once its words have gone, the glass card goes too.
-      // It stays exactly where it is on screen (held against the scroll) and simply fades there.
-      if (card) { const c = clamp((p - .45) / .35); card.style.opacity = String(1 - c); card.style.translate = `0 ${scrollY}px`; card.style.visibility = c > .98 ? "hidden" : ""; }
+      // It stays exactly where it is on screen (it is fixed there) and simply fades.
+      if (card) { const c = clamp((p - .45) / .35); card.style.opacity = String(1 - c); card.style.visibility = c > .98 ? "hidden" : ""; }
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
     const onResize = () => { measure(); schedule(); };
+    // Touch screens resize their height as the address bar comes and goes: only a new width counts.
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const onWindowResize = () => { if (!coarse || innerWidth !== width) onResize(); };
 
     name.style.transformOrigin = "0 50%";
+    // Fixed where the hero places them at the top of the page (see the note above).
+    if (!reduce) { name.style.position = "fixed"; if (card) card.style.position = "fixed"; }
     measure(); update();
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onWindowResize);
     // The fonts settle the sizes and the line breaks; measure again once they are in.
     document.fonts?.ready.then(onResize).catch(() => {});
     // The name rises in as the loading sheet lifts; measured mid-rise, it would dock off by the rise.
@@ -108,13 +118,13 @@ export default function LaunchHeroScroll() {
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener("resize", onWindowResize);
       document.removeEventListener("animationend", settle);
-      name.style.translate = name.style.scale = name.style.transformOrigin = name.style.opacity = name.style.visibility = name.style.textShadow = "";
+      name.style.translate = name.style.scale = name.style.transformOrigin = name.style.opacity = name.style.visibility = name.style.textShadow = name.style.position = "";
       brand.style.opacity = brand.style.visibility = "";
       delete brand.dataset.dock;
       for (const b of blocks) b.el.textContent = b.text;
-      if (card) card.style.opacity = card.style.translate = card.style.visibility = "";
+      if (card) card.style.opacity = card.style.visibility = card.style.position = "";
       if (cue) cue.style.opacity = cue.style.visibility = "";
     };
   }, []);
