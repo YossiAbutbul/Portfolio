@@ -232,7 +232,18 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   for (let i = 0; i < 60; i++) { m4.position.set(-1.28 + (i % 20) * .088, -.62 - Math.floor(i / 20) * .085, FRONT + .002); m4.updateMatrix(); grille.setMatrixAt(i, m4.matrix); }
   device.add(grille);
   // Contact shadow under the device while it lies on the desk: what makes it sit rather than hover.
-  const devicePadTex = tex(256, 160, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(0,0,0,.7)"); g.addColorStop(.6, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  // Darkest right along the footprint's edge, where the shell meets the mat, with a wider, fainter
+  // spread around it: a soft oval alone read as the device hovering.
+  const devicePadTex = tex(256, 160, (x, w, h) => {
+    const fw = w / 1.25, fh = h / 1.35, r = .22 * fw / W;
+    const foot = (grow: number, blur: number, alpha: number) => {
+      x.filter = `blur(${blur}px)`; x.fillStyle = `rgba(0,0,0,${alpha})`;
+      x.beginPath(); x.roundRect((w - fw) / 2 - grow, (h - fh) / 2 - grow, fw + grow * 2, fh + grow * 2, r + grow); x.fill();
+    };
+    foot(6, 12, .4);
+    foot(0, 3, .85);
+    x.filter = "none";
+  });
   const devicePad = new THREE.Mesh(geo(new THREE.PlaneGeometry(W * 1.25, H * 1.35)), keep(new THREE.MeshBasicMaterial({ map: devicePadTex, transparent: true, depthWrite: false, toneMapped: false })));
   devicePad.position.z = .006; devicePad.renderOrder = 1; scene.add(devicePad);
 
@@ -442,6 +453,9 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
 
   // What the shadow maps were last drawn with; stale until the first frame draws them.
   let shadowsShown = "", shadowsStale = true, lastPages = "";
+  // Whether the ambient occlusion sees the device: only while it lies on the desk, so the mat darkens
+  // around its base like everything else's; lifted, it would leave a halo on the mat.
+  let aoDevice = false;
   // The device bobs on its own once lifted out of the desk.
   const floatingNow = () => !(reduce.matches || document.documentElement.hasAttribute("data-snap")) && lean > .05 && device.visible;
 
@@ -489,8 +503,18 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     device.scale.setScalar(Math.max(.0001, cur.s * cur.show * SIZE));
     // <html data-no-device> (set by the capture tooling for banners) leaves the desk without it.
     const noDevice = document.documentElement.hasAttribute("data-no-device");
-    devicePad.visible = desk.visible && lifted < .5 && !noDevice; devicePad.position.set(cur.x + .08, cur.y - .1, .006); devicePad.scale.setScalar(cur.s * SIZE); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - lifted * 2;
+    // Its shadows fade over most of the lift, eased, never in a step: the contact shadow spreads and
+    // pales as the gap opens, as a real one does, and the lights' shadows soften away with it.
     device.visible = cur.show > .02 && !noDevice;
+    const away = Math.min(1, lifted / .8), ease = away * away * (3 - 2 * away), fade = device.visible ? ease : 0;
+    devicePad.visible = desk.visible && device.visible && away < 1; devicePad.position.set(cur.x + .05, cur.y - .06, .006); devicePad.scale.setScalar(cur.s * SIZE * (1 + ease * .5)); (devicePad.material as THREE.MeshBasicMaterial).opacity = 1 - ease;
+    // The occlusion fades by itself as the gap opens; it is cut only once the device is well clear.
+    aoDevice = device.visible && lifted < .45;
+    // Lifting, the device's cast shadow would slide across the mat along the sun; instead the shadows
+    // soften away as it rises (the room is going dark then anyway). Without the device (More work) the
+    // desk keeps them in full.
+    sun.shadow.intensity = 1 - fade;
+    if (paneLight) paneLight.shadow.intensity = 1 - fade;
     veilMat.opacity = cur.veil;
     // Fully dark: drop the veil and the desk, so the canvas is transparent and the page shows through.
     desk.visible = cur.veil < .985;
@@ -745,9 +769,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
       // The veil is a sheet over the whole desk: in the occlusion's depth and normals it would hide
       // every contact shadow the moment the room starts to dim. Leave it out of this pass only; the
       // occlusion is then blended over the image that already has the veil in it.
+      // The device is drawn after this pass, on top; while it lies on the desk it still goes into the
+      // occlusion's depth and normals, so the mat darkens where it meets it.
       render(r: THREE.WebGLRenderer, write: THREE.WebGLRenderTarget, read: THREE.WebGLRenderTarget, dt: number, mask: boolean) {
         const shown = veil.visible; veil.visible = false;
+        if (aoDevice) camera.layers.enable(DEVICE_LAYER);
         super.render(r, write, read, dt, mask);
+        if (aoDevice) camera.layers.disable(DEVICE_LAYER);
         veil.visible = shown;
       }
     }
