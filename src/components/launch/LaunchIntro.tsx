@@ -10,10 +10,10 @@ export default function LaunchIntro() {
       <section className={styles.hero} id="top" aria-labelledby="hero-name">
         <h1 className={styles.word} id="hero-name">Yossi Abutbul</h1>
         <div className={styles.card} data-card>
-          <p className={styles.cardHead} data-lines>Takes a problem in. Ships software out.</p>
+          <p className={styles.cardHead} data-lines>I build web apps, desktop tools and hardware tests.</p>
           <p className={styles.cardBody} data-lines>
-            I take a problem apart and ship what fixes it, so the slow part of someone&apos;s day
-            disappears.
+            End to end: the interface, the backend and the data in between, to make someone&apos;s
+            day easier.
           </p>
         </div>
         {/* A cue, not a control: the arrow inside its ring keeps dropping, to say "scroll". */}
