@@ -38,6 +38,8 @@ export const metadata: Metadata = {
   description:
     "Test automation and measurement software for RF hardware. One platform took a three-day qualification cycle down to about eight minutes.",
   authors: [{ name: "Yossi Abutbul" }],
+  // Google Search Console ownership; keep it, or the property is unverified again.
+  verification: { google: "pYABdJLNaQBHh8YX70VoW-vl9Ag92KDlPSHGnn3byuA" },
   keywords: [
     "Yossi Abutbul",
     "portfolio",
