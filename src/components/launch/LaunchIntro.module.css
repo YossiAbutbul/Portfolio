@@ -25,8 +25,10 @@
   top: 11svh;
   margin: 0;
   font-weight: 800;
-  /* One row: sized so "Yossi Abutbul" fits the width at every breakpoint. */
-  font-size: clamp(2.5rem, 14vw, 18rem);
+  /* One row: sized so "Yossi Abutbul" fits the width at every breakpoint. The scene's vertical field
+     of view is fixed, so the device's top edge sits about 36% down whatever the width; the height cap
+     keeps the name's baseline clear of it on wide, short windows. */
+  font-size: min(clamp(2.5rem, 14vw, 18rem), 25svh);
   line-height: 0.9;
   letter-spacing: -0.05em;
   white-space: nowrap;
