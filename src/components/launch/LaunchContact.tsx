@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { withBasePath } from "@/lib/env";
+import { CV_PDF, countCvDownload } from "@/lib/cv";
 import { say } from "./LaunchToast";
 import styles from "./LaunchSections.module.css";
 
 const EMAIL = "abyossi22@gmail.com";
-const CV_HREF = "/Yossi Abutbul - CV 2026.pdf";
 
 /** Each panel's mark, large, standing over its name: the envelope, GitHub's and LinkedIn's marks, and a page for
  *  the CV. Solid, in the panel's text colour (cream on every panel). */
@@ -71,7 +71,7 @@ export default function LaunchContact() {
             </a>
           </li>
           <li>
-            <a className={styles.panel} href={withBasePath(CV_HREF)} download>
+            <a className={styles.panel} href={CV_PDF} download onClick={countCvDownload}>
               {top("04", "Download PDF")}
               <span><Mark kind="cv" /><span className={styles.panelWord}>CV</span><span className={styles.panelDetail}>Updated September 2026</span></span>
             </a>
@@ -80,6 +80,7 @@ export default function LaunchContact() {
       </section>
       <footer className={`${styles.footer} ${styles.cap}`}>
         <span>Yossi Abutbul · 2026</span>
+        <Link href="/privacy">Privacy</Link>
       </footer>
     </>
   );

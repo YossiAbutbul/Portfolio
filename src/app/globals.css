@@ -184,6 +184,20 @@ button {
   line-height: 1.55;
 }
 
+/* The privacy page's points, in the same measure as the 404 page's sub line. */
+.privacy-list {
+  max-width: 60ch;
+  display: grid;
+  gap: var(--space-3);
+  padding-left: 1.1em;
+  list-style: disc;
+}
+
+.privacy-list a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .nf-actions {
   display: flex;
   flex-wrap: wrap;

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { withBasePath } from "@/lib/env";
 import { anchorTop } from "@/lib/anchor";
+import { CV_PDF, countCvDownload } from "@/lib/cv";
 import { usePathname } from "next/navigation";
 import styles from "./Nav.module.css";
 
@@ -149,7 +149,7 @@ export default function Nav() {
           <span className={styles.drawerLabel}>Write</span>
           <a href="mailto:abyossi22@gmail.com">abyossi22@gmail.com</a>
           <div className={styles.drawerRow}>
-            <a href={withBasePath("/Yossi Abutbul - CV 2026.pdf")} download>CV ↓</a>
+            <a href={CV_PDF} download onClick={countCvDownload}>CV ↓</a>
             <a href="https://github.com/YossiAbutbul" target="_blank" rel="noreferrer">GitHub ↗</a>
             <a href="https://www.linkedin.com/in/yossi-abutbul-550958199/" target="_blank" rel="noreferrer">LinkedIn ↗</a>
           </div>
