@@ -33,10 +33,12 @@ be usable in the first ten seconds before it is impressive.
   or removing a section id changes the choreography.
 - `src/components/site/Home.tsx` just composes the launch beats; the scene finds them by id.
 - `src/components/layout/` shell: `Nav`, `SmoothScroll` (Lenis + scroll restoration),
-  `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) covers the
-  page on every load until the scene's first frame is ready; on a reload in the same tab
-  (`sessionStorage` `launch:seen`, read by a head script in the root layout) it skips the extra beat
-  after the sketch finishes. Reduced motion and no-JS never see it.
+  `PageTransition`, `SkipToContent`. `LaunchLoader` (a sketch of the device drawing itself) is a short
+  title card: it lifts on its own CSS clock (`--lift` in `tokens.css`, 1.1s; 0.6s on a reload in the
+  same tab via `sessionStorage` `launch:seen`, read by a head script in the root layout) and never waits
+  for the scene. The hero's entrance is CSS timed from `--lift`. Until the scene's first frame,
+  `LaunchStage` shows a poster of the desk (`public/textures/poster*.webp`), then crossfades to the
+  canvas. Reduced motion and no-JS never see the sheet.
 - `content/projects.ts` project data; `src/types/project.ts` its type.
 - `public/` CV PDF, project screenshots/posters, `og.jpg` (1200 x 630, the hero desk with the name).
 
@@ -45,6 +47,11 @@ be usable in the first ten seconds before it is impressive.
 - `npm run dev` (the `.claude/launch.json` config `next-dev` runs it on port 3001)
 - `npm run typecheck`
 - `npm run build` (static export to `out/`), `npm run serve` to preview it
+- `npm run bake:textures` re-renders the desk's procedural textures and the baked environment light
+  (`scripts/bake-textures/`) into `public/textures`. Edit textures in `draw.js`, never back in
+  `desk.ts` (drawing them at startup froze the page for seconds).
+- `npm run bake:poster` (after `npm run build`) re-renders the desk posters; rerun whenever the desk,
+  its layout or the hero camera changes, or the poster and the live scene will not line up.
 - `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`; ESLint 10 is not yet supported by
   `eslint-config-next`'s parser, so don't upgrade it).
 - No test suite. Verify in the browser at desktop and 375px mobile, and with reduced motion. For
@@ -96,6 +103,11 @@ be usable in the first ten seconds before it is impressive.
   each set of visible lights, so `scene.ts` precompiles every state the page shows (`compileFor`:
   desk, dark, wall, wall+holo). Toggling a light's `visible`, adding a light, or drawing to a new
   target adds a state: add it there. Frames are held (`ready`) until the desk's set has compiled.
+- Shadow maps are static (`shadowMap.autoUpdate = false`); `frame()` redraws them only when a caster
+  moves or shows/hides. Anything new that moves on its own must report it (via `deskSet.update`'s
+  return value) or its shadow will freeze.
+- Desktop quality steps down (no composer/AO, pixel ratio 1) if the first ~2s after the reveal run under
+  50 fps; `data-snap` always gets full quality.
 - Background work goes through `idleQueue` / `afterOpening`; never re-request an idle callback with a
   fresh timeout (the hero's loop keeps idle slots short and the job starves).
 

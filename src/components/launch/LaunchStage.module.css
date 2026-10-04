@@ -127,6 +127,40 @@
   will-change: transform;
 }
 
+/* The poster: a still of the scene's first frame (scripts/bake-poster.mjs), framed the way the camera
+   frames the desk. The camera's vertical field of view is fixed and it looks straight down the middle,
+   so the shot scales with the viewport's height and crops evenly at the sides: a wide still with
+   cover sizing matches it at any desktop shape. Phones have their own layout and lens. It fades with
+   the hero as the page scrolls on (where scroll timelines exist), and goes once the canvas is in. */
+.poster {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* Captured with the canvas's warm grade already on. */
+  background: url("/textures/poster.webp") center / cover no-repeat;
+  transition: opacity 0.4s var(--ease-out) 0.8s, visibility 0s linear 1.2s;
+}
+
+.poster[data-off="true"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+@supports (animation-timeline: scroll()) {
+  .poster:not([data-off="true"]) {
+    animation: poster-away linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 60vh;
+  }
+}
+
+@keyframes poster-away { to { opacity: 0; } }
+
+@media (max-width: 720px) {
+  .poster { background-image: url("/textures/poster-phone.webp"); }
+}
+
 .canvas {
   position: fixed;
   inset: 0;
@@ -212,7 +246,8 @@
 .hint span {
   position: absolute;
   left: 24px;
-  top: 0;
+  /* Nudged back inside the window near its top or bottom edge (set by the scene). */
+  top: var(--dy, 0px);
   translate: -6px -50%;
   padding: 0.36rem 0.6rem;
   border-radius: 3px;
@@ -238,5 +273,18 @@
 }
 
 .hint[data-on="true"] span {
+  translate: 0 -50%;
+}
+
+/* Near the window's right edge the label moves to the left of the pointer (the scene decides), so
+   it is never cut off; it tilts the other way and slides in from the right. */
+.hint[data-side="left"] span {
+  left: auto;
+  right: 24px;
+  translate: 6px -50%;
+  rotate: 2deg;
+}
+
+.hint[data-side="left"][data-on="true"] span {
   translate: 0 -50%;
 }

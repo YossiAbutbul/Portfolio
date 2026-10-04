@@ -3,17 +3,18 @@
 import { cloneElement, useEffect, useRef, useState } from "react";
 import styles from "./LaunchLoader.module.css";
 
-/** Held at least this long so the sketch gets to finish; never longer than MAX_MS. */
-const MIN_MS = 2300;
-/** On a reload in the same tab: just long enough for the sketch to finish drawing. */
-const MIN_SEEN_MS = 1800;
-const MAX_MS = 12000;
+/** When the sheet starts to lift; LaunchLoader.module.css and LaunchIntro.module.css use the same
+ *  times (--lift), so the sheet and the hero's entrance run on CSS alone even if scripts are slow. */
+const LIFT_MS = 1100;
+/** On a reload in the same tab. */
+const LIFT_SEEN_MS = 600;
+let firstMount = true;
 
 /**
- * A blueprint of the device, drawn on an olive sheet while the 3D scene loads: dashed outlines,
- * Bézier handles, construction lines, and a fill that sweeps round with real setup progress (on
- * every screen: phones load the scene up front too), eased by time so it glides even when the
- * browser is busy compiling.
+ * A blueprint of the device, drawn on an olive sheet as the page opens: dashed outlines, Bézier
+ * handles, construction lines, and a fill that sweeps round as it is drawn. It is a short title card,
+ * not a loading screen: it lifts on its own clock and never waits for the 3D scene (the desk's poster
+ * stands in until the scene is ready), so the hero's words are up within about a second.
  */
 export default function LaunchLoader() {
   const [phase, setPhase] = useState<"loading" | "leaving" | "gone">("loading");
@@ -25,14 +26,14 @@ export default function LaunchLoader() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // Reduced motion: the sheet is hidden by CSS and the page is never held.
     if (reduce) return;
-    // Seen already in this tab (a reload): the sketch still plays, but the sheet lifts as soon as it is
-    // drawn and the desk is ready (quick from the browser's caches), without the extra beat.
-    const minMs = root.hasAttribute("data-seen") ? MIN_SEEN_MS : MIN_MS;
+    // Seen already in this tab (a reload): the sheet lifts sooner.
+    const liftMs = root.hasAttribute("data-seen") ? LIFT_SEEN_MS : LIFT_MS;
 
-    const start = performance.now();
-    let target = 0, shown = 0, frame = 0, left = false, last = start;
-    const onProgress = (e: Event) => { target = Math.max(target, (e as CustomEvent<number>).detail); };
-    window.addEventListener("launch:progress", onProgress);
+    // On the page's first load the clock starts with the page, as the CSS animations do, not when
+    // React gets here; coming back from another page it starts now.
+    const start = firstMount ? 0 : performance.now();
+    firstMount = false;
+    let frame = 0, left = false;
 
     // Hold the page at the top while the sheet is up; hand it back exactly where it started.
     const overflowWas = root.style.overflow;
@@ -51,15 +52,11 @@ export default function LaunchLoader() {
     };
 
     const tick = (now: number) => {
-      const elapsed = now - start, dt = Math.min(.1, Math.max(0, (now - last) / 1000)); last = now;
-      // The scene's own progress, with a slow floor from the clock so it never sits still at zero.
-      const goal = Math.max(target, Math.min(.2, elapsed / 2000));
-      // Eased by time, not by frame: a frame that came late (the browser busy compiling) moves it
-      // further instead of making it stutter.
-      shown += (goal - shown) * (1 - Math.exp(-dt * 6));
-      if (goal >= 1 && shown > .995) shown = 1;
-      draw(shown);
-      if ((shown >= 1 && elapsed >= minMs) || elapsed >= MAX_MS) { draw(1); leave(); return; }
+      const elapsed = now - start;
+      // Eased in and out over the sheet's time, by the clock (a late frame moves it further).
+      const t = Math.min(1, elapsed / liftMs);
+      draw(t * t * (3 - 2 * t));
+      if (elapsed >= liftMs) { draw(1); leave(); return; }
       frame = requestAnimationFrame(tick);
     };
     function draw(p: number) {
@@ -74,7 +71,6 @@ export default function LaunchLoader() {
 
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("launch:progress", onProgress);
       clearInterval(muzzle);
       root.style.overflow = overflowWas;
       window.__lenis?.start();

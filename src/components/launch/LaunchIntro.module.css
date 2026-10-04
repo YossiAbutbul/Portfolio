@@ -115,11 +115,16 @@
   .scroll { display: none; }
 }
 
-/* Entrance, as the loading sheet lifts: the name rises in, then the line under it, the card and the
-   cue. Set only by the loader, so without JS or with reduced motion the text is simply there. */
-:global(html[data-entering]) .word { animation: rise 1s var(--ease-out) 0.15s both; }
-:global(html[data-entering]) .card { animation: rise 0.9s var(--ease-out) 0.4s both; }
-:global(html[data-entering]) .scroll { animation: fade 0.8s var(--ease-out) 1.1s both; }
+/* Entrance, as the opening sheet lifts (--lift): the name rises in, then the line under it, the card
+   and the cue. CSS alone, from the first paint: it never waits for scripts or the 3D scene. Reduced
+   motion (no sheet) and no-JS (Home's noscript) get the text simply there. */
+.word { animation: rise 1s var(--ease-out) calc(var(--lift) + 0.05s) both; }
+.card { animation: rise 0.9s var(--ease-out) calc(var(--lift) + 0.3s) both; }
+.scroll { animation: fade 0.8s var(--ease-out) calc(var(--lift) + 1s) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .word, .card, .scroll { animation: none; }
+}
 
 @keyframes rise {
   from { opacity: 0; transform: translateY(0.6em); }

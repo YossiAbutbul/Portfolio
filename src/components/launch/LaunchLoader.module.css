@@ -6,13 +6,19 @@
   display: grid;
   place-items: center;
   background: #4b5a3d;
-  transition: opacity 0.7s var(--ease-out), visibility 0s linear 0.7s;
+  /* The sketch plays at this pace (1 was its original, slower drawing) so it is finished as the sheet
+     lifts. The lift is CSS too, at --lift (LaunchLoader.tsx), so it never waits on scripts. */
+  --pace: 0.5;
+  animation: lift 0.7s var(--ease-out) var(--lift) forwards;
 }
 
 .sheet[data-phase="leaving"] {
   opacity: 0;
   visibility: hidden;
+  transition: opacity 0.7s var(--ease-out), visibility 0s linear 0.7s;
 }
+
+@keyframes lift { to { opacity: 0; visibility: hidden; } }
 
 /* The drawing sits exactly where the 3D device will be, so the sheet can simply fade off it. The
    scene's camera has a fixed vertical field of view, so the device's place and size on screen are a
@@ -48,13 +54,13 @@
 .hLines line {
   transform-box: fill-box;
   transform-origin: left center;
-  animation: grow-x 0.7s cubic-bezier(0.45, 0, 0.2, 1) var(--d, 0s) both;
+  animation: grow-x calc(0.7s * var(--pace)) cubic-bezier(0.45, 0, 0.2, 1) calc(var(--d, 0s) * var(--pace)) both;
 }
 
 .vLines line {
   transform-box: fill-box;
   transform-origin: center top;
-  animation: grow-y 0.7s cubic-bezier(0.45, 0, 0.2, 1) var(--d, 0s) both;
+  animation: grow-y calc(0.7s * var(--pace)) cubic-bezier(0.45, 0, 0.2, 1) calc(var(--d, 0s) * var(--pace)) both;
 }
 
 .fill {
@@ -73,7 +79,7 @@
   stroke-linecap: round;
   stroke-dasharray: 1 1;
   stroke-dashoffset: 1;
-  animation: draw 0.5s cubic-bezier(0.45, 0, 0.25, 1) var(--d, 0s) forwards, ink-out 0.35s ease calc(var(--d, 0s) + 0.5s) forwards;
+  animation: draw calc(0.5s * var(--pace)) cubic-bezier(0.45, 0, 0.25, 1) calc(var(--d, 0s) * var(--pace)) forwards, ink-out calc(0.35s * var(--pace)) ease calc((var(--d, 0s) + 0.5s) * var(--pace)) forwards;
 }
 
 /* The dashed blueprint line it leaves (the same shape without the pen's pathLength, so the dashes
@@ -84,7 +90,7 @@
   stroke-width: 1.6;
   stroke-dasharray: 5 5;
   opacity: 0;
-  animation: appear 0.35s ease calc(var(--d, 0s) + 0.42s) forwards;
+  animation: appear calc(0.35s * var(--pace)) ease calc((var(--d, 0s) + 0.42s) * var(--pace)) forwards;
 }
 
 .handle line {
@@ -100,21 +106,21 @@
 .handle {
   transform-box: fill-box;
   transform-origin: center;
-  animation: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: pop calc(0.5s * var(--pace)) cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 /* Handles land as the part they belong to is finished: the body's four, then the screen's, then the
    knob's and the button's. */
-.handles .handle:nth-child(1) { animation-delay: 0.9s; }
-.handles .handle:nth-child(2) { animation-delay: 0.96s; }
-.handles .handle:nth-child(3) { animation-delay: 1.02s; }
-.handles .handle:nth-child(4) { animation-delay: 1.08s; }
-.handles .handle:nth-child(5) { animation-delay: 1.3s; }
-.handles .handle:nth-child(6) { animation-delay: 1.34s; }
-.handles .handle:nth-child(7) { animation-delay: 1.38s; }
-.handles .handle:nth-child(8) { animation-delay: 1.42s; }
-.handles .handle:nth-child(9) { animation-delay: 1.55s; }
-.handles .handle:nth-child(10) { animation-delay: 1.65s; }
+.handles .handle:nth-child(1) { animation-delay: calc(0.9s * var(--pace)); }
+.handles .handle:nth-child(2) { animation-delay: calc(0.96s * var(--pace)); }
+.handles .handle:nth-child(3) { animation-delay: calc(1.02s * var(--pace)); }
+.handles .handle:nth-child(4) { animation-delay: calc(1.08s * var(--pace)); }
+.handles .handle:nth-child(5) { animation-delay: calc(1.3s * var(--pace)); }
+.handles .handle:nth-child(6) { animation-delay: calc(1.34s * var(--pace)); }
+.handles .handle:nth-child(7) { animation-delay: calc(1.38s * var(--pace)); }
+.handles .handle:nth-child(8) { animation-delay: calc(1.42s * var(--pace)); }
+.handles .handle:nth-child(9) { animation-delay: calc(1.55s * var(--pace)); }
+.handles .handle:nth-child(10) { animation-delay: calc(1.65s * var(--pace)); }
 
 .meta {
   position: absolute;

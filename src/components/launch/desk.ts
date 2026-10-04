@@ -11,13 +11,13 @@ export interface DeskKit {
   tex: (w: number, h: number, draw: (x: CanvasRenderingContext2D, w: number, h: number) => void) => THREE.CanvasTexture;
   std: (p: THREE.MeshStandardMaterialParameters) => THREE.MeshStandardMaterial;
   geo: <T extends THREE.BufferGeometry>(g: T) => T;
+  /** Tracks anything else the scene must dispose of (the loaded textures). */
+  keep: <T extends { dispose: () => void }>(x: T) => T;
   mesh: (g: THREE.BufferGeometry, m: THREE.Material | THREE.Material[], cast?: boolean) => THREE.Mesh;
   SANS: string;
   MONO: string;
   /** Handwriting, for the notebook. Loaded on demand; pages repaint once it arrives. */
   HAND: string;
-  /** Texture scale: 1 on desktop, .5 on phones. */
-  TEX: number;
   /** Phones are portrait: the tools start closer in so they are on screen. */
   phone: boolean;
   /** Desktop swaps in photographed textures (public/textures) once they arrive. */
@@ -96,189 +96,74 @@ export interface Desk {
   setWall: (rise: number) => void;
   /** The mug's rim in world space, for the steam drawn over the canvas. */
   mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
-}
-
-// Deterministic value noise, so the wood and the mat look the same on every visit.
-function makeNoise(seed: number) {
-  const perm = new Uint8Array(512);
-  let s = seed;
-  const r = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
-  const p = [...Array(256).keys()];
-  for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
-  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
-  const grid = (x: number, y: number) => perm[(perm[x & 255] + y) & 255] / 255;
-  const fade = (t: number) => t * t * (3 - 2 * t);
-  const noise = (x: number, y: number) => {
-    const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
-    const a = grid(xi, yi), b = grid(xi + 1, yi), c = grid(xi, yi + 1), d = grid(xi + 1, yi + 1);
-    const u = fade(xf), v = fade(yf);
-    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-  };
-  const fbm = (x: number, y: number, oct = 4) => { let t = 0, amp = .5, f = 1; for (let i = 0; i < oct; i++) { t += noise(x * f, y * f) * amp; f *= 2; amp *= .5; } return t; };
-  return { noise, fbm, rand: r };
+  /** Settles once every picture the desk loads has arrived (or failed). */
+  loaded: Promise<void>;
 }
 
 export function buildDesk(kit: DeskKit): Desk {
-  const { tex, std, geo, mesh, SANS, MONO, HAND, TEX, phone, photo, upload } = kit;
+  const { tex, std, geo, keep, mesh, SANS, MONO, HAND, phone, photo, upload } = kit;
   const group = new THREE.Group();
-  const N = makeNoise(7);
 
-  /* ---------- Wood table: planks with warped grain, a colour shift per plank, dark seams ---------- */
-  // The table's finish, tried one at a time: the generated planks' colour (base + grain range, RGB)
-  // and the tint laid over the photographed oak on desktop.
-  type Finish = { kind: "wood" | "concrete" | "terrazzo"; base: number[]; range: number[]; tint: number };
-  const FINISHES: Record<string, Finish> = {
-    oak: { kind: "wood", base: [172, 112, 56], range: [48, 38, 26], tint: 0xf2dcc0 },
-    walnut: { kind: "wood", base: [74, 46, 30], range: [46, 30, 18], tint: 0x8a5e40 },
-    concrete: { kind: "concrete", base: [150, 138, 124], range: [34, 30, 26], tint: 0xffffff },
-    terrazzo: { kind: "terrazzo", base: [214, 202, 184], range: [14, 12, 10], tint: 0xffffff },
-    blackAsh: { kind: "wood", base: [30, 26, 23], range: [36, 30, 26], tint: 0x3f3631 },
-  };
-  const FINISH = FINISHES.blackAsh;
-  const W = Math.round(2048 * TEX), H = Math.round(2048 * TEX);
-  const woodData = (() => {
-    const c = document.createElement("canvas"); c.width = W; c.height = H;
-    const x = c.getContext("2d")!; const img = x.createImageData(W, H);
-    const bump = new Uint8ClampedArray(W * H);
-    const plank = H / 4;
-    if (FINISH.kind === "terrazzo") {
-      // Terrazzo: a warm stone base with a little cloud in it, then chips in the site's palette from
-      // big shards down to fine flecks. Polished flat, so the relief map stays level.
-      for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
-        const t = Math.min(1, Math.max(0, .5 + N.fbm(px / W * 5, py / H * 5, 3) * .6));
-        const i = (py * W + px) * 4;
-        img.data[i] = FINISH.base[0] + t * FINISH.range[0]; img.data[i + 1] = FINISH.base[1] + t * FINISH.range[1]; img.data[i + 2] = FINISH.base[2] + t * FINISH.range[2]; img.data[i + 3] = 255;
-        bump[py * W + px] = 128;
-      }
-      x.putImageData(img, 0, 0);
-      const chips = ["#c46f35", "#d98a4e", "#4d5a36", "#6b7a4a", "#3a2418", "#5a3a26", "#efe5d2", "#a89a86"];
-      const k = W / 2048;
-      for (const [count, min, max] of [[260, 14, 34], [900, 6, 14], [5200, 1.5, 5]] as [number, number, number][]) {
-        for (let n = 0; n < count; n++) {
-          const cx = N.rand() * W, cy = N.rand() * H, r = (min + N.rand() * (max - min)) * k, sides = 4 + Math.floor(N.rand() * 4), rot = N.rand() * Math.PI;
-          x.fillStyle = chips[Math.floor(N.rand() * chips.length)]; x.globalAlpha = .82 + N.rand() * .18;
-          x.beginPath();
-          for (let j = 0; j < sides; j++) { const a = rot + j / sides * Math.PI * 2, rr = r * (.55 + N.rand() * .55); if (j) x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); else x.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); }
-          x.closePath(); x.fill();
-        }
-      }
-      x.globalAlpha = 1;
-      return { canvas: c, bump };
-    }
-    if (FINISH.kind === "concrete") {
-      // Micro-cement: soft cloudy mottling, faint trowel sweeps, and tiny dark pores.
-      for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
-        const u = px / W * 6, v = py / H * 6;
-        const cloud = N.fbm(u * .9, v * .9, 4) * .55 + N.fbm(u * 3.2, v * 3.2, 3) * .25;
-        const sweep = Math.sin((u * .8 + v * .35 + N.fbm(u * .5, v * .5, 2) * 2.2) * 5) * .06;
-        const grit = N.noise(u * 160, v * 160) * .08;
-        const t = Math.min(1, Math.max(0, .5 + cloud + sweep + grit - .35));
-        const pore = N.rand() < .0016 ? .55 : 1;
-        const i = (py * W + px) * 4;
-        img.data[i] = (FINISH.base[0] + t * FINISH.range[0]) * pore; img.data[i + 1] = (FINISH.base[1] + t * FINISH.range[1]) * pore; img.data[i + 2] = (FINISH.base[2] + t * FINISH.range[2]) * pore; img.data[i + 3] = 255;
-        bump[py * W + px] = 128 + (grit * 300 + sweep * 200) * (pore < 1 ? -2 : 1);
-      }
-      x.putImageData(img, 0, 0);
-      return { canvas: c, bump };
-    }
-    for (let py = 0; py < H; py++) {
-      const pi = Math.floor(py / plank), shade = [0, .06, -.04, .03][pi % 4];
-      for (let px = 0; px < W; px++) {
-        const u = px / W * 6, v = py / H * 24;
-        const warp = N.fbm(u * .6 + pi * 7, v * .08, 3) * 4;
-        const grain = Math.sin((v + warp) * 9 + pi * 3) * .5 + .5;
-        const fine = N.noise(u * 90, v * 4) * .18 + N.noise(u * 240, v * 9) * .08;
-        const t = Math.min(1, Math.max(0, grain * .55 + fine + N.fbm(u * 2, v * .5, 2) * .3 + shade));
-        const seam = (py % plank) < 2 ? .7 : 1;
-        const i = (py * W + px) * 4;
-        img.data[i] = (FINISH.base[0] + t * FINISH.range[0]) * seam; img.data[i + 1] = (FINISH.base[1] + t * FINISH.range[1]) * seam; img.data[i + 2] = (FINISH.base[2] + t * FINISH.range[2]) * seam; img.data[i + 3] = 255;
-        bump[py * W + px] = 255 * (1 - grain * .6 - fine) * seam;
-      }
-    }
-    x.putImageData(img, 0, 0);
-    return { canvas: c, bump };
-  })();
-  const woodMap = new THREE.CanvasTexture(woodData.canvas); woodMap.colorSpace = THREE.SRGBColorSpace;
-  const woodBump = tex(W, H, (x) => { const img = x.createImageData(W, H); for (let i = 0; i < W * H; i++) { const b = woodData.bump[i]; img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = b; img.data[i * 4 + 3] = 255; } x.putImageData(img, 0, 0); });
-  // The generated wood does not tile seamlessly, so each repeat is mirrored: no seam lines across the
-  // table (phones keep this wood; desktop swaps in the photographed one).
-  for (const t of [woodMap, woodBump]) { t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping; t.repeat.set(2.2, 1.4); t.anisotropy = 8; }
-  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), std({ map: woodMap, bumpMap: woodBump, bumpScale: FINISH.kind === "wood" ? 2.2 : .7, roughness: { wood: .78, concrete: .88, terrazzo: .42 }[FINISH.kind] }), false);
-  table.position.z = -.06; group.add(table);
-
-  // Desktop: photographed oak (Poly Haven oak_veneer_01, CC0) replaces the generated wood once loaded.
-  /* The photographs are decoded off the main thread where the browser can (ImageBitmap; Safari keeps
-     the plain loader, as its bitmaps ignore the flip), then uploaded at a quiet moment, so a 2K photo
-     landing while someone scrolls is not a stall. */
+  /* Every picture the desk shows is a file in public/textures: photographed (Poly Haven, CC0) or
+     drawn once ahead of time by scripts/bake-textures (the generated wood, the mat's print, the
+     coffee, the wall). Nothing is painted pixel by pixel on the main thread at startup. */
+  /* Decoded off the main thread where the browser can (ImageBitmap; Safari keeps the plain loader,
+     as its bitmaps ignore the flip), then uploaded at a quiet moment, so a 2K picture landing while
+     someone scrolls is not a stall. */
   const loader = new THREE.TextureLoader();
   const bitmaps = typeof createImageBitmap === "function" && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent) ? new THREE.ImageBitmapLoader().setOptions({ imageOrientation: "flipY" }) : null;
-  const photoTex = (url: string, color: boolean, repeat: [number, number], rotate = 0) => {
+  const arrivals: Promise<void>[] = [];
+  const picture = (url: string, color: boolean, repeat: [number, number] = [1, 1], rotate = 0) => {
     let t: THREE.Texture;
-    if (bitmaps) {
-      t = new THREE.Texture(); t.flipY = false;
-      bitmaps.load(url, (bmp) => { t.image = bmp; t.needsUpdate = true; upload?.(t); });
-    } else t = loader.load(url, () => upload?.(t));
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); t.anisotropy = 8;
-    if (rotate) { t.center.set(.5, .5); t.rotation = rotate; }
-    if (color) t.colorSpace = THREE.SRGBColorSpace;
-    return t;
+    arrivals.push(new Promise<void>((done) => {
+      const landed = () => { upload?.(t); done(); };
+      if (bitmaps) {
+        t = new THREE.Texture(); t.flipY = false;
+        bitmaps.load(url, (bmp) => { t.image = bmp; t.needsUpdate = true; landed(); }, undefined, () => done());
+      } else t = loader.load(url, landed, undefined, () => done());
+    }));
+    t!.wrapS = t!.wrapT = THREE.RepeatWrapping; t!.repeat.set(...repeat); t!.anisotropy = 8;
+    if (rotate) { t!.center.set(.5, .5); t!.rotation = rotate; }
+    // The baked maps were canvases, which the scene marked sRGB (relief included); kept so they shade
+    // exactly as before.
+    if (color) t!.colorSpace = THREE.SRGBColorSpace;
+    return keep(t!);
   };
-  if (photo && FINISH.kind === "wood") {
+
+  /* ---------- Wood table ---------- */
+  // Desktop: photographed oak (oak_veneer_01) tinted to black ash. Phones: generated black ash planks
+  // (baked at the size phones drew them), each repeat mirrored since they do not tile.
+  const table = mesh(geo(new THREE.PlaneGeometry(40, 26)), photo ? std({ color: 0x3f3631, roughness: 1 }) : std({ bumpScale: 2.2, roughness: .78 }), false);
+  {
     const m = table.material as THREE.MeshStandardMaterial;
-    const rep: [number, number] = [2.4, 1.6];
-    m.map = photoTex("/textures/oak-color.webp", true, rep, Math.PI / 2);
-    m.normalMap = photoTex("/textures/oak-normal.webp", false, rep, Math.PI / 2); m.normalScale.set(.8, .8);
-    m.roughnessMap = photoTex("/textures/oak-rough.webp", false, rep, Math.PI / 2); m.roughness = 1;
-    m.bumpMap = null; m.color.set(FINISH.tint); m.needsUpdate = true;
+    if (photo) {
+      const rep: [number, number] = [2.4, 1.6];
+      m.map = picture("/textures/oak-color.webp", true, rep, Math.PI / 2);
+      m.normalMap = picture("/textures/oak-normal.webp", false, rep, Math.PI / 2); m.normalScale.set(.8, .8);
+      m.roughnessMap = picture("/textures/oak-rough.webp", false, rep, Math.PI / 2);
+    } else {
+      m.map = picture("/textures/wood-color.webp", true, [2.2, 1.4]);
+      m.bumpMap = picture("/textures/wood-bump.webp", true, [2.2, 1.4]);
+      for (const t of [m.map, m.bumpMap]) t.wrapS = t.wrapT = THREE.MirroredRepeatWrapping;
+    }
   }
+  table.position.z = -.06; group.add(table);
 
   /* ---------- Cutting mat: grid, rulers, speckle, a little wear, and old cut marks ---------- */
   const MAT_W = 11.2, MAT_H = 7.4;
-  const matTex = tex(Math.round(2240 * TEX), Math.round(1480 * TEX), (x, w, h) => {
-    x.scale(TEX, TEX); w /= TEX; h /= TEX;
-    x.fillStyle = "#3a6448"; x.fillRect(0, 0, w, h);
-    // Uneven tone from years of use.
-    for (let i = 0; i < 900; i++) {
-      const px = N.rand() * w, py = N.rand() * h, r = 40 + N.rand() * 160;
-      const g = x.createRadialGradient(px, py, 0, px, py, r);
-      const light = N.rand() > .5;
-      g.addColorStop(0, light ? "rgba(90,140,120,.035)" : "rgba(10,30,24,.05)"); g.addColorStop(1, "rgba(0,0,0,0)");
-      x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
-    }
-    for (let i = 0; i < 26000; i++) { x.fillStyle = N.rand() > .5 ? "rgba(210,235,225,.06)" : "rgba(0,20,14,.08)"; x.fillRect(N.rand() * w, N.rand() * h, 1.6, 1.6); }
-    // A printed border carries the rulers; the grid sits inside it, like a real self-healing mat.
-    const m = 96, gw = w - m * 2, gh = h - m * 2, cells = 50, cm = gw / cells;
-    x.strokeStyle = "rgba(238,228,206,.5)"; x.lineWidth = 2.4; x.strokeRect(m, m, gw, gh);
-    for (let i = 0; i <= cells; i++) { const px = m + i * cm; x.strokeStyle = i % 5 ? "rgba(238,228,206,.2)" : "rgba(238,228,206,.42)"; x.lineWidth = i % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(px, m); x.lineTo(px, h - m); x.stroke(); }
-    for (let j = 0; j * cm <= gh + .5; j++) { const py = m + j * cm; x.strokeStyle = j % 5 ? "rgba(238,228,206,.2)" : "rgba(238,228,206,.42)"; x.lineWidth = j % 5 ? 1.2 : 2.2; x.beginPath(); x.moveTo(m, py); x.lineTo(w - m, py); x.stroke(); }
-    // Ruler ticks and numbers in the border, bottom and left, in the mat's cream ink.
-    x.strokeStyle = "rgba(238,228,206,.75)"; x.fillStyle = "rgba(240,230,210,.85)"; x.font = `600 34px ${SANS}`; x.textAlign = "center";
-    for (let i = 0; i <= cells * 2; i++) { const px = m + i * cm / 2, len = i % 10 === 0 ? 26 : i % 2 === 0 ? 16 : 9; x.lineWidth = 1.6; x.beginPath(); x.moveTo(px, h - m); x.lineTo(px, h - m + len); x.stroke(); }
-    for (let i = 0; i <= cells; i += 2) x.fillText(String(i * 5), m + i * cm, h - m + 66);
-    x.textAlign = "right"; x.textBaseline = "middle";
-    const rows = Math.floor(gh / cm);
-    for (let j = 0; j <= rows * 2; j++) { const py = h - m - j * cm / 2, len = j % 10 === 0 ? 26 : j % 2 === 0 ? 16 : 9; x.beginPath(); x.moveTo(m, py); x.lineTo(m - len, py); x.stroke(); }
-    for (let j = 0; j <= rows; j += 2) { x.save(); x.translate(m - 44, h - m - j * cm); x.rotate(-Math.PI / 2); x.textAlign = "center"; x.fillText(String(j * 5), 0, 0); x.restore(); }
-    x.textAlign = "left"; x.textBaseline = "alphabetic";
-    // Old knife cuts: thin pale scratches.
-    for (let i = 0; i < 70; i++) {
-      const px = N.rand() * w, py = N.rand() * h, len = 30 + N.rand() * 180, ang = (N.rand() - .5) * .6 + (N.rand() > .5 ? 0 : Math.PI / 2);
-      x.strokeStyle = `rgba(200,230,215,${.05 + N.rand() * .09})`; x.lineWidth = .8; x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke();
-    }
-    x.font = `700 24px ${SANS}`; x.fillStyle = "rgba(240,230,210,.45)"; x.fillText("SELF-HEALING · 3 PLY · A3", w - 470, h - 34);
-  });
-  const matBump = tex(512, 340, (x, w, h) => { for (let i = 0; i < 9000; i++) { x.fillStyle = `rgba(${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},${N.rand() > .5 ? 255 : 0},.18)`; x.fillRect(N.rand() * w, N.rand() * h, 1, 1); } x.globalCompositeOperation = "destination-over"; x.fillStyle = "#808080"; x.fillRect(0, 0, w, h); });
-  matBump.wrapS = matBump.wrapT = THREE.RepeatWrapping; matBump.repeat.set(4, 4);
+  const matTex = picture(phone ? "/textures/mat-print-half.webp" : "/textures/mat-print.webp", true);
+  matTex.wrapS = matTex.wrapT = THREE.ClampToEdgeWrapping;
   const matSide = std({ color: 0x2c5039, roughness: .9 });
-  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, std({ map: matTex, bumpMap: matBump, bumpScale: .9, roughness: 1 }), matSide], false);
+  const matTop = std({ map: matTex, roughness: 1 });
+  const mat = mesh(geo(new RoundedBoxGeometry(MAT_W, MAT_H, .05, 2, .02)), [matSide, matSide, matSide, matSide, matTop, matSide], false);
   mat.position.set(1.9, .45, -.03); mat.rotation.z = -.07; group.add(mat);
   // Desktop: the mat keeps its printed colour and grid, with photographed surface relief (Poly Haven
-  // linoleum_brown, CC0) tiled small, so it reads as a real matte plastic sheet.
+  // linoleum_brown, CC0) tiled small, so it reads as a real matte plastic sheet. Phones: a speckle.
   if (photo) {
-    const top = (mat.material as THREE.Material[])[4] as THREE.MeshStandardMaterial;
-    top.normalMap = photoTex("/textures/mat-normal.webp", false, [7, 4.6]); top.normalScale.set(.45, .45);
-    top.roughnessMap = photoTex("/textures/mat-rough.webp", false, [7, 4.6]); top.roughness = 1;
-    top.bumpMap = null; top.needsUpdate = true;
+    matTop.normalMap = picture("/textures/mat-normal.webp", false, [7, 4.6]); matTop.normalScale.set(.45, .45);
+    matTop.roughnessMap = picture("/textures/mat-rough.webp", false, [7, 4.6]);
+  } else {
+    matTop.bumpMap = picture("/textures/mat-bump.webp", true, [4, 4]); matTop.bumpScale = .9;
   }
 
   /* ---------- Contact shadow: a soft dark pad under each tool, the thing that makes objects sit ---------- */
@@ -441,17 +326,9 @@ export function buildDesk(kit: DeskKit): Desk {
     const CR = RO - .052;
     const surface = new THREE.RingGeometry(0, CR, 72, 28);
     const sp = surface.attributes.position, flat = Float32Array.from(sp.array as Float32Array);
-    const coffeeTex = tex(512, 512, (x, w, h) => {
-      const gr = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-      gr.addColorStop(0, "#0d0603"); gr.addColorStop(.6, "#170a04"); gr.addColorStop(.86, "#2a1408"); gr.addColorStop(.95, "#6b4122"); gr.addColorStop(1, "#9a6a3e");
-      x.fillStyle = gr; x.fillRect(0, 0, w, h);
-      // Crema: a thin ring of tiny pale bubbles at the rim; the middle stays dark.
-      for (let i = 0; i < 500; i++) {
-        const a = N.rand() * Math.PI * 2, r = (.86 + N.rand() * .14) * w / 2;
-        x.fillStyle = `rgba(200,150,100,${.12 + N.rand() * .2})`;
-        x.beginPath(); x.arc(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, .6 + N.rand() * 1.6, 0, Math.PI * 2); x.fill();
-      }
-    });
+    // Dark in the middle, a ring of crema at the rim (baked).
+    const coffeeTex = picture("/textures/coffee.webp", true);
+    coffeeTex.wrapS = coffeeTex.wrapT = THREE.ClampToEdgeWrapping;
     const coffee = mesh(geo(surface), std({ map: coffeeTex, roughness: .32, envMapIntensity: .25 }), false);
     coffee.position.z = H2 - .22; g.add(coffee);
     const drops: { x: number; y: number; t: number; a: number }[] = [];
@@ -492,7 +369,7 @@ export function buildDesk(kit: DeskKit): Desk {
     outline.bezierCurveTo(paddle, end - (end - swell) * .25, neck, swell + (end - swell) * .45, neck, swell);
     outline.lineTo(neck, 0);
     outline.closePath();
-    const strip = new THREE.ExtrudeGeometry(outline, { depth: .012, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 3, curveSegments: 24 });
+    const strip = new THREE.ExtrudeGeometry(outline, { depth: .012, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 2, curveSegments: 10 });
     strip.translate(0, 0, -.006);
     const stem = mesh(geo(strip), steelSpoon);
     // Length along from→to, width across the cup's tangent, so the flat face looks up and outward.
@@ -1154,15 +1031,8 @@ export function buildDesk(kit: DeskKit): Desk {
   let clockHands: { h: THREE.Object3D; m: THREE.Object3D } | null = null;
   let clockSpin = 0;
   {
-    const plaster = tex(Math.round(512 * TEX), Math.round(128 * TEX), (x, w, h) => {
-      const N = makeNoise(41);
-      const img = x.createImageData(w, h);
-      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-        const n = N.fbm(i / w * 40, j / h * 10, 4), k = (j * w + i) * 4;
-        img.data[k] = 214 + n * 22; img.data[k + 1] = 204 + n * 20; img.data[k + 2] = 186 + n * 18; img.data[k + 3] = 255;
-      }
-      x.putImageData(img, 0, 0);
-    });
+    const plaster = picture("/textures/plaster.webp", true);
+    plaster.wrapS = plaster.wrapT = THREE.ClampToEdgeWrapping;
     // The room's lights reach this wall unevenly (the sun is behind it, the window patch and the
     // shadow frusta end partway up), which split it into bands. It carries its own soft, even light
     // instead: the plaster texture as its glow, and no shadows thrown onto it.
@@ -1175,17 +1045,13 @@ export function buildDesk(kit: DeskKit): Desk {
     // Pegboard on the left, with what hangs on it. Phones leave it out: there is room for the shelf
     // and the clock only.
     const pb = new THREE.Group(); wall.add(pb); pb.visible = !phone;
-    const pegTex = tex(Math.round(1024 * TEX), Math.round(360 * TEX), (x, w, h) => {
-      x.fillStyle = "#a9835a"; x.fillRect(0, 0, w, h);
-      x.fillStyle = "rgba(60,40,22,.85)";
-      const step = w / 38;
-      for (let py = step / 2; py < h; py += step) for (let px = step / 2; px < w; px += step) { x.beginPath(); x.arc(px, py, step * .16, 0, Math.PI * 2); x.fill(); }
-    });
+    const pegTex = picture("/textures/pegboard.webp", true);
+    if (!phone) pegTex.wrapS = pegTex.wrapT = THREE.ClampToEdgeWrapping;
     const edgeMat = std({ color: 0x8d6b48 });
     // Box faces run +x, -x, +y, -y, +z, -z; the side facing the room (and the camera) is -y.
     const board = mesh(geo(new THREE.BoxGeometry(6.2, .07, 2.4)), [edgeMat, edgeMat, edgeMat, std({ map: pegTex, roughness: .85 }), edgeMat, edgeMat]);
     board.position.set(phone ? -.7 : -4.1, WY - .05, phone ? 2.5 : 2.35); pb.add(board);
-    if (phone) { board.scale.set(1.5 / 6.2, 1, 1.8 / 2.4); pegTex.repeat.set(1.5 / 6.2, 1.8 / 2.4); pegTex.wrapS = pegTex.wrapT = THREE.RepeatWrapping; }
+    if (phone) { board.scale.set(1.5 / 6.2, 1, 1.8 / 2.4); pegTex.repeat.set(1.5 / 6.2, 1.8 / 2.4); }
     const pegMat = std({ color: 0x9a9a9a, metalness: .8, roughness: .3 });
     const peg = (x: number, z: number) => { const o = mesh(geo(new THREE.CylinderGeometry(.025, .025, .22, 8)), pegMat); o.position.set(x, WY - .19, z); pb.add(o); };
     // A coil of cable, two loops hanging on a peg: it swings.
@@ -1828,6 +1694,7 @@ export function buildDesk(kit: DeskKit): Desk {
 
   return {
     group,
+    loaded: Promise.all(arrivals).then(() => {}),
     update,
     poke(ray) {
       raycaster.ray.copy(ray); if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;

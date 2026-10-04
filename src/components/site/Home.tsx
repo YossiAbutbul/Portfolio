@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <div style={{ position: "relative" }}>
       {/* Without scripting nothing would ever lift the sheet, so it must not show at all. */}
-      <noscript><style>{"[data-launch-loader]{display:none!important}header{opacity:1!important;visibility:visible!important}"}</style></noscript>
+      <noscript><style>{"[data-launch-loader]{display:none!important}header{opacity:1!important;visibility:visible!important}#hero-name,[data-card],[data-cue]{animation:none!important}"}</style></noscript>
       <LaunchLoader />
       <LaunchStage />
       <LaunchIntro />
