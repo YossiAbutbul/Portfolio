@@ -142,92 +142,154 @@ button {
   }
 }
 
-/* The 404 page. Kept here rather than in a CSS module: Next preloads a not-found module's
-   stylesheet on every page, where it then goes unused (a console warning on every load). */
-.nf-page {
-  min-height: calc(100dvh - 8rem);
-  display: flex;
-  align-items: center;
-}
-
-.nf-inner {
-  display: grid;
-  gap: var(--space-4);
-  padding-top: 7rem;
-  padding-bottom: var(--space-8);
-  justify-items: start;
-}
-
-.nf-stamp {
-  color: var(--ink-muted);
-  padding-bottom: var(--space-3);
-  border-bottom: var(--hairline-w) solid var(--rule-strong);
-  width: 100%;
-}
-
-.nf-code {
-  font-size: var(--step-6);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  line-height: 0.9;
-}
-
-.nf-headline {
-  font-size: var(--step-2);
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.nf-sub {
-  max-width: 44ch;
-  color: var(--ink-mid);
-  line-height: 1.55;
-}
-
 /* No page scroll behind an open modal (the privacy dialog). */
 html:has(dialog[open]) {
   overflow: hidden;
 }
 
-.nf-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  margin-top: var(--space-3);
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.nf-primary,
-.nf-ghost {
-  display: inline-flex;
+/* ---------- The 404 ----------
+   Kept here rather than in a CSS module: Next preloads a not-found module's stylesheet on every page,
+   where it then goes unused (a console warning on every load). The live scene (LaunchStage, pose
+   "wall") is the backdrop, opened by the loading sheet (LaunchLoader, mark "404"). The way out is a
+   card in the hero card's glass. */
+.nf-page {
+  position: relative;
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  min-height: 100dvh;
+  padding: 6rem var(--gutter) clamp(2rem, 6vh, 4rem);
+  /* The canvas only takes the pointer where something on the desk answers; the rest passes through. */
+  pointer-events: none;
+}
+
+/* The way out: a card in the hero card's warm frosted glass, at the same corner. */
+.nf-card {
+  position: fixed;
+  left: var(--gutter);
+  bottom: 3.5svh;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: clamp(16rem, 20vw, 22rem);
+  padding: clamp(1rem, 1.45vw, 1.55rem);
+  color: var(--cream);
+  background: rgba(150, 108, 72, 0.3);
+  border: 1px solid rgba(255, 238, 214, 0.16);
+  border-radius: 2px;
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  backdrop-filter: blur(20px) saturate(1.15);
+  pointer-events: auto;
+  animation: nf-rise var(--dur-slow) var(--ease-out) 200ms backwards;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nf-card { background: rgba(60, 42, 28, 0.82); }
+}
+
+.nf-card-head {
+  margin: 0;
+  max-width: 14ch;
+  font-size: clamp(1.05rem, 1.5vw, 1.55rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.nf-card-body {
+  margin: clamp(1.1rem, 1.8vw, 1.8rem) 0 0;
+  padding-top: clamp(0.85rem, 1.2vw, 1.2rem);
+  border-top: 1px dotted rgba(255, 238, 214, 0.65);
+  font-size: clamp(0.9rem, 1vw, 1.05rem);
+  font-weight: 500;
+  line-height: 1.38;
+}
+
+/* The ways out as rows across the card, under a dotted rule each, an arrow at the end. */
+.nf-card-ways {
+  display: grid;
+  margin: clamp(0.9rem, 1.3vw, 1.3rem) calc(-1 * clamp(1rem, 1.45vw, 1.55rem)) calc(-1 * clamp(1rem, 1.45vw, 1.55rem));
+}
+
+.nf-card-ways a {
+  display: flex;
   align-items: center;
-  padding: 0.8rem 1.2rem;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 3rem;
+  padding: 0 clamp(1rem, 1.45vw, 1.55rem);
+  border-top: 1px dotted rgba(255, 238, 214, 0.45);
   font-family: var(--font-mono);
   font-size: var(--step--1);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  border: var(--hairline-w) solid var(--ink);
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
-.nf-primary {
-  background: var(--ink);
-  color: var(--paper);
+.nf-card-ways a::after {
+  content: "→";
+  transition: translate var(--dur-med) var(--ease-out);
 }
 
-.nf-primary:hover,
-.nf-primary:focus-visible {
-  background: transparent;
-  color: var(--ink);
+/* The first is the way most people want: the cork arrow. */
+.nf-card-ways a:first-child::after {
+  color: var(--mark);
 }
 
-.nf-ghost {
-  border-color: var(--rule-strong);
-  color: var(--ink);
+.nf-card-ways a:hover,
+.nf-card-ways a:focus-visible {
+  background: rgba(255, 238, 214, 0.1);
 }
 
-.nf-ghost:hover,
-.nf-ghost:focus-visible {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+.nf-card-ways a:hover::after,
+.nf-card-ways a:focus-visible::after {
+  translate: 4px 0;
 }
+
+.nf-card-ways a:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: -2px;
+}
+
+@keyframes nf-rise {
+  from { translate: 0 12px; opacity: 0; }
+}
+
+/* Phones: across the foot of the screen. */
+@media (max-width: 640px) {
+  .nf-card {
+    left: var(--gutter);
+    right: var(--gutter);
+    width: auto;
+  }
+
+  .nf-card-head {
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-card {
+    animation: none;
+  }
+
+  .nf-card-ways a,
+  .nf-card-ways a::after {
+    transition: none;
+  }
+}
+

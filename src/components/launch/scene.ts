@@ -30,7 +30,11 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 /** Hand the main thread back between setup stages so no single task blocks input or paint for long. */
 const yieldToMain = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneHooks = {}, signal?: AbortSignal): Promise<LaunchScene | null> {
+/** "wall": the 404 page's fixed shot, More work's corner of the desk without the notebook, with the
+ *  404 standing on the mat; everything on it playable, and scroll changes nothing. */
+export type ScenePose = "story" | "wall";
+
+export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneHooks = {}, signal?: AbortSignal, pose: ScenePose = "story"): Promise<LaunchScene | null> {
   let renderer: THREE.WebGLRenderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" }); }
   catch { return null; }
@@ -178,7 +182,7 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   // The desk's entrance (desk.ts) takes about 3 s.
   const ENTRANCE_MS = 3000;
   const quiet = (cb: () => void) => (typeof requestIdleCallback === "function" ? requestIdleCallback(cb, { timeout: 1000 }) : setTimeout(cb, 30));
-  const deskSet = buildDesk({ tex, std, geo, keep, mesh, SANS, MONO, HAND, phone: small(), photo: !small(), upload: (t) => quiet(() => { if (!disposed) renderer.initTexture(t); }) });
+  const deskSet = buildDesk({ tex, std, geo, keep, mesh, SANS, MONO, HAND, phone: small(), photo: !small(), sign: pose === "wall", bookless: pose === "wall", upload: (t) => quiet(() => { if (!disposed) renderer.initTexture(t); }) });
   const desk = deskSet.group; scene.add(desk);
   hooks.onProgress?.(.6);
   await yieldToMain(); if (signal?.aborted) return abandon();
@@ -320,6 +324,13 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
   addEventListener("pointermove", onPointer, { passive: true });
 
   function choreograph() {
+    if (pose === "wall") {
+      // The 404: More work's shot, held, lit, with the wall up (the notebook is left out by the kit).
+      prepareWall();
+      const t: Pose = { x: 0, y: 0, z: FRONT, rx: 0, ry: 0, rz: 0, s: .2, veil: 0, spot: 0, show: 0, spin: 0, low: 1, crane: 0 };
+      deskSet.book({ enter: 1, rise: 0, u: 0 });
+      return { t, backdrop: "desk" as const, hero: false, pages: "" };
+    }
     const intro = byId("intro"), ships = byId("ships"), work = byId("work"), book = byId("more-work"), after = byId("experience");
     const vh = innerHeight, mob = small(), base = mob ? .72 : 1;
     // Approaching More work (the projects about to come into view, a few screens before it): get its
@@ -405,6 +416,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     renderer.setSize(innerWidth, innerHeight, false);
     composer?.setPixelRatio(renderer.getPixelRatio()); composer?.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight; camera.fov = small() ? 44 : 30; camera.updateProjectionMatrix();
+    // The 404's sign is sized for a wide window; narrower ones see less across, so it shrinks.
+    if (pose === "wall" && !small()) deskSet.fitSign(clamp(camera.aspect / 1.7, .55, 1));
     kick();
   }
   addEventListener("resize", resize); resize();
@@ -471,7 +484,8 @@ export async function createLaunchScene(canvas: HTMLCanvasElement, hooks: SceneH
     const { t, backdrop, hero, pages } = choreograph();
     if (pages !== lastPages) { lastPages = pages; shadowsStale = true; }
     if (backdrop !== lastBackdrop) { lastBackdrop = backdrop; hooks.onBackdrop?.(backdrop); }
-    const k = still ? 1 : 1 - Math.exp(-dt * 5);
+    // The 404's shot is held, not reached: it is simply there from the first frame.
+    const k = still || pose === "wall" ? 1 : 1 - Math.exp(-dt * 5);
     let moving = 0, moved = 0;
     (Object.keys(cur) as (keyof Pose)[]).forEach((key) => {
       const next = lerp(cur[key], t[key], k), d = Math.abs(next - cur[key]);

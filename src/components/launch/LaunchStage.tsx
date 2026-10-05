@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LaunchScene } from "./scene";
+import type { LaunchScene, ScenePose } from "./scene";
 import styles from "./LaunchStage.module.css";
 
 type Backdrop = "desk" | "void";
@@ -10,9 +10,10 @@ type Backdrop = "desk" | "void";
  * The fixed layers behind the page: a backdrop glow that matches the scene's veil, then the WebGL
  * canvas. The three.js module is fetched once the browser is idle after the first paint, while the
  * opening sheet (LaunchLoader) is up; the sheet waits for the scene's first frame, so the page opens
- * straight onto the live desk. Without WebGL the backdrop simply stays.
+ * straight onto the live desk. Without WebGL the backdrop simply stays. The 404 page uses it too,
+ * held on its own shot (pose "wall").
  */
-export default function LaunchStage() {
+export default function LaunchStage({ pose = "story" }: { pose?: ScenePose }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const [backdrop, setBackdrop] = useState<Backdrop>("desk");
@@ -37,7 +38,7 @@ export default function LaunchStage() {
         say: (message) => window.dispatchEvent(new CustomEvent("launch:say", { detail: message })),
         onPress: (count) => window.dispatchEvent(new CustomEvent("launch:press", { detail: count })),
         onProgress: (value) => window.dispatchEvent(new CustomEvent("launch:progress", { detail: value })),
-      }, abort.signal);
+      }, abort.signal, pose);
       // No WebGL (or it failed): let the loading sheet go now rather than at its time limit.
       if (!scene) { window.dispatchEvent(new CustomEvent("launch:progress", { detail: 1 })); return; }
       if (abort.signal.aborted) { scene.dispose(); scene = null; return; }
@@ -69,7 +70,7 @@ export default function LaunchStage() {
       window.removeEventListener("launch:press-device", press);
       scene?.dispose();
     };
-  }, []);
+  }, [pose]);
 
   return (
     <>

@@ -23,6 +23,10 @@ export interface DeskKit {
   phone: boolean;
   /** Desktop swaps in photographed textures (public/textures) once they arrive. */
   photo: boolean;
+  /** The 404 page: a solid "404" stands on the mat (press it and it jumps). */
+  sign?: boolean;
+  /** The 404 page: More work's arrangement without the notebook and its hologram. */
+  bookless?: boolean;
   /** Uploads a texture to the GPU at a quiet moment (so a photo arriving mid-scroll does not stall). */
   upload?: (t: THREE.Texture) => void;
 }
@@ -96,6 +100,8 @@ export interface Desk {
   /** Builds the wall (once; it starts empty) and returns its group, still hidden. setWall builds it
    *  on the spot if it is needed before then. */
   buildWall: () => THREE.Object3D;
+  /** The 404 page: scale the standing "404" to the window (1 at full width). */
+  fitSign: (k: number) => void;
   /** The mug's rim in world space, for the steam drawn over the canvas. */
   mugTop: () => { at: THREE.Vector3; radius: number; fade: number } | null;
   /** Settles once every picture the desk loads has arrived (or failed). */
@@ -106,6 +112,8 @@ export interface Desk {
 
 export function buildDesk(kit: DeskKit): Desk {
   const { tex, std, geo, keep, mesh, SANS, MONO, HAND, phone, photo, upload } = kit;
+  // The 404 on a phone: the narrow frame has no room for the mug and the eraser, so they stay off.
+  const bare = !!kit.bookless && phone;
   const group = new THREE.Group();
   /* Lights of the parts shown later (the More work wall's strip, the hologram's glow) live here on the
      desk from the start, at zero, not inside those hidden parts: three builds a shader per set of
@@ -285,6 +293,7 @@ export function buildDesk(kit: DeskKit): Desk {
     g.add(mesh(geo(new THREE.BoxGeometry(SL, W + .008, H + .008)), [band, band, band, band, std({ map: front, roughness: .6 }), std({ map: back, roughness: .6 })]));
     const [EX, EY, EA] = phone ? [-1.7, .95, .2] : [-4.3, .45, -.3];
     const holder = new THREE.Group(); holder.position.set(EX, EY, H / 2); holder.rotation.z = EA; holder.add(g); group.add(holder);
+    holder.visible = !bare;
     let flip = -1, roll = -1;
     // The roll in: from off the left edge, end over end along its own length (about its short
     // axis), two full turns, landing face up where it lies.
@@ -303,7 +312,7 @@ export function buildDesk(kit: DeskKit): Desk {
         const [AX, AY, AA] = [1.35, -1.45, .3];
         holder.position.set(EX + (AX - EX) * e, EY + (AY - EY) * e, H / 2); holder.rotation.z = EA + (AA - EA) * e;
       },
-      hit: (ray) => { raycaster.ray.copy(ray); return raycaster.intersectObject(holder, true).length > 0; },
+      hit: (ray) => { if (bare) return false; raycaster.ray.copy(ray); return raycaster.intersectObject(holder, true).length > 0; },
       press(ray) { if (!eraser!.hit(ray)) return false; if (flip < 0) flip = 0; return true; },
       update(dt) {
         if (roll !== -1) {
@@ -469,12 +478,13 @@ export function buildDesk(kit: DeskKit): Desk {
     const rim = new THREE.Vector3();
     mug = {
       press(ray) {
+        if (bare) return false;
         raycaster.ray.copy(ray);
         if (!raycaster.intersectObject(g, true).length) return false;
         if (stir < 0) { stir = 0; trail = 0; }
         return true;
       },
-      over(ray) { raycaster.ray.copy(ray); return raycaster.intersectObject(g, true).length > 0; },
+      over(ray) { if (bare) return false; raycaster.ray.copy(ray); return raycaster.intersectObject(g, true).length > 0; },
       update(dt) {
         let busy = false;
         if (enterT >= 0 && enterT < 1.7) { mugAt(backOut(Math.min(1, Math.max(0, (enterT - .2) / 1.1)))); busy = true; }
@@ -486,7 +496,7 @@ export function buildDesk(kit: DeskKit): Desk {
       // to show (none until the mug has landed after its entrance).
       top: () => {
         coffee.getWorldPosition(rim); rim.z += .2;
-        return { at: rim, radius: CR * g.scale.x, fade: enterT < 0 ? 1 : Math.min(1, Math.max(0, (enterT - 1.3) / .9)) };
+        return { at: rim, radius: CR * g.scale.x, fade: bare ? 0 : enterT < 0 ? 1 : Math.min(1, Math.max(0, (enterT - 1.3) / .9)) };
       },
     };
     const handle = mesh(geo(new THREE.TorusGeometry(.26, .065, 18, 40, Math.PI)), std({ color: MUG_GLAZE, roughness: .85, envMapIntensity: .25 }));
@@ -501,6 +511,7 @@ export function buildDesk(kit: DeskKit): Desk {
     g.position.set(MX, MY, 0); g.rotation.z = MA; group.add(g);
     const mugPad = new THREE.Mesh(padGeo, padMat); mugPad.scale.set(2.5, 2.3, 1); mugPad.position.set(MX, MY, .004); mugPad.rotation.z = MA; mugPad.renderOrder = 1; group.add(mugPad);
     mugRig = { g, pad: mugPad, x: MX, y: MY, s: g.scale.x };
+    g.visible = mugPad.visible = !bare;
     // Entrance: slides in from beyond the top right corner and settles with a small overshoot.
     const mugAt = (e: number) => {
       const k = 1 - e;
@@ -980,9 +991,11 @@ export function buildDesk(kit: DeskKit): Desk {
       if (left.phi !== Math.PI) { left.phi = left.target = Math.PI; left.shape(); }
       // The hologram: rises once the book has landed, and shows the spread lying open.
       rise = state.rise; holo.visible = rise > .005; holo.scale.set(HS, HS, HS * Math.max(.001, rise));
+      // The 404 page has the wall without the book and its hologram.
+      if (kit.bookless) { nb.visible = pad.visible = false; holo.visible = false; holoLight.intensity = 0; }
       // Phones: the mug, smaller, stands back at the left edge, out of the way of the book and the
       // wall; the pencil comes forward, smaller, in front of the book.
-      if (phone) eraser?.aside(e);
+      if (phone && !bare) eraser?.aside(e);
       if (phone && mugRig) {
         // Scales are relative to the mug's own (it is modelled small and scaled up).
         const x = mugRig.x + (-1.7 - mugRig.x) * e, y = mugRig.y + (3.4 - mugRig.y) * e, k = 1 - (1 - .62 / mugRig.s) * e;
@@ -1830,8 +1843,82 @@ export function buildDesk(kit: DeskKit): Desk {
     let playing = false;
     if (wall.visible) for (const g of gadgets) playing = g.update(dt) || playing;
     const flipping = eraser?.update(dt) ?? false;
-    return moving || flipping || paging || rippling || playing || pointer.on || (enterT >= 0 && enterT < 3);
+    const jumping = digitsMoving(dt);
+    return moving || flipping || paging || rippling || playing || jumping || pointer.on || (enterT >= 0 && enterT < 3);
   }
+
+  /* The 404 page: a solid "404" standing upright on the mat, facing the More work camera, matte, in
+     the olive of the device's button. Press a digit and it jumps, its neighbours a beat after. */
+  const digits: { m: THREE.Mesh; t: number }[] = [];
+  let signGroup: THREE.Group | null = null, signResized = false;
+  const JUMP = .55, LAND = .2;
+  if (kit.sign) {
+    const round = (sh: THREE.Shape | THREE.Path, x: number, y: number, w: number, h: number, r: number) => {
+      sh.moveTo(x + r, y); sh.lineTo(x + w - r, y); sh.quadraticCurveTo(x + w, y, x + w, y + r);
+      sh.lineTo(x + w, y + h - r); sh.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      sh.lineTo(x + r, y + h); sh.quadraticCurveTo(x, y + h, x, y + h - r);
+      sh.lineTo(x, y + r); sh.quadraticCurveTo(x, y, x + r, y);
+      return sh;
+    };
+    // A 4: the stem, the crossbar and the diagonal as one outline, its counter cut out.
+    const four = () => {
+      const f = new THREE.Shape([
+        new THREE.Vector2(.66, 0), new THREE.Vector2(.96, 0), new THREE.Vector2(.96, .38), new THREE.Vector2(1.16, .38),
+        new THREE.Vector2(1.16, .66), new THREE.Vector2(.96, .66), new THREE.Vector2(.96, 1.6), new THREE.Vector2(.64, 1.6),
+        new THREE.Vector2(0, .64), new THREE.Vector2(0, .38), new THREE.Vector2(.66, .38),
+      ]);
+      f.holes.push(new THREE.Path([new THREE.Vector2(.66, .66), new THREE.Vector2(.66, 1.12), new THREE.Vector2(.33, .66)]));
+      return f;
+    };
+    const zero = round(new THREE.Shape(), 0, 0, 1.1, 1.6, .52) as THREE.Shape;
+    zero.holes.push(round(new THREE.Path(), .3, .3, .5, 1, .25) as THREE.Path);
+    // Matte: a rough surface that barely takes the room's reflections.
+    const olive = std({ color: 0x55633b, roughness: .92, metalness: 0, envMapIntensity: .18 });
+    const solid = { depth: .42, bevelEnabled: true, bevelThickness: .06, bevelSize: .05, bevelSegments: 5, curveSegments: 28 };
+    const sign = new THREE.Group();
+    for (const [shape, x, w] of [[four(), -1.82, 1.16], [zero, -.55, 1.1], [four(), .67, 1.16]] as [THREE.Shape, number, number][]) {
+      const g = new THREE.ExtrudeGeometry(shape, solid);
+      // Centred on its own foot, so a squash on landing spreads from the base.
+      g.translate(-w / 2, 0, 0);
+      const m = mesh(geo(g), olive);
+      m.position.x = x + w / 2; m.receiveShadow = true; sign.add(m);
+      digits.push({ m, t: -1 });
+    }
+    // Stood up: the outline's height becomes height off the mat, its depth runs away from the camera.
+    sign.rotation.x = Math.PI / 2;
+    // Phones look at the desk from a narrower frame: a smaller sign, a little further back.
+    sign.position.set(kit.phone ? 0 : -.1, kit.phone ? .6 : .1, .06);
+    sign.scale.setScalar(kit.phone ? .8 : 1.25);
+    group.add(sign);
+    signGroup = sign;
+  }
+  const digitAt = (ray: THREE.Ray) => {
+    if (!digits.length) return -1;
+    raycaster.ray.copy(ray);
+    const hit = raycaster.intersectObjects(digits.map((d) => d.m), false)[0];
+    return hit ? digits.findIndex((d) => d.m === hit.object) : -1;
+  };
+  const jump = (i: number) => {
+    // The one pressed goes at once, the others a beat later by how far away they stand.
+    digits.forEach((d, j) => { if (d.t < 0 || d.t > JUMP) d.t = -Math.abs(j - i) * .12 - (j === i ? 0 : .0001); });
+    digits[i].t = 0;
+  };
+  // Waiting (t below zero and not idle), in the air (0..JUMP), then the squash on landing.
+  const digitsMoving = (dt: number) => {
+    // A resized sign casts a different shadow: report it once so the shadow maps are redrawn.
+    let moving = signResized; signResized = false;
+    for (const d of digits) {
+      if (d.t === -1) continue;
+      d.t += dt; moving = true;
+      const up = d.t > 0 && d.t < JUMP ? Math.sin(Math.PI * d.t / JUMP) : 0;
+      const land = d.t >= JUMP ? Math.sin(Math.PI * Math.min(1, (d.t - JUMP) / LAND)) : 0;
+      d.m.position.y = up * .55;
+      d.m.scale.set(1 + land * .08, 1 - land * .14, 1 + land * .08);
+      d.m.rotation.z = up * .06 * Math.sign(d.m.position.x || 1);
+      if (d.t >= JUMP + LAND) { d.t = -1; d.m.position.y = 0; d.m.scale.set(1, 1, 1); d.m.rotation.z = 0; }
+    }
+    return moving;
+  };
 
   return {
     group,
@@ -1854,9 +1941,10 @@ export function buildDesk(kit: DeskKit): Desk {
       for (const t of tools) if (t.enter) { t.x = t.hx + t.enter.dx; t.y = t.hy + t.enter.dy; t.vx = t.vy = t.va = 0; t.held = true; }
       notebook?.enter();
     },
-    over: (ray) => ((notebookOn && notebook?.over(ray)) || mug?.over(ray) || eraser?.hit(ray) || !!gadgetAt(ray)) ?? false,
+    over: (ray) => ((notebookOn && notebook?.over(ray)) || mug?.over(ray) || eraser?.hit(ray) || !!gadgetAt(ray) || digitAt(ray) >= 0) ?? false,
     hint(ray) {
       const n = notebookOn ? notebook?.hint(ray) : null; if (n) return n;
+      if (digitAt(ray) >= 0) return "Press it";
       if (mug?.over(ray)) return "Click to stir";
       if (eraser?.hit(ray)) return "Click to flip";
       const g = gadgetAt(ray); if (g) return g.hint;
@@ -1881,9 +1969,12 @@ export function buildDesk(kit: DeskKit): Desk {
       if (wallRise.light) wallRise.light.intensity = rise * 9;
       for (const g of gadgets) g.update(0);
     },
+    // Narrower windows see less of the desk across: the 404 shrinks with them (k 1 at full width).
+    fitSign(k) { if (signGroup) { signGroup.scale.setScalar((kit.phone ? .8 : 1.25) * k); signResized = true; } },
     setMoreWork: (list) => notebook?.setMoreWork(list) ?? Promise.resolve(),
     press: (ray) => {
       if ((notebookOn && notebook?.press(ray)) || mug?.press(ray) || eraser?.press(ray)) return true;
+      const d = digitAt(ray); if (d >= 0) { jump(d); return true; }
       const g = gadgetAt(ray); if (g) { g.press(); return true; }
       return false;
     },
