@@ -78,7 +78,7 @@
 }
 
 .item {
-  transition: opacity 0.45s var(--ease-out), transform 0.6s var(--ease-out);
+  transition: opacity 0.45s var(--ease-out), transform 0.6s var(--ease-out), visibility 0s;
 }
 
 .item:not(:first-child) {
@@ -86,9 +86,20 @@
   inset: 0 0 auto;
 }
 
+/* Off: faded, then hidden once the fade is done, so the stacked labels' links never overlap the
+   shown one's as tap targets. Every label but the first starts off (in the markup). */
 .item[data-off] {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
+  transition: opacity 0.45s var(--ease-out), transform 0.6s var(--ease-out), visibility 0s linear 0.45s;
+}
+
+/* Without JS nothing turns the labels over: list them all, as for reduced motion. */
+@media (scripting: none) {
+  .items { position: relative; left: 0; top: 0; width: 100%; translate: none; display: flex; flex-direction: column; gap: 3rem; }
+  .item, .item:not(:first-child) { position: relative; inset: auto; }
+  .item[data-off] { opacity: 1; visibility: visible; pointer-events: auto; }
 }
 
 .meta {
@@ -371,6 +382,6 @@
   .window { position: relative; left: auto; right: auto; top: auto; translate: none; width: 100%; margin-bottom: 3rem; }
   .items { position: relative; left: 0; top: 0; width: 100%; translate: none; display: flex; flex-direction: column; gap: 3rem; }
   .item, .item:not(:first-child) { position: relative; inset: auto; transition: none; }
-  .item[data-off] { opacity: 1; transform: none; pointer-events: auto; }
+  .item[data-off] { opacity: 1; visibility: visible; transform: none; pointer-events: auto; }
   .shot, .window .progress { transition: none; }
 }

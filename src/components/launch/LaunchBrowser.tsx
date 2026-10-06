@@ -229,7 +229,7 @@ export default function LaunchBrowser({ projects }: { projects: Project[] }) {
             const live = project.links.find((l) => l.label === "Live");
             const external = live ?? project.links[0];
             return (
-              <article key={project.slug} className={styles.item} data-item data-url={external ? address(external.href) : ""} data-title={project.title} data-source={live ? undefined : ""} aria-labelledby={`work-${project.slug}`}>
+              <article key={project.slug} className={styles.item} data-item data-off={i > 0 ? "" : undefined} data-url={external ? address(external.href) : ""} data-title={project.title} data-source={live ? undefined : ""} aria-labelledby={`work-${project.slug}`}>
                 <span className={styles.meta}>
                   <b>{String(i + 1).padStart(2, "0")}</b> {project.year} · {project.role}
                 </span>
