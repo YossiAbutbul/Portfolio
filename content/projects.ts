@@ -16,6 +16,7 @@ export const FEATURED_SLUGS = [
   "cpp-hero",
   "toast-turn",
   "trump-jump",
+  "carboard",
 ] as const;
 
 export const PROJECTS: Project[] = [
@@ -329,10 +330,66 @@ export const PROJECTS: Project[] = [
     ],
   },
 
+  {
+    slug: "carboard",
+    title: "CarBoard",
+    summary:
+      "A Hebrew phone app that keeps everything about the family's cars in one place: km, services, fuel, the yearly test, insurance and documents, each with a reminder by km or by date.",
+    metric: { before: "a glovebox", after: "one app" },
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["React 19", "TypeScript", "Vite", "Firebase", "PWA"],
+    links: [{ label: "Live", href: "https://carboard-teal.vercel.app" }],
+    images: [{
+      src: "/projects/carboard/cover.png",
+      alt: "CarBoard on three phone screens: the service log, the home screen with the weekly km check, and the fuel spending chart",
+      width: 1920,
+      height: 1080,
+    }],
+    featured: true,
+    noCase: true,
+    overview: [
+      "Type the plate number and the make, model, year, colour and test date come from the Ministry of Transport's open data. From then on the app estimates today's km from your own daily average, and asks once a week whether it is about right.",
+      "Every reminder (service, oil, tyres, test, insurance) is due at a km limit or a date, whichever comes first, and can go to the phone's calendar or arrive as a push notification. Google sign-in syncs the cars across a family's phones, and without an account it runs entirely in the browser.",
+    ],
+    highlights: [
+      "Plate lookup against data.gov.il fills in the car",
+      "Km estimate from the driver's own daily average, with a weekly check",
+      "Reminders by km or date, as push notifications or .ics events",
+      "Service log, fuel diary with spending and price-per-litre charts",
+      "Offline-first PWA, Firestore sync, shared family cars",
+    ],
+  },
+
   /* ---------------------------------------------------------------------
      Not featured. Real work, but each makes the same point as something
      above and makes it less well.
      --------------------------------------------------------------------- */
+  {
+    slug: "altshift",
+    title: "altshift",
+    summary:
+      "A Claude Code plugin for writing in Hebrew and English. A band above the prompt converts words typed on the wrong keyboard layout and leaves real words and code alone, and lays Hebrew chat out right-to-left.",
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["TypeScript", "Claude Code", "Plugin hooks"],
+    noCase: true,
+    links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/altshift" }],
+  },
+  {
+    slug: "water-reminder",
+    title: "water-reminder",
+    summary:
+      "A Claude Code plugin where the Claude critter pops up above the prompt every hour with a water bottle. Snoozes, quiet hours, a daily goal and a stats report with streaks.",
+    tags: ["software"],
+    year: 2026,
+    role: "Solo",
+    stack: ["TypeScript", "Claude Code", "Plugin hooks"],
+    noCase: true,
+    links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/claude-water-reminder" }],
+  },
   {
     slug: "haparlamentor",
     title: "Haparlamentor",

@@ -740,8 +740,10 @@ export function buildDesk(kit: DeskKit): Desk {
         },
         right: (p) => {
           p.text("contents", 90, 210, 104); p.line([[86, 240], [470, 234]], 4);
+          // Rows close up as the list grows, so the last one stays on the page.
+          const step = Math.min(170, 920 / Math.max(1, list.length - 1));
           list.forEach((e, i) => {
-            const y = 420 + i * 170;
+            const y = 420 + i * step;
             p.text(cut(e.title, 20), 100, y, 74);
             p.x.setLineDash([6, 16]); p.line([[110 + Math.min(20, e.title.length) * 33, y - 8], [830, y - 10]], 3); p.x.setLineDash([]);
             p.text(String(i + 1).padStart(2, "0"), 860, y, 74);
