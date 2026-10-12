@@ -232,7 +232,6 @@ export const PROJECTS: Project[] = [
       height: 720,
     }],
     featured: true,
-    noCase: true,
     overview: [
       "A game-like app that teaches C++ from the first #include. Each world is a path of short lessons, a project and a boss fight; a lesson explains one idea in a line or two, runs the code step by step with the output filling in, then turns it into challenges.",
       "All lessons and challenges are YAML, checked against a schema at build time, and every C++ snippet in them is compiled and run with g++ so the answers are what a compiler actually says. Progress syncs through Firebase when signed in, and the whole thing installs and works offline.",
@@ -316,7 +315,6 @@ export const PROJECTS: Project[] = [
       height: 1080,
     }],
     featured: true,
-    noCase: true,
     overview: [
       "An endless vertical climber that runs in the browser on phone and desktop. Steer left and right, land on tankers, speedboats and barrels, grab power-ups and dodge drones and missiles as the climb speeds up.",
       "Coins from each run buy skins, fleets, map themes and power-up upgrades. Google sign-in keeps progress in the cloud, and a run is registered when it starts and verified by a serverless function when it ends, so the leaderboard only takes scores the server believes.",
@@ -348,7 +346,6 @@ export const PROJECTS: Project[] = [
       height: 1080,
     }],
     featured: true,
-    noCase: true,
     overview: [
       "Type the plate number and the make, model, year, colour and test date come from the Ministry of Transport's open data. From then on the app estimates today's km from your own daily average, and asks once a week whether it is about right.",
       "Every reminder (service, oil, tyres, test, insurance) is due at a km limit or a date, whichever comes first, and can go to the phone's calendar or arrive as a push notification. Google sign-in syncs the cars across a family's phones, and without an account it runs entirely in the browser.",
@@ -375,7 +372,6 @@ export const PROJECTS: Project[] = [
     year: 2026,
     role: "Solo",
     stack: ["TypeScript", "Claude Code", "Plugin hooks"],
-    noCase: true,
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/altshift" }],
   },
   {
@@ -387,7 +383,6 @@ export const PROJECTS: Project[] = [
     year: 2026,
     role: "Solo",
     stack: ["TypeScript", "Claude Code", "Plugin hooks"],
-    noCase: true,
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/claude-water-reminder" }],
   },
   {
@@ -400,7 +395,6 @@ export const PROJECTS: Project[] = [
     role: "Solo",
     stack: ["Next.js 15", "TypeScript", "Tailwind v4", "Fuse.js", "Whisper"],
     wip: true,
-    noCase: true,
     links: [
       { label: "Live", href: "https://yossiabutbul.github.io/Haparlamentor/" },
       { label: "GitHub", href: "https://github.com/YossiAbutbul/Haparlamentor" },
@@ -415,7 +409,6 @@ export const PROJECTS: Project[] = [
     year: 2026,
     role: "Solo",
     stack: ["JavaScript", "Chart.js", "Log parser"],
-    noCase: true,
     links: [
       { label: "Live", href: "https://yossiabutbul.github.io/lora-gateway-log-visualizer/" },
       { label: "GitHub", href: "https://github.com/YossiAbutbul/lora-gateway-log-visualizer" },
@@ -431,7 +424,6 @@ export const PROJECTS: Project[] = [
     role: "Solo",
     stack: ["Python", "pythonnet", ".NET DLL", "VISA"],
     wip: true,
-    noCase: true,
     links: [
       { label: "GitHub", href: "https://github.com/YossiAbutbul/rf-instrument-wrappers" },
     ],
@@ -445,7 +437,6 @@ export const PROJECTS: Project[] = [
     year: 2023,
     role: "Coursework",
     stack: ["C"],
-    noCase: true,
     links: [{ label: "GitHub", href: "https://github.com/YossiAbutbul/Assembler" }],
   },
 ];
@@ -458,11 +449,3 @@ export const FEATURED_PROJECTS: Project[] = FEATURED_SLUGS
 export const OTHER_PROJECTS: Project[] = PROJECTS.filter(
   (p) => !(FEATURED_SLUGS as readonly string[]).includes(p.slug),
 );
-
-export function getProjectBySlug(slug: string): Project | undefined {
-  return PROJECTS.find((p) => p.slug === slug);
-}
-
-export function getAllSlugs(): string[] {
-  return PROJECTS.filter((p) => !p.noCase).map((p) => p.slug);
-}

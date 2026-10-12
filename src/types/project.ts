@@ -25,8 +25,6 @@ export interface Project {
   video?: string;
   featured?: boolean;
   wip?: boolean;
-  /** Whether a /projects/[slug] case study page exists (MDX written). When false, cards link to first external href. */
-  noCase?: boolean;
   /** Headline result, set in mono next to the title. Two short halves. */
   metric?: { before: string; after: string };
   /** Why this exists: the friction that came before the code. One sentence. */
@@ -35,8 +33,8 @@ export interface Project {
   frequency?: number;
   amplitude?: number;
   band?: string;
-  /** Longer-form description paragraphs, rendered on the detail page. */
+  /** Longer-form description paragraphs, kept for a future per-project page. */
   overview?: string[];
-  /** Bullet-point feature list, rendered on the detail page. */
+  /** Bullet-point feature list, kept for a future per-project page. */
   highlights?: string[];
 }

@@ -22,11 +22,10 @@ const HASH_OF: Record<string, string> = { ships: "intro" };
 
 /**
  * A transparent bar that inverts against whatever is behind it, so it reads on the desk, the dark
- * room and the cream page alike. Project pages get a way back instead of the section links.
+ * room and the cream page alike.
  */
 export default function Nav() {
   const pathname = usePathname();
-  const isProject = pathname.startsWith("/projects/");
   const header = useRef<HTMLElement>(null);
   // Phones: the links live in a drawer behind a menu button.
   const [open, setOpen] = useState(false);
@@ -72,7 +71,6 @@ export default function Nav() {
       el.dataset.tone = light ? "light" : "dark";
       // The address follows the section holding the middle of the screen (no hash over the hero), and
       // the bar marks its link. replaceState, so scrolling adds no history entries.
-      if (isProject) return;
       const mid = innerHeight / 2;
       const at = SECTIONS.find((id) => { const s = document.getElementById(id)?.getBoundingClientRect(); return !!s && s.top <= mid && s.bottom > mid; }) ?? null;
       if (at !== current) {
@@ -89,7 +87,7 @@ export default function Nav() {
     window.addEventListener("resize", schedule);
     window.addEventListener("launch:nav", schedule);
     return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", schedule); window.removeEventListener("resize", schedule); window.removeEventListener("launch:nav", schedule); };
-  }, [pathname, isProject]);
+  }, [pathname]);
 
   function go(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
     // From the drawer: scrolling was paused while it was open; resume before jumping.
@@ -109,14 +107,10 @@ export default function Nav() {
 
   return (
     <header ref={header} className={styles.nav}>
-      {isProject ? (
-        <Link href="/" className={styles.brand}><span aria-hidden="true">← </span>Back to Yossi Abutbul</Link>
-      ) : (
-        <Link href="/#top" className={styles.brand} data-brand onClick={(e) => go(e, "top")} aria-label="Yossi Abutbul, back to top">
-          {/* The hero's name flies up to this. */}
-          <span data-brand-text>Yossi Abutbul</span>
-        </Link>
-      )}
+      <Link href="/#top" className={styles.brand} data-brand onClick={(e) => go(e, "top")} aria-label="Yossi Abutbul, back to top">
+        {/* The hero's name flies up to this. */}
+        <span data-brand-text>Yossi Abutbul</span>
+      </Link>
       <nav aria-label="Sections">
         <ul className={styles.links}>
           {LINKS.map((l) => (

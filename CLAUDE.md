@@ -16,7 +16,8 @@ be usable in the first ten seconds before it is impressive.
 
 ## Folders
 
-- `src/app/` routes: `/` and `/projects/[slug]` (statically generated).
+- `src/app/` routes: `/` only, plus the custom 404 (`not-found.tsx`). There are no per-project pages; the
+  work links straight to each project's live site and GitHub.
 - `src/components/launch/` the launch scene: `scene.ts` (three.js device, veil, cameras, scroll
   choreography; loaded with a dynamic import) and `desk.ts` (the desk set: wood, mat, mug, pencil,
   the 3D notebook with its More work mode and hologram, and the wall of playable gadgets that rises

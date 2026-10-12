@@ -100,16 +100,15 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const isProject = pathname.startsWith("/projects/");
     const reloaded = isPageReload();
     const hash = window.location.hash;
     let targetId: string | null = null;
 
     try { targetId = reloaded ? null : sessionStorage.getItem("__navTarget"); } catch {}
-    if (!targetId && hash && !isProject && !reloaded) targetId = hash.slice(1);
+    if (!targetId && hash && !reloaded) targetId = hash.slice(1);
     if (hash) history.replaceState(null, "", window.location.pathname);
 
-    if (targetId && !isProject) {
+    if (targetId) {
       const lenis = window.__lenis;
       lenis?.stop();
       let raf = 0;
@@ -137,7 +136,7 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     }
 
     let saved: string | null = null;
-    try { saved = isProject || reloaded ? null : sessionStorage.getItem(`scroll:${pathname}`); } catch {}
+    try { saved = reloaded ? null : sessionStorage.getItem(`scroll:${pathname}`); } catch {}
     const top = saved ? Number.parseInt(saved, 10) : 0;
     const raf = requestAnimationFrame(() => {
       if (window.__lenis) window.__lenis.scrollTo(top, { immediate: true, force: true });
