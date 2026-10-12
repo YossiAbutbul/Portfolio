@@ -1,6 +1,6 @@
-import Link from "next/link";
 import LaunchLoader from "@/components/launch/LaunchLoader";
 import LaunchStage from "@/components/launch/LaunchStage";
+import NotFoundWays from "@/components/site/NotFoundWays";
 
 export const metadata = {
   title: "Not found - Yossi Abutbul",
@@ -20,10 +20,7 @@ export default function NotFound() {
           <span className="sr-only">404: </span>This page isn&rsquo;t on the desk.
         </h1>
         <p className="nf-card-body">Everything on it still works. Press the 404.</p>
-        <nav className="nf-card-ways" aria-label="Ways out">
-          <Link href="/">Back to the desk</Link>
-          <Link href="/#work">See the work</Link>
-        </nav>
+        <NotFoundWays />
       </div>
     </section>
   );

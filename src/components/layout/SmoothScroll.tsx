@@ -128,8 +128,13 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
         else lenis?.start();
       };
 
-      raf = requestAnimationFrame(findAndScroll);
+      // The loading sheet holds the page at the top while it is up (LaunchLoader): jump once it lifts.
+      const held = document.documentElement.style.overflow === "hidden";
+      const begin = () => { raf = requestAnimationFrame(findAndScroll); };
+      if (held) window.addEventListener("launch:revealed", begin, { once: true });
+      else begin();
       return () => {
+        window.removeEventListener("launch:revealed", begin);
         cancelAnimationFrame(raf);
         lenis?.start();
       };
