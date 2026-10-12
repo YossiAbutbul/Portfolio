@@ -122,6 +122,9 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
           else window.scrollTo(0, top);
           lenis?.start();
           try { sessionStorage.removeItem("__navTarget"); } catch {}
+          // The address names the section it landed on, and the bar marks its link (Nav listens).
+          history.replaceState(null, "", `#${targetId}`);
+          window.dispatchEvent(new Event("launch:nav"));
           return;
         }
         if (++attempts < 90) raf = requestAnimationFrame(findAndScroll);
